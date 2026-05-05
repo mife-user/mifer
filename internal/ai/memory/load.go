@@ -1,10 +1,9 @@
 package memory
 
 import (
+	"encoding/json"
 	"fmt"
 	"mifer/pkg/conf"
-	"mifer/pkg/exc"
-	"mifer/pkg/utils"
 	"os"
 	"path/filepath"
 
@@ -32,16 +31,15 @@ func load(config *conf.Config, id []byte) ([]*schema.Message, error) {
 
 	// 读取指定下的 JSON 文件
 	var messages []*schema.Message
-	fileId := utils.PseudoRandom(id)
-	fileName := filepath.Join(path, fmt.Sprintf("%s.json", fileId))
+	fileName := filepath.Join(path, fmt.Sprintf("%s.json", id))
 	data, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("读取文件失败：%w", err)
 	}
-	jsonStr, err := exc.ByteToStr(data)
+	err = json.Unmarshal(data, &messages)
 	if err != nil {
-		return nil, fmt.Errorf("转换JSON字符串失败：%w", err)
+		return nil, fmt.Errorf("解析JSON失败：%w", err)
 	}
-	exc.ExcJSONToFile(jsonStr, &messages)
 	return messages, nil
+
 }

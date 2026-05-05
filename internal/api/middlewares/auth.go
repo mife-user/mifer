@@ -50,7 +50,6 @@ func AuthMiddleware(config *conf.Config) gin.HandlerFunc {
 		}
 		// 将用户信息存储到context中
 		c.Set("user_id", claims.UserID)
-		c.Set("role", claims.Role)
 		c.Set("user_name", claims.Name)
 
 		c.Next()

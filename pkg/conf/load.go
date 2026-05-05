@@ -59,6 +59,11 @@ func LoadConfig() (*Config, error) {
 	if err := v.Unmarshal(&globalConfig); err != nil {
 		return nil, fmt.Errorf("解析配置失败：%w", err)
 	}
-
+	//设置工作目录
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("获取当前工作目录失败：%w", err)
+	}
+	globalConfig.Workdir = wd
 	return &globalConfig, nil
 }

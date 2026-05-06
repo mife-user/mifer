@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"mifer/internal/ai/agent"
-	"mifer/internal/ai/memory"
 	"mifer/pkg/conf"
 
 	"github.com/cloudwego/eino/adk"
@@ -11,7 +10,7 @@ import (
 
 type Executor struct {
 	Runner *adk.Runner
-	Memory *memory.Memory
+	Humen  *agent.Humen
 }
 
 func NewExecutor() *Executor {
@@ -25,7 +24,7 @@ func Init(c context.Context, config *conf.Config) (*Executor, error) {
 		return nil, err
 	}
 
-	runner := adk.NewRunner(c, adk.RunnerConfig{Agent: agent.Agent})
-	return &Executor{Runner: runner}, nil
+	runner := adk.NewRunner(c, adk.RunnerConfig{Agent: *agent.Agent})
+	return &Executor{Runner: runner, Humen: agent}, nil
 
 }

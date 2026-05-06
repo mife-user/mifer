@@ -1,11 +1,11 @@
 package domain
 
 type TalkReq struct {
-	content string
+	Content string
 }
 
 type TalkResp struct {
-	content string
+	Content string
 }
 
 type MemoryReq struct {

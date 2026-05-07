@@ -1,17 +1,20 @@
 package routes
 
 import (
+	"context"
+	"mifer/internal/ai/executor"
+	"mifer/internal/api/handler/agenthandler"
 	"mifer/internal/api/middlewares"
+	"mifer/internal/service/agentservice"
 	"mifer/pkg/conf"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 )
 
 // Router 路由结构体
 type Router struct {
-	config *conf.Config
-	Redis  *redis.Client
+	config       *conf.Config
+	agentHandler *agenthandler.AgentHandler
 }
 
 // GetRouter 获取路由实例
@@ -20,8 +23,15 @@ func GetRouter() *Router {
 }
 
 // NewRouter 初始化路由
-func (r *Router) NewRouter(config *conf.Config) bool {
+func (r *Router) NewRouter(c context.Context, config *conf.Config) bool {
 	r.config = config
+	executor, err := executor.Init(c, config)
+	if err != nil {
+		return false
+	}
+	service := agentservice.NewAgentService(executor)
+	r.agentHandler = agenthandler.NewAgentHandler(service)
+
 	return true
 }
 
@@ -37,7 +47,7 @@ func (r *Router) Setup() *gin.Engine {
 	{
 		ai := api.Group("/ai")
 		{
-			ai.POST("/chat")
+			ai.POST("/chat", r.agentHandler.Chat)
 		}
 	}
 

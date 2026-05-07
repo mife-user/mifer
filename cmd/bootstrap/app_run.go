@@ -13,6 +13,10 @@ func NewApplication() (*Application, error) {
 		return nil, fmt.Errorf("加载配置失败: %w", err)
 	}
 
+	if err = app.initontext(); err != nil {
+		return nil, fmt.Errorf("初始化上下文失败: %w", err)
+	}
+
 	if err = app.initLogger(); err != nil {
 		return nil, fmt.Errorf("初始化日志失败: %w", err)
 	}

@@ -1,12 +1,14 @@
 package bootstrap
 
 import (
+	"context"
 	"mifer/pkg/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Application struct {
-	Config *conf.Config
-	Engine *gin.Engine
+	Context context.Context
+	Config  *conf.Config
+	Engine  *gin.Engine
 }

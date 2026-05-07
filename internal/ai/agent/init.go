@@ -6,6 +6,7 @@ import (
 	"mifer/internal/ai/llm"
 	"mifer/internal/ai/memory"
 	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
@@ -14,7 +15,7 @@ import (
 )
 
 type Humen struct {
-	Agent  *adk.Agent
+	Agent  adk.Agent
 	Memory *memory.Memory
 }
 
@@ -22,11 +23,13 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 	// 初始化LLM
 	llm, err := llm.Init(c, config)
 	if err != nil {
+		logger.Error("init llm failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化聊天agent
 	chatAgent, err := newChatAgent(c, llm)
 	if err != nil {
+		logger.Error("init chat agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化agent
@@ -44,16 +47,19 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 		MaxIteration: 3,
 	})
 	if err != nil {
+		logger.Error("init agent failed", logger.C(err))
 		return nil, err
 	}
-	id, ok := c.Value("id").([]byte)
+	id, ok := c.Value("id").(string)
 	if !ok {
-		return nil, fmt.Errorf("id is not []byte")
+		logger.Error("id is not string")
+		return nil, fmt.Errorf("id is not string")
 	}
 	memory, err := memory.Init(config, id)
 	if err != nil {
+		logger.Error("init memory failed", logger.C(err))
 		return nil, err
 	}
 
-	return &Humen{Agent: &agent, Memory: memory}, nil
+	return &Humen{Agent: agent, Memory: memory}, nil
 }

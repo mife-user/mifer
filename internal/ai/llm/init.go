@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino-ext/components/model/openai"
 )
@@ -19,6 +20,7 @@ func Init(c context.Context, config *conf.Config) (*LLM, error) {
 	}
 	chatModel, err := openai.NewChatModel(c, &aiCfg)
 	if err != nil {
+		logger.Error("init llm failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化其他LLM服务

@@ -20,13 +20,15 @@ func newDefaultCfg(s string) error {
 		path = filepath.Join(home, "/mifer/config")
 		fileName = "prod.yaml"
 	}
-	// 创建默认配置文件
+	// 创建默认配置文件（仅在文件不存在时创建，避免覆盖用户修改）
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return fmt.Errorf("创建配置目录失败：%w", err)
 	}
 	cfgPath := filepath.Join(path, fileName)
-	if err := os.WriteFile(cfgPath, []byte(defaultConfig), 0644); err != nil {
-		return fmt.Errorf("写入默认配置失败：%w", err)
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		if err := os.WriteFile(cfgPath, []byte(defaultConfig), 0644); err != nil {
+			return fmt.Errorf("写入默认配置失败：%w", err)
+		}
 	}
 	return nil
 }

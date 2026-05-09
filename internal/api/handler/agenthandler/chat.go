@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"fmt"
 	"mifer/internal/api/dto/request/agentreq"
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
@@ -15,13 +16,30 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	resp, err := h.AgentService.Chat(c.Request.Context(), &domain.TalkReq{
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.WriteHeader(http.StatusOK)
+
+	err := h.AgentService.Chat(c.Request.Context(), &domain.TalkReq{
 		Content: req.Content,
+	}, func(content string) error {
+		_, err := fmt.Fprintf(c.Writer, "data: %s\n\n", content)
+		if err != nil {
+			return err
+		}
+		c.Writer.Flush()
+		return nil
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		logger.Error("chat失败", logger.C(err))
+		fmt.Fprintf(c.Writer, "data: [ERROR] %s\n\n", err.Error())
+		c.Writer.Flush()
 		return
 	}
-	logger.Info("chat success", logger.S("resp", resp.Content))
-	c.JSON(http.StatusOK, resp)
+
+	fmt.Fprintf(c.Writer, "data: [DONE]\n\n")
+	c.Writer.Flush()
+	logger.Info("chat success")
 }

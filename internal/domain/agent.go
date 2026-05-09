@@ -4,10 +4,6 @@ type TalkReq struct {
 	Content string
 }
 
-type TalkResp struct {
-	Content string
-}
-
 type MemoryReq struct {
 	ID uint
 }

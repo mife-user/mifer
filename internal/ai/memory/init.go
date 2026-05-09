@@ -6,11 +6,13 @@ import (
 	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/cloudwego/eino/schema"
 )
 
 type Memory struct {
+	mu       sync.Mutex
 	Messages []*schema.Message
 	Cfg      MemCfg
 }
@@ -25,7 +27,12 @@ func Init(config *conf.Config, id string) (*Memory, error) {
 	memory.Cfg.id = id
 	// 确定记忆文件存储路径
 	if config.Env == "dev" {
-		memory.Cfg.MemPath = filepath.Join("./memory", filepath.Base(config.Workdir))
+		absPath, err := filepath.Abs("./memory")
+		if err != nil {
+			logger.Error("获取记忆目录绝对路径失败", logger.C(err))
+			return nil, fmt.Errorf("获取记忆目录绝对路径失败：%w", err)
+		}
+		memory.Cfg.MemPath = filepath.Join(absPath, filepath.Base(config.Workdir))
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {

@@ -83,14 +83,20 @@ func Init(config *conf.Config) error {
 	}
 	infoFile, err := NewRotatingFile(filepath.Join(logDir, "info.log"), maxSizeMB, maxBackups)
 	if err != nil {
+		debugFile.Close()
 		return err
 	}
 	warnFile, err := NewRotatingFile(filepath.Join(logDir, "warn.log"), maxSizeMB, maxBackups)
 	if err != nil {
+		debugFile.Close()
+		infoFile.Close()
 		return err
 	}
 	errorFile, err := NewRotatingFile(filepath.Join(logDir, "error.log"), maxSizeMB, maxBackups)
 	if err != nil {
+		debugFile.Close()
+		infoFile.Close()
+		warnFile.Close()
 		return err
 	}
 

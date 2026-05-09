@@ -16,13 +16,15 @@ func LoadConfig() (*Config, error) {
 	//设置默认环境为dev
 	v.SetDefault("env", "dev")
 	//显式绑定环境变量
-	v.BindEnv("env", "MIFER_ENV")
-	v.BindEnv("redis.host", "MIFER_REDIS_HOST")
-	v.BindEnv("jwt.secret", "MIFER_JWT_SECRET")
-	v.BindEnv("redis.password", "MIFER_REDIS_PASSWORD")
-	v.BindEnv("ai.base_url", "MIFER_AI_BASEURL")
-	v.BindEnv("ai.model", "MIFER_AI_MODEL")
-	v.BindEnv("ai.api_key", "MIFER_AI_APIKEY")
+	if err := v.BindEnv("env", "MIFER_ENV"); err != nil {
+		return nil, fmt.Errorf("绑定环境变量 MIFER_ENV 失败: %w", err)
+	}
+	_ = v.BindEnv("redis.host", "MIFER_REDIS_HOST")
+	_ = v.BindEnv("jwt.secret", "MIFER_JWT_SECRET")
+	_ = v.BindEnv("redis.password", "MIFER_REDIS_PASSWORD")
+	_ = v.BindEnv("ai.base_url", "MIFER_AI_BASEURL")
+	_ = v.BindEnv("ai.model", "MIFER_AI_MODEL")
+	_ = v.BindEnv("ai.api_key", "MIFER_AI_APIKEY")
 
 	//主要配置文件目录
 	env := v.GetString("env")

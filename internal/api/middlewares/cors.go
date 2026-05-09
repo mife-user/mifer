@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"mifer/pkg/conf"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,12 +10,21 @@ import (
 // CORSMiddleware 创建 CORS 中间件
 func CORSMiddleware(config *conf.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		for _, origin := range config.Gin.Cors.AllowOrigins {
-			c.Header("Access-Control-Allow-Origin", origin)
+		requestOrigin := c.Request.Header.Get("Origin")
+		allowOrigin := ""
+		for _, o := range config.Gin.Cors.AllowOrigins {
+			if o == "*" || o == requestOrigin {
+				allowOrigin = requestOrigin
+				if o == "*" && requestOrigin == "" {
+					allowOrigin = "*"
+				}
+				break
+			}
 		}
-		for _, method := range config.Gin.Cors.AllowMethods {
-			c.Header("Access-Control-Allow-Methods", method)
+		if allowOrigin != "" {
+			c.Header("Access-Control-Allow-Origin", allowOrigin)
 		}
+		c.Header("Access-Control-Allow-Methods", strings.Join(config.Gin.Cors.AllowMethods, ", "))
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
 

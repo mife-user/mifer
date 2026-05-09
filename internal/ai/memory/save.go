@@ -5,10 +5,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Save 保存记忆数据到 JSON 文件
 func (m *Memory) Save() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// 防止路径遍历
+	if strings.Contains(m.Cfg.id, "..") || strings.Contains(m.Cfg.id, "/") || strings.Contains(m.Cfg.id, "\\") {
+		return fmt.Errorf("id 包含非法字符: %s", m.Cfg.id)
+	}
 	// 创建文件夹
 	if err := os.MkdirAll(m.Cfg.MemPath, 0755); err != nil {
 		return fmt.Errorf("创建内存目录失败：%w", err)

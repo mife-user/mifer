@@ -4,13 +4,6 @@ import "fmt"
 
 // 检查配置
 func StatusConfig() error {
-	// Redis配置检查
-	if globalConfig.Redis.Host == "" {
-		return fmt.Errorf("redis主机未配置")
-	}
-	if globalConfig.Redis.Port == "" {
-		return fmt.Errorf("redis端口未配置")
-	}
 	//jwt配置检查
 	if globalConfig.JWT.Secret == "" {
 		return fmt.Errorf("jwt密钥未配置")

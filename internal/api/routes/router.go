@@ -23,16 +23,16 @@ func GetRouter() *Router {
 }
 
 // NewRouter 初始化路由
-func (r *Router) NewRouter(c context.Context, config *conf.Config) bool {
+func (r *Router) NewRouter(c context.Context, config *conf.Config) error {
 	r.config = config
-	executor, err := executor.Init(c, config)
+	exec, err := executor.Init(c, config)
 	if err != nil {
-		return false
+		return err
 	}
-	service := agentservice.NewAgentService(executor)
+	service := agentservice.NewAgentService(exec)
 	r.agentHandler = agenthandler.NewAgentHandler(service)
 
-	return true
+	return nil
 }
 
 // Setup 设置路由
@@ -47,7 +47,7 @@ func (r *Router) Setup() *gin.Engine {
 	{
 		ai := api.Group("/ai")
 		{
-			ai.POST("/chat", r.agentHandler.Chat)
+			ai.POST("/chat", middlewares.AuthMiddleware(r.config), r.agentHandler.Chat)
 		}
 	}
 

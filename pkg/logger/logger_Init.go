@@ -81,11 +81,13 @@ func Init(config *conf.Config) error {
 	if err != nil {
 		return err
 	}
+
 	infoFile, err := NewRotatingFile(filepath.Join(logDir, "info.log"), maxSizeMB, maxBackups)
 	if err != nil {
 		debugFile.Close()
 		return err
 	}
+
 	warnFile, err := NewRotatingFile(filepath.Join(logDir, "warn.log"), maxSizeMB, maxBackups)
 	if err != nil {
 		debugFile.Close()
@@ -99,11 +101,15 @@ func Init(config *conf.Config) error {
 		warnFile.Close()
 		return err
 	}
-
+	// 创建各级别日志核心，使用LevelOf精确匹配级别
 	cores := []zapcore.Core{
+		// Debug级别核心：仅记录Debug级别
 		zapcore.NewCore(fileEncoder, debugFile, zapcore.LevelOf(zapcore.DebugLevel)),
+		// Info级别核心：仅记录Info级别
 		zapcore.NewCore(fileEncoder, infoFile, zapcore.LevelOf(zapcore.InfoLevel)),
+		// Warn级别核心：仅记录Warn级别
 		zapcore.NewCore(fileEncoder, warnFile, zapcore.LevelOf(zapcore.WarnLevel)),
+		// Error及以上级别核心：记录Error、Panic、Fatal级别
 		zapcore.NewCore(fileEncoder, errorFile, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 			return lvl >= zapcore.ErrorLevel
 		})),

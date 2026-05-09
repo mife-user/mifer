@@ -27,7 +27,9 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 		}
 
 		message := event.Output.MessageOutput.Message
+		
 		if message == nil {
+			logger.Warn("AI 返回空消息", logger.I("eventCount", eventCount))
 			continue
 		}
 

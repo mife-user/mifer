@@ -1,0 +1,280 @@
+05-09 22:15:08.009	ERROR	chat failed	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/service/agentservice.(*AgentService).Chat
+	D:/vscode/VsCodeWork/mifer/internal/service/agentservice/chat.go:17
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:25
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:15:08.013	ERROR	chat失败	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:21:31.973	ERROR	chat failed	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/service/agentservice.(*AgentService).Chat
+	D:/vscode/VsCodeWork/mifer/internal/service/agentservice/chat.go:17
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:25
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:21:31.974	ERROR	chat失败	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:38:48.137	ERROR	chat failed	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/service/agentservice.(*AgentService).Chat
+	D:/vscode/VsCodeWork/mifer/internal/service/agentservice/chat.go:17
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:25
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:38:48.138	ERROR	chat失败	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:39:01.530	ERROR	chat failed	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/service/agentservice.(*AgentService).Chat
+	D:/vscode/VsCodeWork/mifer/internal/service/agentservice/chat.go:17
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:25
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:39:01.530	ERROR	chat失败	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:39:06.909	ERROR	chat failed	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/service/agentservice.(*AgentService).Chat
+	D:/vscode/VsCodeWork/mifer/internal/service/agentservice/chat.go:17
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:25
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||
+05-09 22:39:06.909	ERROR	chat失败	{"error": "AI 未生成回复内容"}
+mifer/pkg/logger.Error
+	D:/vscode/VsCodeWork/mifer/pkg/logger/logger_Act.go:18
+mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat
+	D:/vscode/VsCodeWork/mifer/internal/api/handler/agenthandler/chat.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+mifer/internal/api/routes.(*Router).Setup.CORSMiddleware.func1
+	D:/vscode/VsCodeWork/mifer/internal/api/middlewares/cors.go:36
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.CustomRecoveryWithWriter.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.LoggerWithConfig.func1
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/logger.go:282
+github.com/gin-gonic/gin.(*Context).Next
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722
+github.com/gin-gonic/gin.(*Engine).ServeHTTP
+	D:/vscode/VsCodeWork/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672
+net/http.serverHandler.ServeHTTP
+	D:/vscode/GoBuild/src/net/http/server.go:3340
+net/http.(*conn).serve
+	D:/vscode/GoBuild/src/net/http/server.go:2109||

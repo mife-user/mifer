@@ -42,7 +42,6 @@ func (r *Router) NewRouter(c context.Context, config *conf.Config) error {
 func (r *Router) Setup() *gin.Engine {
 	gin.SetMode(r.config.Gin.Mode)
 
-	router := gin.Default()
 	fileName := filepath.Join(r.config.Path.CfgPath, "/logs/gin.log")
 	log, err := logger.NewRotatingFile(fileName, r.config.Log.MaxSize, r.config.Log.MaxBackups)
 	if err == nil {
@@ -50,8 +49,7 @@ func (r *Router) Setup() *gin.Engine {
 		gin.DefaultErrorWriter = log
 	}
 
-	router.Use(middlewares.CORSMiddleware(r.config))
-	router.Use(middlewares.AuthMiddleware(r.config))
+	router := gin.Default()
 	router.Use(middlewares.CORSMiddleware(r.config))
 
 	api := router.Group("/api")

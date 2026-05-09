@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"net/http"
 	"mifer/pkg/logger"
 )
 
@@ -30,13 +31,27 @@ func NewApplication() (*Application, error) {
 		return nil, fmt.Errorf("初始化路由失败: %w", err)
 	}
 
+	if err = app.initCli(); err != nil {
+		return nil, fmt.Errorf("初始化CLI失败: %w", err)
+	}
 	return app, nil
 }
 
 // Run 运行应用
 func (a *Application) Run() error {
 	a.printStartupInfo()
-	return a.Engine.Run(fmt.Sprintf(":%d", a.Config.Gin.Port))
+
+	a.server = &http.Server{
+		Addr:    fmt.Sprintf(":%d", a.Config.Gin.Port),
+		Handler: a.Engine,
+	}
+
+	logger.Info("HTTP 服务器启动", logger.I("port", a.Config.Gin.Port))
+	err := a.server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("服务器运行失败: %w", err)
+	}
+	return nil
 }
 
 // printStartupInfo 打印启动信息

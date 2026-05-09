@@ -2,25 +2,27 @@ package executor
 
 import (
 	"context"
-	"fmt"
 	"mifer/internal/domain"
+	"mifer/pkg/errorer"
+	"mifer/pkg/logger"
 	"strings"
 )
 
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(content string) error) error {
-	// 添加用户消息到记忆中
 	e.Humen.Memory.AppendUser(req.Content)
 
-	// 运行对话
 	iter := e.Runner.Run(c, e.Humen.Memory.Messages)
 
 	lastMsg := &strings.Builder{}
+	eventCount := 0
 	for {
 		event, ok := iter.Next()
 		if !ok {
 			break
 		}
+		eventCount++
 		if event.Err != nil {
+			logger.Error("AI事件错误", logger.C(event.Err))
 			return event.Err
 		}
 
@@ -36,11 +38,12 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 		}
 	}
 
+	logger.Debug("AI事件迭代完成", logger.I("eventCount", eventCount), logger.I("msgLen", lastMsg.Len()))
+
 	if lastMsg.String() == "" {
-		return fmt.Errorf("未收到助手回复")
+		return errorer.New(errorer.ErrCallBackNull)
 	}
 
-	// 添加助手消息到记忆中
 	e.Humen.Memory.AppendAssistant(lastMsg.String())
 	if err := e.Humen.Memory.Save(); err != nil {
 		return err

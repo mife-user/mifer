@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"mifer/pkg/logger"
 )
 
 // NewApplication 创建应用实例
@@ -40,8 +41,8 @@ func (a *Application) Run() error {
 
 // printStartupInfo 打印启动信息
 func (a *Application) printStartupInfo() {
-	fmt.Println("应用初始化成功！")
-	fmt.Printf("配置环境: %s\n", a.Config.Env)
-	fmt.Printf("Gin 模式: %s\n", a.Config.Gin.Mode)
-	fmt.Printf("服务端口: %d\n", a.Config.Gin.Port)
+	logger.Info("应用初始化成功！")
+	logger.Info("配置环境:", logger.S("env", a.Config.Env))
+	logger.Info("Gin 模式:", logger.S("mode", a.Config.Gin.Mode))
+	logger.Info("服务端口:", logger.I("port", a.Config.Gin.Port))
 }

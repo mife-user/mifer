@@ -1,0 +1,23 @@
+
+env: dev
+log:
+  max_size: 100
+  max_backups: 7
+redis:
+  host: "127.0.0.1"
+  port: "6379"
+  username: "mifer"
+  password: "mifer"
+  db: 0
+jwt:
+  secret: "123456"
+ai:
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-v4-flash"
+  api_key: "your_api_key"
+gin:
+  mode: "debug"
+  port: 8080
+  cors:
+    allow_origins: ["*"]
+    allow_methods: ["POST","GET"]

@@ -12,36 +12,36 @@ import (
 func LoadConfig() (*Config, error) {
 	var path string
 	var fileName string
+	var memPath string
+	var err error
 	v := viper.New()
 	//设置默认环境为dev
 	v.SetDefault("env", "dev")
-	//显式绑定环境变量
-	if err := v.BindEnv("env", "MIFER_ENV"); err != nil {
-		return nil, fmt.Errorf("绑定环境变量 MIFER_ENV 失败: %w", err)
-	}
-	_ = v.BindEnv("redis.host", "MIFER_REDIS_HOST")
-	_ = v.BindEnv("jwt.secret", "MIFER_JWT_SECRET")
-	_ = v.BindEnv("redis.password", "MIFER_REDIS_PASSWORD")
-	_ = v.BindEnv("ai.base_url", "MIFER_AI_BASEURL")
-	_ = v.BindEnv("ai.model", "MIFER_AI_MODEL")
-	_ = v.BindEnv("ai.api_key", "MIFER_AI_APIKEY")
-
+	// 手动应用环境变量覆盖（Viper 的 Unmarshal 不经过 BindEnv，需显式覆盖）
+	applyEnvOverrides(v)
 	//主要配置文件目录
 	env := v.GetString("env")
 	if env == "dev" {
 		path = "./config"
 		fileName = "dev"
+		memPath, err = os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("获取当前工作目录失败：%w", err)
+		}
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("获取用户主目录失败：%w", err)
 		}
 		path = filepath.Join(home, "/mifer/config")
+		memPath = filepath.Join(home, "/mifer")
 		fileName = "prod"
 	}
+	//设置默认路径
+	v.Set("path.mem_path", memPath)
 
 	//创建默认配置文件
-	err := newDefaultCfg(env)
+	err = newDefaultCfg(env)
 	if err != nil {
 		return nil, fmt.Errorf("创建默认配置失败：%w", err)
 	}
@@ -57,8 +57,7 @@ func LoadConfig() (*Config, error) {
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("加载主配置失败：%w", err)
 	}
-	// 手动应用环境变量覆盖（Viper 的 Unmarshal 不经过 BindEnv，需显式覆盖）
-	applyEnvOverrides(v)
+
 	//配置到结构体
 	if err := v.Unmarshal(&globalConfig); err != nil {
 		return nil, fmt.Errorf("解析配置失败：%w", err)
@@ -69,7 +68,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("获取当前工作目录失败：%w", err)
 	}
-	globalConfig.Workdir = wd
+	globalConfig.Path.Workdir = wd
 	return &globalConfig, nil
 }
 

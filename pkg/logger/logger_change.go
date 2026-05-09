@@ -16,3 +16,8 @@ func S(key string, value string) zap.Field {
 func U(key string, value uint) zap.Field {
 	return zap.Uint(key, value)
 }
+
+// 转换Int为zap.Field
+func I(key string, value int) zap.Field {
+	return zap.Int(key, value)
+}

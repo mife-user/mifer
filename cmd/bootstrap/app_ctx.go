@@ -6,7 +6,7 @@ import (
 )
 
 func (a *Application) initontext() error {
-	id := []byte(a.Config.Workdir)
+	id := []byte(a.Config.Path.Workdir)
 	idstr := utils.PseudoRandom(id)
 	a.Context = context.WithValue(context.Background(), "id", idstr)
 	return nil

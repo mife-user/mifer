@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+
 	app, err := bootstrap.NewApplication()
 	if err != nil {
 		log.Fatalf("应用初始化失败: %v", err)
@@ -27,7 +28,9 @@ func main() {
 
 	select {
 	case err := <-runErr:
-		log.Fatalf("启动服务器失败: %v", err)
+		if err != nil {
+			log.Fatalf("启动服务器失败: %v", err)
+		}
 	case <-quit:
 	}
 

@@ -1,0 +1,4 @@
+[GIN-debug] POST   /api/ai/chat              --> mifer/internal/api/handler/agenthandler.(*AgentHandler).Chat-fm (6 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080

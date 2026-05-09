@@ -4,13 +4,19 @@ var globalConfig Config
 
 // 配置结构体
 type Config struct {
-	Env     string      `mapstructure:"env"`
-	Log     LogConfig   `mapstructure:"log"`
-	Redis   RedisConfig `mapstructure:"redis"`
-	Gin     GinConfig   `mapstructure:"gin"`
-	JWT     JWTConfig   `mapstructure:"jwt"`
-	Ai      AiConfig    `mapstructure:"ai"`
-	Workdir string      `mapstructure:"workdir"`
+	Env   string      `mapstructure:"env"`
+	Log   LogConfig   `mapstructure:"log"`
+	Redis RedisConfig `mapstructure:"redis"`
+	Gin   GinConfig   `mapstructure:"gin"`
+	JWT   JWTConfig   `mapstructure:"jwt"`
+	Ai    AiConfig    `mapstructure:"ai"`
+	Path  PathConfig  `mapstructure:"path"`
+}
+
+// 路径配置结构体
+type PathConfig struct {
+	Workdir string `mapstructure:"workdir"`
+	CfgPath string `mapstructure:"mem_path"`
 }
 
 // 日志配置结构体

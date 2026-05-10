@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"mifer/internal/ai/agent"
-	"mifer/internal/domain"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
@@ -15,11 +14,7 @@ type Executor struct {
 	Humen  *agent.Humen
 }
 
-func NewExecutor() *Executor {
-	return &Executor{}
-}
-
-func Init(c context.Context, config *conf.Config) (domain.Agent, error) {
+func Init(c context.Context, config *conf.Config) (*Executor, error) {
 
 	ag, err := agent.Init(c, config)
 	if err != nil {

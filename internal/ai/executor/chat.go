@@ -2,6 +2,8 @@ package executor
 
 import (
 	"context"
+	"errors"
+	"io"
 	"mifer/internal/domain"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -26,17 +28,39 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 			return event.Err
 		}
 
-		message := event.Output.MessageOutput.Message
-		
-		if message == nil {
-			logger.Warn("AI 返回空消息", logger.I("eventCount", eventCount))
+		if event.Output == nil || event.Output.MessageOutput == nil {
 			continue
 		}
 
-		lastMsg.WriteString(message.Content)
+		msgOutput := event.Output.MessageOutput
 
-		if err := callback(message.Content); err != nil {
-			return err
+		if msgOutput.IsStreaming {
+			for {
+				chunk, err := msgOutput.MessageStream.Recv()
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				if err != nil {
+					logger.Error("流式读取失败", logger.C(err))
+					return err
+				}
+				if chunk == nil {
+					continue
+				}
+				lastMsg.WriteString(chunk.Content)
+				if err := callback(chunk.Content); err != nil {
+					return err
+				}
+			}
+		} else {
+			message := msgOutput.Message
+			if message == nil {
+				continue
+			}
+			lastMsg.WriteString(message.Content)
+			if err := callback(message.Content); err != nil {
+				return err
+			}
 		}
 	}
 

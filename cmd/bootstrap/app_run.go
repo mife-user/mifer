@@ -2,8 +2,8 @@ package bootstrap
 
 import (
 	"fmt"
-	"net/http"
 	"mifer/pkg/logger"
+	"net/http"
 )
 
 // NewApplication 创建应用实例

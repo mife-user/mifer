@@ -18,6 +18,7 @@ func Init(c context.Context, config *conf.Config) (*LLM, error) {
 		BaseURL: config.Ai.BaseURL,
 		APIKey:  config.Ai.ApiKey,
 	}
+	logger.Info("init llm", logger.S("model", aiCfg.Model))
 	chatModel, err := openai.NewChatModel(c, &aiCfg)
 	if err != nil {
 		logger.Error("init llm failed", logger.C(err))

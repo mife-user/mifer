@@ -10,9 +10,10 @@ import (
 )
 
 type Memory struct {
-	mu       sync.Mutex
-	Messages []*schema.Message
-	Cfg      MemCfg
+	mu         sync.Mutex
+	Messages   []*schema.Message
+	savedCount int // 已持久化到文件的消息数量
+	Cfg        MemCfg
 }
 
 type MemCfg struct {
@@ -30,6 +31,10 @@ func Init(config *conf.Config, id string) (*Memory, error) {
 		logger.Error("加载记忆文件失败", logger.C(err))
 		return nil, err
 	}
+	if msgs == nil {
+		msgs = []*schema.Message{}
+	}
 	memory.Messages = msgs
+	memory.savedCount = len(msgs)
 	return &memory, nil
 }

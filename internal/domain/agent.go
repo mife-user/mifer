@@ -5,7 +5,7 @@ type TalkReq struct {
 }
 
 type MemoryReq struct {
-	ID uint
+	ID string
 }
 
 type MemoryResp struct {

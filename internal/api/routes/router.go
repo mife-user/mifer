@@ -58,6 +58,10 @@ func (r *Router) Setup() *gin.Engine {
 		{
 			ai.POST("/chat", r.agentHandler.Chat)
 		}
+		memory := api.Group("/memory")
+		{
+			memory.GET("/:id", r.agentHandler.LoadMemory)
+		}
 	}
 
 	return router

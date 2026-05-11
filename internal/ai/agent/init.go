@@ -10,8 +10,6 @@ import (
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
-	"github.com/cloudwego/eino/components/tool"
-	"github.com/cloudwego/eino/compose"
 )
 
 type Humen struct {
@@ -32,18 +30,19 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 		logger.Error("init chat agent failed", logger.C(err))
 		return nil, err
 	}
+	// 初始化文件编辑agent
+	editerAgent, err := newChatEditer(c, llm)
+	if err != nil {
+		logger.Error("init editer agent failed", logger.C(err))
+		return nil, err
+	}
 	// 初始化agent
 	agent, err := deep.New(c, &deep.Config{
-		Name:        "Mifer",
-		Description: "管理员",
-		Instruction: " 你是一个智能助手，能够智能管理agent，调用其他agent，处理用户请求。",
-		ChatModel:   llm.Model,
-		ToolsConfig: adk.ToolsConfig{
-			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: []tool.BaseTool{},
-			},
-		},
-		SubAgents:    []adk.Agent{chatAgent},
+		Name:         "Mifer",
+		Description:  "管理员",
+		Instruction:  " 你是一个智能助手，能够智能管理agent，调用其他agent，处理用户请求。",
+		ChatModel:    llm.Model,
+		SubAgents:    []adk.Agent{chatAgent, editerAgent},
 		MaxIteration: 3,
 	})
 	if err != nil {

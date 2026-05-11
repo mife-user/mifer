@@ -21,7 +21,7 @@ func (c *Cli) chat(content string) error {
 		return fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.chatURL, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", c.api.chat, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %w", err)
 	}
@@ -44,6 +44,7 @@ func (c *Cli) chat(content string) error {
 		if line == "" {
 			continue
 		}
+		// 判断是否以"data: "开头
 		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}

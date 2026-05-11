@@ -53,6 +53,7 @@ func Init(config *conf.Config) error {
 		LineEnding:    "||\n",
 		EncodeTime:    nowTime,
 		EncodeLevel:   zapcore.CapitalLevelEncoder,
+		EncodeCaller:  zapcore.ShortCallerEncoder,
 	}
 
 	// 控制台编码器配置（带颜色）
@@ -66,6 +67,7 @@ func Init(config *conf.Config) error {
 		LineEnding:    "||\n",
 		EncodeTime:    nowTime,
 		EncodeLevel:   zapcore.CapitalColorLevelEncoder,
+		EncodeCaller:  zapcore.ShortCallerEncoder,
 	}
 
 	var fileEncoder, consoleEncoder zapcore.Encoder

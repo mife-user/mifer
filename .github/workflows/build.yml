@@ -1,0 +1,62 @@
+name: Build Mifer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [windows, linux]
+        goarch: [amd64, arm64]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: 编译可执行文件
+        run: |
+          VERSION="${{ github.ref_name }}"
+          EXE_EXT=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            EXE_EXT=".exe"
+          fi
+          OUTPUT="mifer${EXE_EXT}"
+          echo "Building ${OUTPUT} for ${{ matrix.goos }}/${{ matrix.goarch }} (${VERSION})"
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags="-s -w" -o "${OUTPUT}" ./cmd/main
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "OUTPUT=${OUTPUT}" >> $GITHUB_ENV
+
+      - name: 打包 Windows (.zip)
+        if: matrix.goos == 'windows'
+        run: |
+          ARTIFACT="mifer-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+          zip -j "$ARTIFACT" "$OUTPUT" README教程.md
+          echo "ARTIFACT=${ARTIFACT}" >> $GITHUB_ENV
+
+      - name: 打包 Linux (.tar.gz)
+        if: matrix.goos == 'linux'
+        run: |
+          ARTIFACT="mifer-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
+          tar -czf "$ARTIFACT" "$OUTPUT" README教程.md
+          echo "ARTIFACT=${ARTIFACT}" >> $GITHUB_ENV
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: mifer-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ env.ARTIFACT }}
+          retention-days: 30
+          if-no-files-found: error

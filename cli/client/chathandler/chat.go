@@ -1,34 +1,38 @@
-package cli
+package chathandler
 
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+
+	"mifer/internal/api/routes"
 )
 
 type chatReq struct {
 	Content string `json:"content"`
 }
 
-// chat 发送消息并处理SSE流式响应
-func (c *Cli) chat(content string) error {
+// Send 发送消息并处理SSE流式响应，每收到一个chunk调用onChunk回调
+func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(string) error) error {
 	body, err := json.Marshal(chatReq{Content: content})
 	if err != nil {
 		return fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.api.chat, bytes.NewReader(body))
+	url := h.baseURL + routes.APIChatPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := h.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("请求失败: %w", err)
 	}
@@ -41,18 +45,13 @@ func (c *Cli) chat(content string) error {
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-		// 判断是否以"data: "开头
-		if !strings.HasPrefix(line, "data: ") {
+		if line == "" || !strings.HasPrefix(line, "data: ") {
 			continue
 		}
 		data := strings.TrimPrefix(line, "data: ")
 
 		switch data {
 		case "[DONE]":
-			fmt.Println()
 			return nil
 		case "[ERROR]", "":
 			// 忽略空错误
@@ -62,7 +61,9 @@ func (c *Cli) chat(content string) error {
 				fmt.Fprintf(os.Stderr, "\n错误: %s\n", errMsg)
 				return nil
 			}
-			fmt.Print(data)
+			if err := onChunk(data); err != nil {
+				return err
+			}
 		}
 	}
 

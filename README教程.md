@@ -1,0 +1,106 @@
+# Mifer 使用教程
+
+## 简介
+
+Mifer 是一个基于 [CloudWeGo Eino](https://github.com/cloudwego/eino) 构建的智能 AI Agent，支持多 Agent 编排、流式对话、对话记忆持久化，提供 HTTP 服务和 CLI 终端两种交互方式。
+
+## 系统要求
+
+- 操作系统：Windows 10+ / Linux（内核 3.10+）
+- 架构：amd64 或 arm64
+- 可选依赖：Redis（缓存加速，非必需）
+
+## 安装
+
+1. 从 [Releases](https://github.com/your-repo/mifer/releases) 页面下载对应平台的压缩包
+2. 解压后即可运行，无需安装
+
+| 平台 | 压缩包 |
+|------|--------|
+| Windows (x64) | `mifer-vX.X.X-windows-amd64.zip` |
+| Windows (ARM64) | `mifer-vX.X.X-windows-arm64.zip` |
+| Linux (x64) | `mifer-vX.X.X-linux-amd64.tar.gz` |
+| Linux (ARM64) | `mifer-vX.X.X-linux-arm64.tar.gz` |
+
+## 配置
+
+首次运行时 Mifer 会自动生成默认配置文件。
+
+### 运行模式
+
+| 模式 | 环境变量 | 配置文件路径 | 说明 |
+|------|----------|--------------|------|
+| dev（默认） | `MIFER_ENV=dev` | `./config/dev.yaml` | 开发模式，彩色日志，端口 8080 |
+| prod | `MIFER_ENV=prod` | `~/.mifer/config/prod.yaml` | 生产模式，JSON 日志 |
+
+### 环境变量
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `MIFER_AI_BASEURL` | AI API 地址 | `https://api.deepseek.com` |
+| `MIFER_AI_APIKEY` | AI API 密钥（必填） | 无 |
+| `MIFER_AI_MODEL` | 模型名称 | `deepseek-v4-flash` |
+| `MIFER_ENV` | 运行模式 | `dev` |
+| `MIFER_JWT_SECRET` | JWT 签名密钥 | 自动生成 |
+| `MIFER_REDIS_HOST` | Redis 地址 | 无（可选） |
+
+> 环境变量优先级高于配置文件，建议 API Key 通过环境变量设置。
+
+### 快速开始
+
+**Linux:**
+```bash
+export MIFER_ENV=prod
+export MIFER_AI_APIKEY="sk-your-key"
+./mifer
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:MIFER_ENV="prod"
+$env:MIFER_AI_APIKEY="sk-your-key"
+.\mifer.exe
+```
+
+## 运行模式
+
+```bash
+# 默认模式：同时启动 HTTP 服务 + CLI 终端
+./mifer
+
+# 仅启动 HTTP 服务（适合服务器部署）
+./mifer serve
+
+# 仅启动 CLI 终端
+./mifer chat
+```
+
+HTTP 服务启动后监听 `http://localhost:8080`：
+- `POST /api/ai/chat` — 对话接口（SSE 流式响应）
+- `GET /api/memory/:id` — 查看会话记忆
+
+## CLI 交互命令
+
+进入 CLI 对话终端后支持：
+
+| 命令 | 说明 |
+|------|------|
+| 直接输入文字 | 与 AI 对话 |
+| `/viewmemory` | 查看当前会话记忆 |
+| `/viewmemory <id>` | 查看指定会话记忆 |
+| `help` | 显示帮助 |
+| `exit` / `quit` | 退出 |
+
+## 常见问题
+
+**Q: 提示"加载配置失败"？**
+A: 确保当前目录可写（dev 模式），或 `~/.mifer/` 目录可写（prod 模式）。
+
+**Q: AI 无响应？**
+A: 确认 `MIFER_AI_APIKEY` 已正确设置，且 API 地址可访问。也可检查 `debug.log` 查看详细错误。
+
+**Q: 如何更换模型？**
+A: 设置 `MIFER_AI_MODEL` 环境变量。支持所有 OpenAI 兼容协议的模型（DeepSeek、OpenAI、Ollama 等）。
+
+**Q: 需要安装 Redis 吗？**
+A: Redis 是可选的，仅用于缓存加速，不安装不影响核心对话功能。

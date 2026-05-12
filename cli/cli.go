@@ -2,21 +2,17 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
-)
 
-// apiEndpoints 集中管理所有API端点
-type apiEndpoints struct {
-	base   string
-	chat   string
-	memory string
-}
+	"mifer/cli/client"
+)
 
 // Cli 命令行交互客户端
 type Cli struct {
-	api     apiEndpoints
+	client  *client.Client
 	scanner *bufio.Scanner
 }
 
@@ -24,11 +20,7 @@ type Cli struct {
 func New(port int) *Cli {
 	baseURL := fmt.Sprintf("http://localhost:%d", port)
 	return &Cli{
-		api: apiEndpoints{
-			base:   baseURL,
-			chat:   baseURL + "/api/ai/chat",
-			memory: baseURL + "/api/memory",
-		},
+		client:  client.New(baseURL),
 		scanner: bufio.NewScanner(os.Stdin),
 	}
 }
@@ -38,7 +30,7 @@ func (c *Cli) Run() error {
 	fmt.Println("╔══════════════════════════════════════╗")
 	fmt.Println("║          Mifer CLI 终端              ║")
 	fmt.Println("║  输入消息开始对话, exit 退出          ║")
-	fmt.Println("║  /viewmemory 查看对话记忆            ║")
+	fmt.Println("║  /loadmemory 查看对话记忆            ║")
 	fmt.Println("╚══════════════════════════════════════╝")
 	fmt.Println()
 
@@ -59,29 +51,53 @@ func (c *Cli) Run() error {
 			return nil
 		case "help":
 			c.printHelp()
-		case "viewmemory", "/viewmemory":
-			if err := c.viewMemory(""); err != nil {
-				fmt.Fprintf(os.Stderr, "错误: %v\n", err)
-			}
+		case "loadmemory", "/loadmemory":
+			c.handleLoadMemory("")
 		default:
-			// 检查是否是 /viewmemory 带参数
 			if strings.HasPrefix(input, "/viewmemory ") {
 				id := strings.TrimSpace(strings.TrimPrefix(input, "/viewmemory "))
-				if err := c.viewMemory(id); err != nil {
-					fmt.Fprintf(os.Stderr, "错误: %v\n", err)
-				}
+				c.handleLoadMemory(id)
 			} else if strings.HasPrefix(input, "/") {
 				fmt.Printf("未知命令: %s\n", input)
 				c.printHelp()
 			} else {
-				if err := c.chat(input); err != nil {
-					fmt.Fprintf(os.Stderr, "错误: %v\n", err)
-				}
+				c.handleChat(input)
 			}
 		}
 	}
 
 	return c.scanner.Err()
+}
+
+func (c *Cli) handleChat(content string) {
+	ctx := context.Background()
+	err := c.client.Chat.Send(ctx, content, func(chunk string) error {
+		fmt.Print(chunk)
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "错误: %v\n", err)
+	} else {
+		fmt.Println()
+	}
+}
+
+func (c *Cli) handleLoadMemory(id string) {
+	if id == "" {
+		id = "default"
+	}
+	memory, err := c.client.Memory.Load(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "错误: %v\n", err)
+		return
+	}
+	if memory == "" {
+		fmt.Println("(暂无对话记忆)")
+	} else {
+		fmt.Println("═══════════ 对话记忆 ═══════════")
+		fmt.Print(memory)
+		fmt.Println("═══════════════════════════════")
+	}
 }
 
 // printHelp 打印帮助信息

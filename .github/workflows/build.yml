@@ -63,3 +63,33 @@ jobs:
           path: ${{ env.ARTIFACT }}
           retention-days: 30
           if-no-files-found: error
+
+  release:
+    name: 发布 Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: |
+            ## 构建产物
+
+            使用 `go build -ldflags="-s -w"` 编译，CGO_ENABLED=0 静态链接。
+
+            | 文件 | 系统 | 架构 |
+            |------|------|------|
+            | `mifer-*.zip` | Windows | amd64 / arm64 |
+            | `mifer-*.tar.gz` | Linux | amd64 / arm64 |
+          files: artifacts/**/*
+          draft: false
+          prerelease: false

@@ -4,7 +4,9 @@
       "Bash(go doc *)",
       "Bash(go build *)",
       "Bash(go env *)",
-      "Bash(go vet *)"
+      "Bash(go vet *)",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(go build *)"
     ]
   }
 }

@@ -17,7 +17,7 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		return nil, errorer.New(errorer.ErrPathCannotCreate)
 	}
 
-	fileName := filepath.Join(cfg.MemPath, fmt.Sprintf("%s.jsonl", cfg.id))
+	fileName := filepath.Join(cfg.MemPath, fmt.Sprintf("%s.jsonl", cfg.Id))
 	f, err := os.Open(fileName)
 	if err != nil {
 		if os.IsNotExist(err) {

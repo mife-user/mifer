@@ -7,6 +7,7 @@ const (
 	ErrCallBackNull     = "AI 未生成回复内容"
 	ErrArgUnknowid      = "未知的参数ID"
 	ErrPathCannotCreate = "路径创建失败"
+	ErrIdEmpty          = "ID 不能为空"
 )
 
 // New 创建一个新的错误

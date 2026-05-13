@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
-	"mifer/internal/api/routes"
 )
 
 type chatReq struct {
@@ -24,8 +22,7 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(str
 		return fmt.Errorf("序列化请求失败: %w", err)
 	}
 
-	url := h.baseURL + routes.APIChatPath
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, h.url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("创建请求失败: %w", err)
 	}

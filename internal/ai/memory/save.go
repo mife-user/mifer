@@ -13,8 +13,8 @@ func (m *Memory) Save() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if strings.Contains(m.Cfg.id, "..") || strings.Contains(m.Cfg.id, "/") || strings.Contains(m.Cfg.id, "\\") {
-		return fmt.Errorf("id 包含非法字符: %s", m.Cfg.id)
+	if strings.Contains(m.Cfg.Id, "..") || strings.Contains(m.Cfg.Id, "/") || strings.Contains(m.Cfg.Id, "\\") {
+		return fmt.Errorf("id 包含非法字符: %s", m.Cfg.Id)
 	}
 	if err := os.MkdirAll(m.Cfg.MemPath, 0755); err != nil {
 		return fmt.Errorf("创建内存目录失败：%w", err)
@@ -25,7 +25,7 @@ func (m *Memory) Save() error {
 		return nil
 	}
 
-	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.id))
+	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("打开文件失败：%w", err)

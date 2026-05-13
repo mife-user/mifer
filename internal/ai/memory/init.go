@@ -18,12 +18,12 @@ type Memory struct {
 
 type MemCfg struct {
 	MemPath string
-	id      string
+	Id      string
 }
 
 func Init(config *conf.Config, id string) (*Memory, error) {
 	var memory Memory
-	memory.Cfg.id = id
+	memory.Cfg.Id = id
 	memory.Cfg.MemPath = filepath.Join(config.Path.CfgPath, "/memory", filepath.Base(config.Path.Workdir))
 	// 加载已有的对话历史
 	msgs, err := load(&memory.Cfg)

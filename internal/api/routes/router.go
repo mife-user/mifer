@@ -61,6 +61,7 @@ func (r *Router) Setup() *gin.Engine {
 		memory := api.Group("/memory")
 		{
 			memory.GET("/:id", r.agentHandler.LoadMemory)
+			memory.POST("/exchange/:id", r.agentHandler.ExchangeMemory)
 		}
 	}
 

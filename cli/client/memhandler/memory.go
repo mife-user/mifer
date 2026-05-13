@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	"mifer/internal/api/routes"
 )
 
 type memoryResp struct {
@@ -15,9 +13,7 @@ type memoryResp struct {
 
 // Load 获取指定ID的对话记忆
 func (h *MemHandler) Load(id string) (string, error) {
-	url := h.baseURL + routes.APIMemoryPath + "/" + id
-
-	resp, err := h.http.Get(url)
+	resp, err := h.http.Get(h.url + "/" + id)
 	if err != nil {
 		return "", fmt.Errorf("请求失败: %w", err)
 	}

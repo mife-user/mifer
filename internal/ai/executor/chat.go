@@ -44,10 +44,23 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 					logger.Error("流式读取失败", logger.C(err))
 					return err
 				}
-				if chunk == nil {
+
+				if chunk.ReasoningContent != "" {
+					if err := callback(chunk.ReasoningContent); err != nil {
+						return err
+					}
+					_, err = lastMsg.WriteString(chunk.Content)
+					if err != nil {
+						return err
+					}
 					continue
 				}
-				lastMsg.WriteString(chunk.Content)
+
+				_, err = lastMsg.WriteString(chunk.Content)
+				if err != nil {
+					return err
+				}
+
 				if err := callback(chunk.Content); err != nil {
 					return err
 				}
@@ -69,7 +82,6 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 	if lastMsg.String() == "" {
 		return errorer.New(errorer.ErrCallBackNull)
 	}
-
 	e.Humen.Memory.AppendAssistant(lastMsg.String())
 	if err := e.Humen.Memory.Save(); err != nil {
 		return err

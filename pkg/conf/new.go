@@ -52,7 +52,7 @@ ai:
   api_key: "your_api_key"
 gin:
   mode: "debug"
-  port: 8080
+  port: 15555
   cors:
     allow_origins: ["*"]
     allow_methods: ["POST","GET"]

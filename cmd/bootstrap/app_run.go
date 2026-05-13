@@ -1,13 +1,14 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"mifer/pkg/logger"
 	"net/http"
 )
 
 // NewApplication 创建应用实例
-func NewApplication() (*Application, error) {
+func NewApplication(ctx context.Context) (*Application, error) {
 	var err error
 	app := &Application{}
 
@@ -15,7 +16,7 @@ func NewApplication() (*Application, error) {
 		return nil, fmt.Errorf("加载配置失败: %w", err)
 	}
 
-	if err = app.initontext(); err != nil {
+	if err = app.initontext(ctx); err != nil {
 		return nil, fmt.Errorf("初始化上下文失败: %w", err)
 	}
 

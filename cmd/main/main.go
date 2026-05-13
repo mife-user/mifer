@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -12,23 +13,55 @@ import (
 )
 
 func main() {
-	app, err := bootstrap.NewApplication()
-	if err != nil {
-		log.Fatalf("应用初始化失败: %v", err)
-	}
-
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "serve":
+			ctx, err := readArgs(2)
+			if err != nil {
+				log.Fatalf("读取参数失败: %v", err)
+			}
+			app, err := bootstrap.NewApplication(ctx)
+			if err != nil {
+				log.Fatalf("应用初始化失败: %v", err)
+			}
 			runServer(app)
 			return
 		case "chat":
+			ctx, err := readArgs(2)
+			if err != nil {
+				log.Fatalf("读取参数失败: %v", err)
+			}
+			app, err := bootstrap.NewApplication(ctx)
+			if err != nil {
+				log.Fatalf("应用初始化失败: %v", err)
+			}
 			runCLI(app)
 			return
+		default:
+			ctx, err := readArgs(1)
+			if err != nil {
+				log.Fatalf("读取参数失败: %v", err)
+			}
+			app, err := bootstrap.NewApplication(ctx)
+			if err != nil {
+				log.Fatalf("应用初始化失败: %v", err)
+			}
+			runDefault(app)
 		}
 	}
-
+	app, err := bootstrap.NewApplication(context.Background())
+	if err != nil {
+		log.Fatalf("应用初始化失败: %v", err)
+	}
 	runDefault(app)
+}
+
+// readArgs 读取命令行参数
+func readArgs(i int) (context.Context, error) {
+	if len(os.Args) > i && strings.HasPrefix(os.Args[i], "--") {
+		return context.WithValue(context.Background(), "id", strings.TrimPrefix(os.Args[i], "--")), nil
+	}
+	return context.Background(), nil
 }
 
 func runServer(app *bootstrap.Application) {

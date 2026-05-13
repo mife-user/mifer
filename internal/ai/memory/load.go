@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
 
@@ -13,7 +14,7 @@ import (
 // load 从 JSONL 文件逐行加载记忆数据，文件不存在时返回空列表
 func load(cfg *MemCfg) ([]*schema.Message, error) {
 	if err := os.MkdirAll(cfg.MemPath, 0755); err != nil {
-		return nil, fmt.Errorf("创建内存目录失败：%w", err)
+		return nil, errorer.New(errorer.ErrPathCannotCreate)
 	}
 
 	fileName := filepath.Join(cfg.MemPath, fmt.Sprintf("%s.jsonl", cfg.id))
@@ -22,7 +23,7 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("打开文件失败：%w", err)
+		return nil, errorer.New(errorer.ErrArgUnknowid)
 	}
 	defer f.Close()
 

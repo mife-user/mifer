@@ -1,35 +1,17 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"strings"
-
-	"mifer/cli/client"
 )
-
-// Cli 命令行交互客户端
-type Cli struct {
-	client  *client.Client
-	scanner *bufio.Scanner
-}
-
-// New 创建CLI实例
-func New(port int) *Cli {
-	baseURL := fmt.Sprintf("http://localhost:%d", port)
-	return &Cli{
-		client:  client.New(baseURL),
-		scanner: bufio.NewScanner(os.Stdin),
-	}
-}
 
 // Run 运行CLI交互循环
 func (c *Cli) Run() error {
 	fmt.Println("╔══════════════════════════════════════╗")
 	fmt.Println("║          Mifer CLI 终端              ║")
-	fmt.Println("║  输入消息开始对话, exit 退出          ║")
+	fmt.Println("║  输入消息开始对话, exit 退出         ║")
 	fmt.Println("║  /loadmemory 查看对话记忆            ║")
 	fmt.Println("╚══════════════════════════════════════╝")
 	fmt.Println()

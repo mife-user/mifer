@@ -2,8 +2,6 @@ name: Build Mifer
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
     
@@ -46,14 +44,14 @@ jobs:
         if: matrix.goos == 'windows'
         run: |
           ARTIFACT="mifer-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
-          zip -j "$ARTIFACT" "$OUTPUT" 使用M教程.md
+          zip -j "$ARTIFACT" "$OUTPUT" 使用教程.md
           echo "ARTIFACT=${ARTIFACT}" >> $GITHUB_ENV
 
       - name: 打包 Linux (.tar.gz)
         if: matrix.goos == 'linux'
         run: |
           ARTIFACT="mifer-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
-          tar -czf "$ARTIFACT" "$OUTPUT" 使用M教程.md
+          tar -czf "$ARTIFACT" "$OUTPUT" 使用教程.md
           echo "ARTIFACT=${ARTIFACT}" >> $GITHUB_ENV
 
       - name: 上传构建产物

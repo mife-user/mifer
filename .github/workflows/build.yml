@@ -80,14 +80,18 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
-            ## 构建产物
-
-            使用 `go build -ldflags="-s -w"` 编译，CGO_ENABLED=0 静态链接。
-
-            | 文件 | 系统 | 架构 |
-            |------|------|------|
-            | `mifer-*.zip` | Windows | amd64 / arm64 |
-            | `mifer-*.tar.gz` | Linux | amd64 / arm64 |
+            # 更新功能：
+            - [x]新增 TrueColor 颜色支持
+            - [x]优化配置文件解析
+            - [x]新增滚动指示器样式
+            - [x]新增分隔线样式
+            - [x]新增系统消息样式
+            - [x]新增用户消息样式
+            - [x]新增思考动画样式
+            - [x]新增错误消息样式
+            - [x]新增帮助消息样式
+            - [x]新增tui功能
+            - [x]新增excmem功能，切换记忆
           files: artifacts/**/*
           draft: false
           prerelease: false

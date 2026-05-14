@@ -37,6 +37,17 @@ func main() {
 			}
 			runCLI(app)
 			return
+		case "tui":
+			ctx, err := readArgs(2)
+			if err != nil {
+				log.Fatalf("读取参数失败: %v", err)
+			}
+			app, err := bootstrap.NewApplication(ctx)
+			if err != nil {
+				log.Fatalf("应用初始化失败: %v", err)
+			}
+			runTUI(app)
+			return
 		default:
 			ctx, err := readArgs(1)
 			if err != nil {
@@ -115,5 +126,11 @@ func runDefault(app *bootstrap.Application) {
 func runCLI(app *bootstrap.Application) {
 	if err := app.Clier.Run(); err != nil {
 		log.Fatal("CLI 运行失败: ", err)
+	}
+}
+
+func runTUI(app *bootstrap.Application) {
+	if err := app.Clier.RunTUI(); err != nil {
+		log.Fatal("TUI 运行失败: ", err)
 	}
 }

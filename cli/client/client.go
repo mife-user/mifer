@@ -9,16 +9,16 @@ import (
 )
 
 const (
-	APIChatPath         = "/api/ai/chat"
-	APIMemoryPath       = "/api/memory"
-	APIExcmemPath       = "/api/memory/exchange"
+	APIChatPath   = "/api/ai/chat"
+	APIMemoryPath = "/api/memory"
+	APIExcmemPath = "/api/memory/exchange"
 )
 
 // Client HTTP API客户端，按服务聚合各Handler
 type Client struct {
-	Chat    *chathandler.ChatHandler
-	Memory  *memhandler.MemHandler
-	Excmem  *excmemhandler.ExcmemHandler
+	Chat   *chathandler.ChatHandler
+	Memory *memhandler.MemHandler
+	Excmem *excmemhandler.ExcmemHandler
 }
 
 // New 创建API客户端实例

@@ -5,7 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"mifer/cli/tui"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
+
+// RunTUI 运行 Bubble Tea TUI 交互模式
+func (c *Cli) RunTUI() error {
+	m := tui.NewModel(c.client, c.config)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err := p.Run()
+	return err
+}
 
 // Run 运行CLI交互循环
 func (c *Cli) Run() error {

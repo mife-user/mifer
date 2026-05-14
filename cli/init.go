@@ -12,6 +12,7 @@ import (
 type Cli struct {
 	client  *client.Client
 	scanner *bufio.Scanner
+	config  *conf.Config
 }
 
 // New 创建CLI实例
@@ -20,5 +21,6 @@ func New(config *conf.Config) *Cli {
 	return &Cli{
 		client:  client.New(baseURL),
 		scanner: bufio.NewScanner(os.Stdin),
+		config:  config,
 	}
 }

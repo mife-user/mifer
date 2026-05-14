@@ -24,6 +24,9 @@ var (
 	sysStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#8BE9FD"))
 
+	scrollStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#666666"))
+
 	separator = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#444444")).
 			Render(strings.Repeat("─", 60))
@@ -35,13 +38,21 @@ func (m *Model) View() string {
 		return "正在启动..."
 	}
 
-	contentHeight := m.height - 5 // 保留 textarea 3行 + 边框 2行
+	if m.height < minHeight {
+		return fmt.Sprintf("窗口太小 (当前 %d, 最少 %d)", m.height, minHeight)
+	}
+
+	// 动态计算可用高度
+	taHeight := m.height / 6
+	if taHeight < 1 {
+		taHeight = 1
+	}
+	// textarea 视图实际占用的行数 = taHeight 内容行
+	contentHeight := m.height - taHeight - 1
 
 	// 构建消息历史区域
 	var msgLines []string
-	// 从后往前收集，确保不超过可视区域
-	for i := len(m.messages) - 1; i >= 0; i-- {
-		msg := m.messages[i]
+	for _, msg := range m.messages {
 		var line string
 		switch msg.role {
 		case "user":
@@ -55,7 +66,9 @@ func (m *Model) View() string {
 		case "system":
 			line = sysStyle.Render(msg.content)
 		}
-		msgLines = append([]string{line}, msgLines...)
+		// 将消息拆分为多行（glamour 渲染结果可能含 \n）
+		msgLines = append(msgLines, strings.Split(line, "\n")...)
+		msgLines = append(msgLines, separator)
 	}
 
 	// thinking 指示器
@@ -70,19 +83,44 @@ func (m *Model) View() string {
 		msgLines = append(msgLines, errStyle.Render(m.err))
 	}
 
-	// 消息区域
-	messageBox := strings.Join(msgLines, "\n" + separator + "\n")
-
-	// 用 lipgloss 圆角边框包裹消息区域
-	// 高度限制：只保留最后 contentHeight 行
-	allLines := strings.Split(messageBox, "\n")
-	if len(allLines) > contentHeight {
-		allLines = allLines[len(allLines)-contentHeight:]
+	// 检测新消息 → 自动滚到底部
+	if len(msgLines) != m.lastMsgLine {
+		m.lastMsgLine = len(msgLines)
+		if m.scrollOff > 0 {
+			m.scrollOff = len(msgLines) - contentHeight // 滚到底部
+		}
 	}
-	messageBox = strings.Join(allLines, "\n")
+
+	// 使用 scrollOffset 切片，而非截断
+	maxOff := len(msgLines) - contentHeight
+	if maxOff < 0 {
+		maxOff = 0
+	}
+	if m.scrollOff > maxOff {
+		m.scrollOff = maxOff
+	}
+	if m.scrollOff < 0 {
+		m.scrollOff = 0
+	}
+
+	visible := msgLines
+	if len(visible) > contentHeight {
+		visible = visible[m.scrollOff : m.scrollOff+contentHeight]
+	}
+
+	// 显示滚动指示器
+	if maxOff > 0 && m.scrollOff > 0 {
+		visible = append([]string{scrollStyle.Render(fmt.Sprintf("... 上方还有 %d 行 (滚轮查看)", m.scrollOff))}, visible...)
+	}
+	if maxOff > 0 && m.scrollOff < maxOff {
+		visible = append(visible, scrollStyle.Render(fmt.Sprintf("... 下方还有 %d 行", maxOff-m.scrollOff)))
+	}
+
+	// 消息区域
+	messageBox := strings.Join(visible, "\n")
 
 	// 确保消息区域填满可用高度
-	for i := len(allLines); i < contentHeight; i++ {
+	for i := len(visible); i < contentHeight; i++ {
 		messageBox += "\n"
 	}
 

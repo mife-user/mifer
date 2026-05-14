@@ -6,6 +6,7 @@ import (
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +26,8 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	err := h.AgentService.Chat(c.Request.Context(), &domain.TalkReq{
 		Content: req.Content,
 	}, func(content string) error {
-		_, err := fmt.Fprintf(c.Writer, "data: %s\n\n", content)
+		escaped := strings.ReplaceAll(content, "\n", "\\n")
+		_, err := fmt.Fprintf(c.Writer, "data: %s\n\n", escaped)
 		if err != nil {
 			return err
 		}

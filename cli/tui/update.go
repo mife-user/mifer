@@ -16,8 +16,31 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if m.width > 8 {
-			m.textarea.SetWidth(m.width - 8)
+		if m.height < minHeight && m.height > 0 {
+			m.height = minHeight
+		}
+		if m.width > contentMargin*2 {
+			m.textarea.SetWidth(m.width - contentMargin*2)
+		}
+		// 动态 textarea 高度
+		taHeight := m.height / 6
+		if taHeight < 1 {
+			taHeight = 1
+		}
+		m.textarea.SetHeight(taHeight)
+		// 传递 resize 给 textarea
+		_, _ = m.textarea.Update(msg)
+		return m, nil
+
+	case tea.MouseMsg:
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			if m.scrollOff > 0 {
+				m.scrollOff--
+			}
+		case tea.MouseButtonWheelDown:
+			m.scrollOff++
+			// 超出部分由 View 限制
 		}
 		return m, nil
 
@@ -131,10 +154,14 @@ func sendChatCmd(client *client.Client, content string) tea.Cmd {
 }
 
 // thinkingTickCmd 思考动画 tick
+// 在 tea.Batch 内部执行 Tea 的 Tick 命令并返回其结果
 func thinkingTickCmd() tea.Cmd {
-	return tea.Tick(thinkingTickInterval, func(_ time.Time) tea.Msg {
+	tickCmd := tea.Tick(thinkingTickInterval, func(_ time.Time) tea.Msg {
 		return thinkingTickMsg{}
 	})
+	return func() tea.Msg {
+		return tickCmd()
+	}
 }
 
 // loadMemoryCmd 加载记忆命令

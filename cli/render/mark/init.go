@@ -5,6 +5,7 @@ import "github.com/charmbracelet/glamour"
 func Init() *Mark {
 	r, err := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
+		glamour.WithPreservedNewLines(),
 		glamour.WithEmoji(),
 	)
 	if err != nil {

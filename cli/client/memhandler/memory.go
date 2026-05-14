@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 )
 
 type memoryResp struct {
@@ -18,6 +19,11 @@ func (h *MemHandler) Load(id string) (string, error) {
 		return "", fmt.Errorf("请求失败: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("服务器返回状态码: %d, 响应: %s", resp.StatusCode, string(body))
+	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

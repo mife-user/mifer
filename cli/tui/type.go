@@ -11,7 +11,12 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 )
 
-const thinkingTickInterval = 500 * time.Millisecond
+const (
+	thinkingTickInterval = 500 * time.Millisecond
+	contentMargin        = 4 // 消息区左右边距
+	minHeight            = 10
+	textareaLines        = 3
+)
 
 // message 对话消息
 type message struct {
@@ -37,16 +42,18 @@ type systemMsg struct {
 
 // Model Bubble Tea 模型
 type Model struct {
-	client *client.Client
-	config *conf.Config
-	mark   *mark.Mark
-	lip    lip.Style
+	client   *client.Client
+	config   *conf.Config
+	mark     *mark.Mark
+	lip      lip.Style
 
-	messages   []message
-	textarea   textarea.Model // 输入文本框
-	thinking   bool
-	spinnerIdx int // 思考动画索引
-	err        string
-	width      int // 窗口宽度
-	height     int // 窗口高度
+	messages    []message
+	textarea    textarea.Model
+	thinking    bool
+	spinnerIdx  int
+	scrollOff   int // 滚动偏移（从顶部算起的行数）
+	lastMsgLine int // 上次渲染时的消息总行数，用于检测新消息
+	err         string
+	width       int
+	height      int
 }

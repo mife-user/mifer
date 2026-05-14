@@ -47,6 +47,9 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(str
 		}
 		data := strings.TrimPrefix(line, "data: ")
 
+		// 反转义服务端转义的换行符
+		data = strings.ReplaceAll(data, "\\n", "\n")
+
 		switch data {
 		case "[DONE]":
 			return nil

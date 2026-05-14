@@ -14,7 +14,7 @@ import (
 // RunTUI 运行 Bubble Tea TUI 交互模式
 func (c *Cli) RunTUI() error {
 	m := tui.NewModel(c.client, c.config)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	_, err := p.Run()
 	return err
 }

@@ -11,12 +11,37 @@ type Config struct {
 	JWT   JWTConfig   `mapstructure:"jwt"`
 	Ai    AiConfig    `mapstructure:"ai"`
 	Path  PathConfig  `mapstructure:"path"`
+	Cli   CliConfig   `mapstructure:"cli"`
+}
+
+// cli配置结构体
+type CliConfig struct {
+	Host string    `mapstructure:"host"`
+	Port int       `mapstructure:"port"`
+	Lip  LipConfig `mapstructure:"lip"`
+}
+
+type LipConfig struct {
+	Base    Colorlip `mapstructure:"base"`
+	Title   Colorlip `mapstructure:"title"`
+	Content Colorlip `mapstructure:"content"`
+	Err     Colorlip `mapstructure:"err"`
+	Help    Colorlip `mapstructure:"help"`
+}
+
+type Colorlip struct {
+	Background string `mapstructure:"background"`
+	Foreground string `mapstructure:"foreground"`
+	BoldTop    string `mapstructure:"bold_top"`
+	BoldLeft   string `mapstructure:"bold_left"`
+	BoldRight  string `mapstructure:"bold_right"`
+	BoldBottom string `mapstructure:"bold_bottom"`
 }
 
 // 路径配置结构体
 type PathConfig struct {
 	Workdir string `mapstructure:"workdir"`
-	CfgPath string `mapstructure:"mem_path"`
+	CfgPath string `mapstructure:"cfg_path"`
 }
 
 // 日志配置结构体

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"mifer/cli/client"
+	"mifer/pkg/conf"
 	"os"
 )
 
@@ -14,8 +15,8 @@ type Cli struct {
 }
 
 // New 创建CLI实例
-func New(port int) *Cli {
-	baseURL := fmt.Sprintf("http://localhost:%d", port)
+func New(config *conf.Config) *Cli {
+	baseURL := fmt.Sprintf("http://localhost:%d", config.Gin.Port)
 	return &Cli{
 		client:  client.New(baseURL),
 		scanner: bufio.NewScanner(os.Stdin),

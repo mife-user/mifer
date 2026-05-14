@@ -12,7 +12,7 @@ import (
 func LoadConfig() (*Config, error) {
 	var path string
 	var fileName string
-	var memPath string
+	var cfgPath string
 	var err error
 	v := viper.New()
 	//设置默认环境为dev
@@ -24,7 +24,7 @@ func LoadConfig() (*Config, error) {
 	if env == "dev" {
 		path = "./config"
 		fileName = "dev"
-		memPath, err = os.Getwd()
+		cfgPath, err = os.Getwd()
 		if err != nil {
 			return nil, fmt.Errorf("获取当前工作目录失败：%w", err)
 		}
@@ -34,11 +34,11 @@ func LoadConfig() (*Config, error) {
 			return nil, fmt.Errorf("获取用户主目录失败：%w", err)
 		}
 		path = filepath.Join(home, "/mifer/config")
-		memPath = filepath.Join(home, "/mifer")
+		cfgPath = filepath.Join(home, "/mifer")
 		fileName = "prod"
 	}
 	//设置默认路径
-	v.Set("path.mem_path", memPath)
+	v.Set("path.cfg_path", cfgPath)
 
 	//创建默认配置文件
 	err = newDefaultCfg(env)

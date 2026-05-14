@@ -56,4 +56,15 @@ gin:
   cors:
     allow_origins: ["*"]
     allow_methods: ["POST","GET"]
+cli:
+  host: "127.0.0.1"
+  port: 15555
+  lip:
+    base:
+      foreground: "#FF0000"
+      background: "#FFFFFF"
+      bold_top: "#FF0000"
+      bold_left: "#FF0000"
+      bold_right: "#FF0000"
+      bold_bottom: "#FF0000"
 `

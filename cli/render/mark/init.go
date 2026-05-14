@@ -2,9 +2,15 @@ package mark
 
 import "github.com/charmbracelet/glamour"
 
-func Init() {
-	glamour.NewTermRenderer(
+func Init() *Mark {
+	r, err := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(80),
+		glamour.WithEmoji(),
 	)
+	if err != nil {
+		panic(err)
+	}
+	return &Mark{
+		Renderer: r,
+	}
 }

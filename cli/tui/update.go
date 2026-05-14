@@ -109,6 +109,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				role:    "assistant",
 				content: content,
 			})
+			m.err = "Markdown 渲染失败，显示原始内容"
 			return m, nil
 		}
 		m.messages = append(m.messages, message{

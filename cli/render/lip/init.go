@@ -6,22 +6,52 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Init 初始化所有 TUI 样式
+// 从配置读取颜色，通过 Base.Inherit() 派生子样式，配置为空时使用硬编码降级颜色
 func Init(config *conf.Config) Style {
-	var style = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(config.Cli.Lip.Base.Foreground)). // 前景颜色
-		Background(lipgloss.Color(config.Cli.Lip.Base.Background)). // 背景颜色
-		Bold(true).                                                 // 加粗
-		Border(
-			lipgloss.RoundedBorder(), // 圆角边框
-		).
-		BorderTop(true).                                                        // 上边框
-		BorderLeft(true).                                                       // 左边框
-		BorderRight(true).                                                      // 右边框
-		BorderBottom(true).                                                     // 下边框
-		BorderTopBackground(lipgloss.Color(config.Cli.Lip.Base.BoldTop)).       // 上边框背景颜色
-		BorderLeftBackground(lipgloss.Color(config.Cli.Lip.Base.BoldLeft)).     // 左边框背景颜色
-		BorderRightBackground(lipgloss.Color(config.Cli.Lip.Base.BoldRight)).   // 右边框背景颜色
-		BorderBottomBackground(lipgloss.Color(config.Cli.Lip.Base.BoldBottom)). // 下边框背景颜色
-		Padding(1, 2)                                                           // 内边距
-	return Style{base: &style}
+	getFg := func(cfg string, fallback string) lipgloss.Color {
+		if cfg != "" {
+			return lipgloss.Color(cfg)
+		}
+		return lipgloss.Color(fallback)
+	}
+
+	// 基础样式：只设置公共属性（背景色、基础前景色、加粗）
+	base := lipgloss.NewStyle().
+		Background(lipgloss.Color(config.Cli.Lip.Base.Background)).
+		Foreground(lipgloss.Color(config.Cli.Lip.Base.Foreground)).
+		Bold(true)
+
+	// 子样式从 Base 派生（lipgloss 方法返回新 style，无需显式 Copy）
+	user := base.Foreground(getFg(config.Cli.Lip.Title.Foreground, "#00D787")).
+		Bold(true)
+
+	think := base.Foreground(getFg(config.Cli.Lip.Content.Foreground, "#FFB86C")).
+		Bold(false).
+		Italic(true)
+
+	errStyle := base.Foreground(getFg(config.Cli.Lip.Err.Foreground, "#FF5555")).
+		Bold(false)
+
+	sys := base.Foreground(getFg(config.Cli.Lip.Help.Foreground, "#8BE9FD")).
+		Bold(false)
+
+	scroll := base.Foreground(lipgloss.Color("#666666")).
+		Bold(false)
+
+	separatorStyle := base.Foreground(lipgloss.Color("#444444")).
+		Bold(false)
+
+	sepText := separatorStyle.Render("────────────────────────────────────────────────────────────")
+
+	return Style{
+		Base:          &base,
+		User:          &user,
+		Think:         &think,
+		Err:           &errStyle,
+		Sys:           &sys,
+		Scroll:        &scroll,
+		Separator:     &separatorStyle,
+		SeparatorText: sepText,
+	}
 }

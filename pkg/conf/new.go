@@ -62,10 +62,18 @@ cli:
   port: 15555
   lip:
     base:
-      foreground: "#FF0000"
-      background: "#FFFFFF"
-      bold_top: "#FF0000"
-      bold_left: "#FF0000"
-      bold_right: "#FF0000"
-      bold_bottom: "#FF0000"
+      foreground: "#00ff11"
+      background: "#2c2c2cff"
+      bold_top: "#00ff11"
+      bold_left: "#00ff11"
+      bold_right: "#00ff11"
+      bold_bottom: "#00ff11"
+    title:
+      foreground: "#00D787"
+    content:
+      foreground: "#FFB86C"
+    err:
+      foreground: "#FF5555"
+    help:
+      foreground: "#8BE9FD"
 `

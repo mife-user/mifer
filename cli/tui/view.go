@@ -9,29 +9,6 @@ import (
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
-var (
-	userStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00D787")).
-			Bold(true)
-
-	thinkStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFB86C")).
-			Italic(true)
-
-	errStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF5555"))
-
-	sysStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#8BE9FD"))
-
-	scrollStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666"))
-
-	separator = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#444444")).
-			Render(strings.Repeat("─", 60))
-)
-
 // View 渲染视图
 func (m *Model) View() string {
 	if m.width == 0 {
@@ -56,7 +33,7 @@ func (m *Model) View() string {
 		var line string
 		switch msg.role {
 		case "user":
-			line = userStyle.Render("You: ") + msg.content
+			line = m.lip.User.Render("You: ") + msg.content
 		case "assistant":
 			if msg.rendered != "" {
 				line = msg.rendered
@@ -64,23 +41,23 @@ func (m *Model) View() string {
 				line = msg.content
 			}
 		case "system":
-			line = sysStyle.Render(msg.content)
+			line = m.lip.Sys.Render(msg.content)
 		}
 		// 将消息拆分为多行（glamour 渲染结果可能含 \n）
 		msgLines = append(msgLines, strings.Split(line, "\n")...)
-		msgLines = append(msgLines, separator)
+		msgLines = append(msgLines, m.lip.SeparatorText)
 	}
 
 	// thinking 指示器
 	if m.thinking {
 		spinner := spinnerFrames[m.spinnerIdx%len(spinnerFrames)]
 		thinkLine := fmt.Sprintf("%s Thinking...", spinner)
-		msgLines = append(msgLines, thinkStyle.Render(thinkLine))
+		msgLines = append(msgLines, m.lip.Think.Render(thinkLine))
 	}
 
 	// 错误信息
 	if m.err != "" {
-		msgLines = append(msgLines, errStyle.Render(m.err))
+		msgLines = append(msgLines, m.lip.Err.Render(m.err))
 	}
 
 	// 检测新消息 → 自动滚到底部
@@ -110,10 +87,10 @@ func (m *Model) View() string {
 
 	// 显示滚动指示器
 	if maxOff > 0 && m.scrollOff > 0 {
-		visible = append([]string{scrollStyle.Render(fmt.Sprintf("... 上方还有 %d 行 (滚轮查看)", m.scrollOff))}, visible...)
+		visible = append([]string{m.lip.Scroll.Render(fmt.Sprintf("... 上方还有 %d 行 (滚轮查看)", m.scrollOff))}, visible...)
 	}
 	if maxOff > 0 && m.scrollOff < maxOff {
-		visible = append(visible, scrollStyle.Render(fmt.Sprintf("... 下方还有 %d 行", maxOff-m.scrollOff)))
+		visible = append(visible, m.lip.Scroll.Render(fmt.Sprintf("... 下方还有 %d 行", maxOff-m.scrollOff)))
 	}
 
 	// 消息区域

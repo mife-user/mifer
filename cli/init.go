@@ -16,7 +16,7 @@ type Cli struct {
 
 // New 创建CLI实例
 func New(config *conf.Config) *Cli {
-	baseURL := fmt.Sprintf("http://localhost:%d", config.Gin.Port)
+	baseURL := fmt.Sprintf("http://%s:%d", config.Cli.Host, config.Cli.Port)
 	return &Cli{
 		client:  client.New(baseURL),
 		scanner: bufio.NewScanner(os.Stdin),

@@ -12,7 +12,8 @@ func (c *Cli) Run() error {
 	fmt.Println("╔══════════════════════════════════════╗")
 	fmt.Println("║          Mifer CLI 终端              ║")
 	fmt.Println("║  输入消息开始对话, exit 退出         ║")
-	fmt.Println("║  /loadmemory 查看对话记忆            ║")
+	fmt.Println("║  /viewmemory  查看对话记忆           ║")
+	fmt.Println("║  /excmem      交换记忆会话           ║")
 	fmt.Println("╚══════════════════════════════════════╝")
 	fmt.Println()
 
@@ -39,6 +40,9 @@ func (c *Cli) Run() error {
 			if strings.HasPrefix(input, "/viewmemory ") {
 				id := strings.TrimSpace(strings.TrimPrefix(input, "/viewmemory "))
 				c.handleLoadMemory(id)
+			} else if strings.HasPrefix(input, "/excmem ") {
+				id := strings.TrimSpace(strings.TrimPrefix(input, "/excmem "))
+				c.handleExcmem(id)
 			} else if strings.HasPrefix(input, "/") {
 				fmt.Printf("未知命令: %s\n", input)
 				c.printHelp()
@@ -82,12 +86,21 @@ func (c *Cli) handleLoadMemory(id string) {
 	}
 }
 
+func (c *Cli) handleExcmem(id string) {
+	if err := c.client.Excmem.Exchange(id); err != nil {
+		fmt.Fprintf(os.Stderr, "错误: %v\n", err)
+		return
+	}
+	fmt.Printf("已切换到记忆会话: %s\n", id)
+}
+
 // printHelp 打印帮助信息
 func (c *Cli) printHelp() {
 	fmt.Println("命令:")
 	fmt.Println("  直接输入文本      与AI对话")
 	fmt.Println("  /viewmemory       查看当前会话记忆")
 	fmt.Println("  /viewmemory <id>  查看指定会话记忆")
+	fmt.Println("  /excmem <id>      切换到指定记忆会话")
 	fmt.Println("  exit/quit         退出")
 	fmt.Println("  help              显示帮助")
 }

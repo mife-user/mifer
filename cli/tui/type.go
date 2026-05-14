@@ -43,9 +43,9 @@ type Model struct {
 	lip    lip.Style
 
 	messages   []message
-	textarea   textarea.Model
+	textarea   textarea.Model // 输入文本框
 	thinking   bool
-	spinnerIdx int
+	spinnerIdx int // 思考动画索引
 	err        string
 	width      int // 窗口宽度
 	height     int // 窗口高度

@@ -37,17 +37,6 @@ func main() {
 			}
 			runCLI(app)
 			return
-		case "tui":
-			ctx, err := readArgs(2)
-			if err != nil {
-				log.Fatalf("读取参数失败: %v", err)
-			}
-			app, err := bootstrap.NewApplication(ctx)
-			if err != nil {
-				log.Fatalf("应用初始化失败: %v", err)
-			}
-			runTUI(app)
-			return
 		default:
 			ctx, err := readArgs(1)
 			if err != nil {
@@ -102,7 +91,7 @@ func runDefault(app *bootstrap.Application) {
 	go func() { runErr <- app.Run() }()
 
 	cliDone := make(chan error, 1)
-	go func() { cliDone <- app.Clier.Run() }()
+	go func() { cliDone <- app.Clier.RunTUI() }()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

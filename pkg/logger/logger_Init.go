@@ -19,9 +19,8 @@ func defaultInt(val, def int) int {
 	return val
 }
 
-// Init 初始化日志实例，按级别分文件，支持按大小切割，终端彩色输出
+// Init 初始化日志实例，按级别分文件，支持按大小切割，仅输出到文件
 func Init(config *conf.Config) error {
-	var err error
 	var logDir string
 
 	if config.Env == "dev" {
@@ -40,9 +39,27 @@ func Init(config *conf.Config) error {
 
 	maxSizeMB := defaultInt(config.Log.MaxSize, 10)
 	maxBackups := defaultInt(config.Log.MaxBackups, 10)
-	env := config.Env
 
-	// 文件编码器配置（无颜色）
+	// 确定日志最低级别：配置显式指定优先，否则由 env 决定
+	var minLevel zapcore.Level
+	switch config.Log.Level {
+	case "debug":
+		minLevel = zapcore.DebugLevel
+	case "info":
+		minLevel = zapcore.InfoLevel
+	case "warn":
+		minLevel = zapcore.WarnLevel
+	case "error":
+		minLevel = zapcore.ErrorLevel
+	default:
+		if config.Env == "dev" {
+			minLevel = zapcore.DebugLevel
+		} else {
+			minLevel = zapcore.InfoLevel
+		}
+	}
+
+	// 文件编码器配置
 	fileEncoderCfg := zapcore.EncoderConfig{
 		TimeKey:       "time",
 		LevelKey:      "level",
@@ -56,27 +73,7 @@ func Init(config *conf.Config) error {
 		EncodeCaller:  zapcore.ShortCallerEncoder,
 	}
 
-	// 控制台编码器配置（带颜色）
-	consoleEncoderCfg := zapcore.EncoderConfig{
-		TimeKey:       "time",
-		LevelKey:      "level",
-		NameKey:       "logger",
-		CallerKey:     "caller",
-		MessageKey:    "msg",
-		StacktraceKey: "stacktrace",
-		LineEnding:    "||\n",
-		EncodeTime:    nowTime,
-		EncodeLevel:   zapcore.CapitalColorLevelEncoder,
-		EncodeCaller:  zapcore.ShortCallerEncoder,
-	}
-
-	var fileEncoder, consoleEncoder zapcore.Encoder
-	if env == "prod" {
-		fileEncoder = zapcore.NewJSONEncoder(fileEncoderCfg)
-	} else {
-		fileEncoder = zapcore.NewConsoleEncoder(fileEncoderCfg)
-	}
-	consoleEncoder = zapcore.NewConsoleEncoder(consoleEncoderCfg)
+	fileEncoder := zapcore.NewConsoleEncoder(fileEncoderCfg)
 
 	// 打开各级别的切割文件
 	debugFile, err := NewRotatingFile(filepath.Join(logDir, "debug.log"), maxSizeMB, maxBackups)
@@ -103,23 +100,21 @@ func Init(config *conf.Config) error {
 		warnFile.Close()
 		return err
 	}
-	// 创建各级别日志核心，使用LevelOf精确匹配级别
-	cores := []zapcore.Core{
-		// Debug级别核心：仅记录Debug级别
-		zapcore.NewCore(fileEncoder, debugFile, zapcore.LevelOf(zapcore.DebugLevel)),
-		// Info级别核心：仅记录Info级别
-		zapcore.NewCore(fileEncoder, infoFile, zapcore.LevelOf(zapcore.InfoLevel)),
-		// Warn级别核心：仅记录Warn级别
-		zapcore.NewCore(fileEncoder, warnFile, zapcore.LevelOf(zapcore.WarnLevel)),
-		// Error及以上级别核心：记录Error、Panic、Fatal级别
-		zapcore.NewCore(fileEncoder, errorFile, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-			return lvl >= zapcore.ErrorLevel
-		})),
-	}
 
-	if env != "prod" {
-		consoleCore := zapcore.NewCore(consoleEncoder, zapcore.Lock(os.Stdout), zapcore.DebugLevel)
-		cores = append(cores, consoleCore)
+	// 创建各级别日志核心，使用LevelOf精确匹配级别，低于minLevel的级别不写入
+	cores := []zapcore.Core{
+		zapcore.NewCore(fileEncoder, debugFile, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl == zapcore.DebugLevel && lvl >= minLevel
+		})),
+		zapcore.NewCore(fileEncoder, infoFile, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl == zapcore.InfoLevel && lvl >= minLevel
+		})),
+		zapcore.NewCore(fileEncoder, warnFile, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl == zapcore.WarnLevel && lvl >= minLevel
+		})),
+		zapcore.NewCore(fileEncoder, errorFile, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl >= zapcore.ErrorLevel && lvl >= minLevel
+		})),
 	}
 
 	tee := zapcore.NewTee(cores...)

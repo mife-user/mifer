@@ -46,8 +46,9 @@ type PathConfig struct {
 
 // 日志配置结构体
 type LogConfig struct {
-	MaxSize    int `mapstructure:"max_size"`    // 单文件最大大小（MB），默认 10
-	MaxBackups int `mapstructure:"max_backups"` // 保留备份文件最大数量，默认 10
+	MaxSize    int    `mapstructure:"max_size"`    // 单文件最大大小（MB），默认 10
+	MaxBackups int    `mapstructure:"max_backups"` // 保留备份文件最大数量，默认 10
+	Level      string `mapstructure:"level"`       // 日志级别（debug/info/warn/error），为空时由 env 决定
 }
 
 // ai配置结构体

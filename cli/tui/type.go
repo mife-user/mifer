@@ -42,10 +42,10 @@ type systemMsg struct {
 
 // Model Bubble Tea 模型
 type Model struct {
-	client   *client.Client
-	config   *conf.Config
-	mark     *mark.Mark
-	lip      lip.Style
+	client *client.Client
+	config *conf.Config
+	mark   *mark.Mark
+	lip    *lip.Style
 
 	messages    []message
 	textarea    textarea.Model

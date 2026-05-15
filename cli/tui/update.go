@@ -146,7 +146,10 @@ func sendChatCmd(client *client.Client, content string) tea.Cmd {
 	return func() tea.Msg {
 		var buf strings.Builder
 		ctx := context.Background()
-		err := client.Chat.Send(ctx, content, func(chunk string) error {
+		err := client.Chat.Send(ctx, content, func(event, chunk string) error {
+			if event == "thinking" {
+				return nil
+			}
 			buf.WriteString(chunk)
 			return nil
 		})

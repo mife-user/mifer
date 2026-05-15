@@ -11,7 +11,8 @@
       "Bash(go get *)",
       "Bash(Select-Object -First 20)",
       "Bash(Get-Content \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\\\\cmd\\\\main\\\\main.go\" -Raw)",
-      "Bash(Select-String \"runCLI\" -Context 0,3)"
+      "Bash(Select-String \"runCLI\" -Context 0,3)",
+      "Bash(go version *)"
     ]
   }
 }

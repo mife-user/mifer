@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(content string) error) error {
+func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
 	e.Humen.Memory.AppendUser(req.Content)
 
 	iter := e.Runner.Run(c, e.Humen.Memory.Messages)
@@ -46,7 +46,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 				}
 
 				if chunk.ReasoningContent != "" {
-					if err := callback(chunk.ReasoningContent); err != nil {
+					if err := callback("thinking", chunk.ReasoningContent); err != nil {          
 						return err
 					}
 					_, err = lastMsg.WriteString(chunk.Content)
@@ -61,7 +61,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 					return err
 				}
 
-				if err := callback(chunk.Content); err != nil {
+				if err := callback("response", chunk.Content); err != nil {
 					return err
 				}
 			}
@@ -71,7 +71,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(co
 				continue
 			}
 			lastMsg.WriteString(message.Content)
-			if err := callback(message.Content); err != nil {
+			if err := callback("response", message.Content); err != nil {
 				return err
 			}
 		}

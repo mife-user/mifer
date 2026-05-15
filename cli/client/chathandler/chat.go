@@ -16,7 +16,7 @@ type chatReq struct {
 }
 
 // Send 发送消息并处理SSE流式响应，每收到一个chunk调用onChunk回调
-func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(string) error) error {
+func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(event, chunk string) error) error {
 	body, err := json.Marshal(chatReq{Content: content})
 	if err != nil {
 		return fmt.Errorf("序列化请求失败: %w", err)
@@ -40,9 +40,16 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(str
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
+	currentEvent := "response"
 	for scanner.Scan() {
 		line := scanner.Text()
-		if line == "" || !strings.HasPrefix(line, "data: ") {
+
+		if strings.HasPrefix(line, "event: ") {
+			currentEvent = strings.TrimPrefix(line, "event: ")
+			continue
+		}
+
+		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}
 		data := strings.TrimPrefix(line, "data: ")
@@ -61,10 +68,12 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(str
 				fmt.Fprintf(os.Stderr, "\n错误: %s\n", errMsg)
 				return nil
 			}
-			if err := onChunk(data); err != nil {
+			if err := onChunk(currentEvent, data); err != nil {
 				return err
 			}
 		}
+
+		currentEvent = "response"
 	}
 
 	return scanner.Err()

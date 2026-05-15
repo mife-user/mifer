@@ -2,14 +2,14 @@
 
 基于 [CloudWeGo Eino](https://github.com/cloudwego/eino) 构建的智能 AI Agent，支持多 Agent 编排、MCP 协议、技能系统、RAG 检索增强与 CLI/Web 双模交互。
 
----
+***
 
 ## 操作指南
 
 ### 环境要求
 
-- Go 1.21+
-- Redis（可选，缓存加速）
+- Go 1.25+
+- Redis（可选，当前未激活）
 
 ### 快速开始
 
@@ -21,30 +21,39 @@ cd mifer
 # 安装依赖
 go mod tidy
 
-# 开发模式运行（端口 8080，控制台彩色日志）
+# 开发模式运行（默认端口 8080，同时启动 HTTP 服务 + CLI）
 go run ./cmd/main
 
+# 仅启动 HTTP 服务
+go run ./cmd/main serve
+
+# 仅启动 CLI（需先启动服务）
+go run ./cmd/main chat
+
 # 生产模式运行（JSON 日志，配置存 ~/.mifer/）
-MIFER_ENV=prod go run ./cmd/main
+MIFER_ENV=prod go run ./cmd/main serve
 ```
 
 ### 配置
 
 首次运行自动生成默认配置文件：
 
-| 模式 | 配置文件路径 |
-|------|-------------|
-| dev | `./config/dev.yaml` |
+| 模式   | 配置文件路径                      |
+| ---- | --------------------------- |
+| dev  | `./config/dev.yaml`         |
 | prod | `~/.mifer/config/prod.yaml` |
 
 关键环境变量（优先级高于配置文件）：
 
-| 变量名 | 说明 |
-|--------|------|
-| `MIFER_AI_BASEURL` | AI API 地址（默认 DeepSeek） |
-| `MIFER_AI_APIKEY` | AI API 密钥 |
-| `MIFER_AI_MODEL` | 模型名称（默认 deepseek-v4-flash） |
-| `MIFER_ENV` | 运行模式（dev / prod） |
+| 变量名                    | 说明                         |
+| ---------------------- | -------------------------- |
+| `MIFER_AI_BASEURL`     | AI API 地址（默认 DeepSeek）     |
+| `MIFER_AI_APIKEY`      | AI API 密钥                  |
+| `MIFER_AI_MODEL`       | 模型名称（默认 deepseek-v4-flash） |
+| `MIFER_REDIS_HOST`     | Redis 主机地址                 |
+| `MIFER_REDIS_PASSWORD` | Redis 密码                   |
+| `MIFER_JWT_SECRET`     | JWT 签名密钥                   |
+| `MIFER_ENV`            | 运行模式（dev / prod）           |
 
 ### CLI 使用
 
@@ -52,25 +61,41 @@ MIFER_ENV=prod go run ./cmd/main
 # 编译 CLI
 go build -o mifer-cli ./cli
 
-# 交互式对话
-./mifer-cli chat
+# TUI 交互模式（Bubble Tea 全屏终端界面）
+./mifer-cli
 
-# 单次问答
-./mifer-cli ask "用 Go 实现快速排序"
-
-# 管道模式
-cat error.log | ./mifer-cli ask "分析这段日志"
+# 基础 REPL 交互
+go run ./cmd/main chat
 ```
+
+**CLI 命令：**
+
+| 命令                 | 说明        |
+| ------------------ | --------- |
+| 直接输入文本             | 与 AI 对话   |
+| `/viewmemory`      | 查看当前会话记忆  |
+| `/viewmemory <id>` | 查看指定会话记忆  |
+| `/excmem <id>`     | 切换到指定记忆会话 |
+| `exit` / `quit`    | 退出        |
+| `help`             | 显示帮助      |
+
+**TUI 模式特性：**
+
+- Bubble Tea 全屏终端界面，支持鼠标
+- Markdown 渲染（基于 Glamour，支持代码高亮、表情符号）
+- 可配置的 TUI 样式（主题色、消息样式、滚动指示器等）
+- 流式消息实时展示
+- 思考动画（推理过程可视化）
 
 ### API 接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/ai/chat` | 对话接口（流式 SSE） |
-| GET | `/api/memory/{id}` | 获取对话历史 |
-| DELETE | `/api/memory/{id}` | 清除对话记忆 |
+| 方法     | 路径                 | 说明           |
+| ------ | ------------------ | ------------ |
+| POST   | `/api/ai/chat`     | 对话接口（流式 SSE） |
+| GET    | `/api/memory/{id}` | 获取对话历史       |
+| DELETE | `/api/memory/{id}` | 清除对话记忆       |
 
----
+***
 
 ## 功能规划目标
 
@@ -78,8 +103,8 @@ cat error.log | ./mifer-cli ask "分析这段日志"
 
 - [x] LLM 对话（OpenAI 兼容协议，支持 DeepSeek / OpenAI / Claude 等）
 - [x] 多 Agent 编排（ADK Orchestrator + 子 Agent，最大 3 轮迭代）
-- [x] 流式响应（SSE 实时逐词输出）
-- [x] 对话记忆（JSON 文件持久化，多会话隔离，自动分片）
+- [x] 流式响应（SSE 实时逐词输出，含推理过程展示）
+- [x] 对话记忆（JSONL 文件持久化，多会话隔离，增量追加）
 - [x] 工具调用（Function Calling / Tool Use）
 - [ ] 多轮任务拆解与执行（Plan → Execute → Verify）
 - [ ] 自主反思与纠错（Self-Reflection Loop）
@@ -147,19 +172,17 @@ cat error.log | ./mifer-cli ask "分析这段日志"
 
 ### CLI 交互
 
-- [x] 基础命令行框架
-- [ ] 交互式 REPL 模式
-  - [ ] 多行输入（代码块粘贴）
-  - [ ] 命令补全（Tab Completion）
-  - [ ] 历史搜索（Ctrl+R）
-  - [ ] 快捷键绑定（Ctrl+C 中断、Ctrl+D 退出）
-- [ ] 终端渲染增强
-  - [ ] Markdown 渲染（标题、列表、表格、代码块语法高亮）
-  - [ ] 流式输出逐词打印
-  - [ ] 进度条与状态提示
-  - [ ] 自适应终端宽度
+- [x] TUI 全屏终端界面（Bubble Tea）
+- [x] Markdown 渲染（Glamour，代码高亮 + 表情符号）
+- [x] 流式消息实时展示（含推理过程动画）
+- [x] 可配置主题样式（lipgloss 主题色、消息样式、滚动指示器）
+- [x] 基础 REPL 交互（命令补全、历史搜索）
+- [x] 记忆会话切换（`/excmem` 命令）
+- [x] 记忆查看（`/viewmemory` 命令）
+- [ ] 命令行补全（Tab Completion）
+- [ ] 多行输入（代码块粘贴）
+- [ ] 快捷键绑定（Ctrl+C 中断、Ctrl+D 退出）
 - [ ] 会话管理
-  - [ ] 多会话创建与切换（`/session switch`）
   - [ ] 会话列表与搜索（`/session list`）
   - [ ] 对话导出（JSON / Markdown / HTML）
   - [ ] 上下文压缩与摘要
@@ -192,7 +215,7 @@ cat error.log | ./mifer-cli ask "分析这段日志"
   - [ ] 冗余记忆合并
   - [ ] 遗忘策略（LRU / 时间衰减 / 语义相似度去重）
 - [ ] 记忆存储后端
-  - [ ] JSON 文件（单机零依赖）
+  - [x] JSONL 文件（单机零依赖，增量追加）
   - [ ] SQLite（结构化检索）
   - [ ] Redis（高性能缓存层）
   - [ ] 向量数据库（语义检索）
@@ -224,65 +247,116 @@ cat error.log | ./mifer-cli ask "分析这段日志"
 
 ### 工程化
 
+- [x] GitHub Actions CI/CD（Tag 推送自动构建 Windows/Linux 多架构）
+- [x] 结构化日志（Uber Zap，按级别分文件，dev 彩色/prod JSON）
 - [ ] 测试体系
   - [ ] 单元测试（覆盖率 > 80%）
   - [ ] 集成测试（API 端到端）
   - [ ] 回归测试（核心场景快照对比）
 - [ ] Docker 容器化部署
-- [ ] CI/CD 流水线
 - [ ] 可观测性
-  - [ ] 结构化日志（Zap JSON）
   - [ ] Prometheus 指标（请求量、延迟、Token 消耗、错误率）
   - [ ] 分布式追踪（OpenTelemetry）
 - [ ] 安全
-  - [ ] JWT 认证与鉴权
+  - [x] JWT 认证与鉴权（已实现，路由未强制启用）
   - [ ] API 限流（令牌桶 / 滑动窗口）
   - [ ] 敏感信息脱敏
   - [ ] 沙箱执行隔离
   - [ ] Prompt 注入防护
 
----
+***
 
 ## 项目结构
 
-```
 mifer/
-├── cli/                          # CLI 入口
+
+├── cli/                          # CLI 客户端
+
+│   ├── client/                   # HTTP API 客户端
+
+│   │   ├── chathandler/          # 对话调用
+
+│   │   ├── memhandler/           # 记忆管理调用
+
+│   │   └── excmemhandler/        # 记忆会话切换
+
+│   ├── render/
+
+│   │   ├── mark/                 # Markdown 渲染（Glamour）
+
+│   │   └── lip/                  # 终端样式（lipgloss）
+
+│   └── tui/                      # TUI 界面（Bubble Tea）
+
 ├── cmd/
+
 │   ├── main/                     # 服务主入口（main.go）
+
 │   └── bootstrap/                # 启动引导（配置、日志、路由初始化）
+
 ├── config/
+
 │   └── dev.yaml                  # 开发环境配置文件（自动生成）
+
 ├── internal/
+
 │   ├── ai/
+
 │   │   ├── agent/                # Eino ADK 多 Agent 编排
+
 │   │   ├── executor/             # adk.Runner 包装器
+
 │   │   ├── llm/                  # OpenAI 兼容 ChatModel 初始化
-│   │   ├── memory/               # 对话历史持久化（JSON 文件）
+
+│   │   ├── memory/               # 对话历史持久化（JSONL 文件）
+
 │   │   └── tool/                 # 工具定义（Function Calling）
+
 │   ├── api/
+
 │   │   ├── dto/
+
 │   │   │   ├── request/          # 请求 DTO
+
 │   │   │   └── response/         # 响应 DTO
+
 │   │   ├── handler/
+
 │   │   │   └── agenthandler/     # HTTP Handler（chat/memory）
+
 │   │   ├── middlewares/          # JWT 认证、CORS 中间件
-│   │   └── routes/              # Gin 路由注册
+
+│   │   └── routes/               # Gin 路由注册
+
 │   ├── domain/                   # 核心接口与 DTO 定义
+
 │   └── service/
+
 │       └── agentservice/         # Agent 服务层（业务编排）
+
 ├── pkg/
+
 │   ├── auth/                     # JWT Token 生成与验证
+
 │   ├── cache/                    # Redis 缓存封装
+
 │   ├── conf/                     # Viper 配置管理（全局单例）
+
 │   ├── errorer/                  # 统一错误码定义
+
 │   ├── logger/                   # Uber Zap 日志封装
+
 │   ├── res/                      # 统一 HTTP 响应格式
+
 │   ├── task/                     # 异步任务管理
+
 │   └── utils/                    # 通用工具函数
+
+├── .github/workflows/            # CI/CD（Tag 自动构建发布）
+
 ├── CLAUDE.md                     # Claude Code 协作指引
+
 └── README.md
-```
 
 ### 分层架构
 
@@ -298,17 +372,20 @@ cmd → internal/api → internal/service → internal/ai → pkg
 
 ### 技术栈
 
-| 组件 | 技术选型 |
-|------|----------|
-| 语言 | Go 1.21+ |
-| HTTP 框架 | Gin |
-| AI 编排 | CloudWeGo Eino (ADK) |
-| 默认模型 | DeepSeek V4 (OpenAI 兼容协议) |
-| 日志 | Uber Zap |
-| 缓存 | Redis (go-redis/v8) |
-| 配置 | Viper |
-| 认证 | JWT |
+| 组件      | 技术选型                                |
+| ------- | ----------------------------------- |
+| 语言      | Go 1.25                             |
+| HTTP 框架 | Gin v1.12                           |
+| AI 编排   | CloudWeGo Eino v0.8 (ADK)           |
+| 默认模型    | DeepSeek V4 (OpenAI 兼容协议)           |
+| TUI 框架  | Bubble Tea + Bubbles                |
+| 终端渲染    | Glamour (Markdown) + Lip Gloss (样式) |
+| 日志      | Uber Zap                            |
+| 缓存      | Redis (go-redis/v8，当前未激活)           |
+| 配置      | Viper                               |
+| 认证      | JWT                                 |
+| CI/CD   | GitHub Actions                      |
 
----
+***
 
 — 蓝山最终考核

@@ -8,7 +8,7 @@ import (
 
 // Init 初始化所有 TUI 样式
 // 从配置读取颜色，通过 Base.Inherit() 派生子样式，配置为空时使用硬编码降级颜色
-func Init(config *conf.Config) Style {
+func Init(config *conf.Config) *Style {
 	getFg := func(cfg string, fallback string) lipgloss.Color {
 		if cfg != "" {
 			return lipgloss.Color(cfg)
@@ -20,7 +20,10 @@ func Init(config *conf.Config) Style {
 	base := lipgloss.NewStyle().
 		Background(lipgloss.Color(config.Cli.Lip.Base.Background)).
 		Foreground(lipgloss.Color(config.Cli.Lip.Base.Foreground)).
-		Bold(true)
+		Bold(true).
+		Border(
+			lipgloss.RoundedBorder(),
+		)
 
 	// 子样式从 Base 派生（lipgloss 方法返回新 style，无需显式 Copy）
 	user := base.Foreground(getFg(config.Cli.Lip.Title.Foreground, "#00D787")).
@@ -44,7 +47,7 @@ func Init(config *conf.Config) Style {
 
 	sepText := separatorStyle.Render("────────────────────────────────────────────────────────────")
 
-	return Style{
+	return &Style{
 		Base:          &base,
 		User:          &user,
 		Think:         &think,

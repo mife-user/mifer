@@ -69,7 +69,7 @@ func (c *Cli) Run() error {
 
 func (c *Cli) handleChat(content string) {
 	ctx := context.Background()
-	err := c.client.Chat.Send(ctx, content, func(chunk string) error {
+	err := c.client.Chat.Send(ctx, content, func(event, chunk string) error {
 		fmt.Print(chunk)
 		return nil
 	})

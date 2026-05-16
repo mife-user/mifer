@@ -90,6 +90,8 @@ func runDefault(app *bootstrap.Application) {
 	runErr := make(chan error, 1)
 	go func() { runErr <- app.Run() }()
 
+	time.Sleep(1 * time.Second) // 等待服务器启动
+
 	cliDone := make(chan error, 1)
 	go func() { cliDone <- app.Clier.RunTUI() }()
 

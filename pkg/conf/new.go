@@ -76,4 +76,10 @@ cli:
       foreground: "#FF5555"
     help:
       foreground: "#8BE9FD"
+  tui:
+    max_history: 100
+    thinking_tick_ms: 500
+    completable_commands: ["help", "exit", "quit", "/viewmemory", "/excmem"]
+    content_margin: 4
+    min_height: 10
 `

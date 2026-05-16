@@ -19,6 +19,7 @@ type CliConfig struct {
 	Host string    `mapstructure:"host"`
 	Port int       `mapstructure:"port"`
 	Lip  LipConfig `mapstructure:"lip"`
+	Tui  TuiConfig `mapstructure:"tui"`
 }
 
 type LipConfig struct {
@@ -27,6 +28,14 @@ type LipConfig struct {
 	Content Colorlip `mapstructure:"content"`
 	Err     Colorlip `mapstructure:"err"`
 	Help    Colorlip `mapstructure:"help"`
+}
+
+type TuiConfig struct {
+	MaxHistory          int      `mapstructure:"max_history"`
+	ThinkingTickMs      int      `mapstructure:"thinking_tick_ms"`
+	CompletableCommands []string `mapstructure:"completable_commands"`
+	ContentMargin       int      `mapstructure:"content_margin"`
+	MinHeight           int      `mapstructure:"min_height"`
 }
 
 type Colorlip struct {

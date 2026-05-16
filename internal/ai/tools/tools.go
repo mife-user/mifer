@@ -5,6 +5,7 @@ import (
 	"mifer/internal/ai/tools/filecreator"
 	"mifer/internal/ai/tools/filereader"
 	"mifer/internal/ai/tools/filewriter"
+	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/tool"
@@ -38,11 +39,11 @@ func FileTools() []tool.BaseTool {
 	return tools
 }
 
-// CommandTools 返回命令执行相关工具
-func CommandTools() []tool.BaseTool {
+// CommandTools 返回命令执行相关工具（需传入 config 以注入安全策略）
+func CommandTools(cfg *conf.Config) []tool.BaseTool {
 	var tools []tool.BaseTool
 
-	ce, err := commandexecutor.New()
+	ce, err := commandexecutor.New(cfg)
 	if err != nil {
 		logger.Error("创建 command_executor 工具失败", logger.C(err))
 	} else {
@@ -67,9 +68,9 @@ func AuditTools() []tool.BaseTool {
 }
 
 // AllTools 返回所有可用工具的 BaseTool 切片（向后兼容）
-func AllTools() []tool.BaseTool {
+func AllTools(cfg *conf.Config) []tool.BaseTool {
 	var tools []tool.BaseTool
 	tools = append(tools, FileTools()...)
-	tools = append(tools, CommandTools()...)
+	tools = append(tools, CommandTools(cfg)...)
 	return tools
 }

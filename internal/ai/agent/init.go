@@ -49,7 +49,7 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 		return nil, err
 	}
 	// 初始化终端命令agent
-	commanderAgent, err := newCommander(c, llm)
+	commanderAgent, err := newCommander(c, llm, config)
 	if err != nil {
 		logger.Error("init commander agent failed", logger.C(err))
 		return nil, err

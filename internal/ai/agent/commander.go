@@ -4,13 +4,14 @@ import (
 	"context"
 	"mifer/internal/ai/llm"
 	"mifer/internal/ai/tools"
+	"mifer/pkg/conf"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/compose"
 )
 
 // newCommander 创建终端命令执行agent，负责安全执行shell命令
-func newCommander(c context.Context, llm *llm.LLM) (*adk.ChatModelAgent, error) {
+func newCommander(c context.Context, llm *llm.LLM, cfg *conf.Config) (*adk.ChatModelAgent, error) {
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
 		Name:        "MiCommander",
 		Description: "终端命令执行专家，在安全沙箱中执行shell命令并返回结果",
@@ -18,7 +19,7 @@ func newCommander(c context.Context, llm *llm.LLM) (*adk.ChatModelAgent, error) 
 		Model:       llm.Model,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: tools.CommandTools(),
+				Tools: tools.CommandTools(cfg),
 			},
 		},
 		MaxIterations: 3,

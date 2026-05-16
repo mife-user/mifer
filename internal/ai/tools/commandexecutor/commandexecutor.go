@@ -101,18 +101,21 @@ func (w *limitWriter) String() string {
 	return result
 }
 
-func New() (tool.InvokableTool, error) {
-	return utils.InferTool("command_executor", "安全执行shell命令，包含危险命令检测、工作目录限制、超时控制和输出大小限制。", executeCommand)
+func New(cfg *conf.Config) (tool.InvokableTool, error) {
+	// 通过闭包将 config 注入执行函数，消除对全局 conf.GetConfig() 的依赖
+	execute := func(ctx context.Context, input CommandExecutorInput) (CommandExecutorOutput, error) {
+		return executeCommand(ctx, input, cfg)
+	}
+	return utils.InferTool("command_executor", "安全执行shell命令，包含危险命令检测、工作目录限制、超时控制和输出大小限制。", execute)
 }
 
-func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExecutorOutput, error) {
+func executeCommand(ctx context.Context, input CommandExecutorInput, cfg *conf.Config) (CommandExecutorOutput, error) {
 	// 1. 校验命令非空
 	if strings.TrimSpace(input.Command) == "" {
 		return CommandExecutorOutput{Error: "命令不能为空"}, nil
 	}
 
 	// 2. 白名单检查（若配置了白名单）
-	cfg := conf.GetConfig()
 	if len(cfg.Ai.AllowList) > 0 {
 		if !isAllowed(input.Command, cfg.Ai.AllowList) {
 			return CommandExecutorOutput{

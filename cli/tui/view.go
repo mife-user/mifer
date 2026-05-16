@@ -111,6 +111,10 @@ func (m *Model) View() string {
 	messageBox = lipgloss.NewStyle().
 		Background(lipgloss.Color(bgColor)).
 		Padding(0, 1). // 左右各 1 列留白
+		Border(
+			lipgloss.RoundedBorder(),
+		).
+		Width(m.width - 2).
 		Render(messageBox)
 
 	// ---- 第 9 步：组合输出 ----

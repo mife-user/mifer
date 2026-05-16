@@ -72,11 +72,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// ↑ 键：历史导航（上一条）
 			case "up":
-				return m.handleHistoryUp()
+				if m.textarea.Line() == 0 {
+					return m.handleHistoryUp()
+				}
+				m.textarea, _ = m.textarea.Update(msg)
+				m.adjustInputHeight()
+				return m, nil
 
-			// ↓ 键：历史导航（下一条）
+			// ↓ 键：仅在末行时触发历史导航（下一条）
 			case "down":
-				return m.handleHistoryDown()
+				if m.textarea.Line() == m.textarea.LineCount()-1 {
+					return m.handleHistoryDown()
+				}
+				m.textarea, _ = m.textarea.Update(msg)
+				m.adjustInputHeight()
+				return m, nil
 
 			// Tab：命令补全
 			case "tab":

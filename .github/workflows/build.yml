@@ -81,12 +81,12 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 优化对话框
+            - [x] 添加侧边栏
+            - [x] 优化tui格式
+            - [x] 优化架构
             - [x] 添加更多可配置文件内容
-            - [x] 优化配置传入
-            - [x] 添加历史切换对话记录功能
-            - [x] 添加自动补全功能
-            - [x] 优化启动
+            - [x] 优化滚动功能
+            - [x] 修复一些bug
           files: artifacts/**/*
           draft: false
           prerelease: false

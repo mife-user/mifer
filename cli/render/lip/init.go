@@ -38,7 +38,7 @@ func Init(config *conf.Config) *Style {
 		Bold(false)
 
 	think := base.
-		Foreground(getFg(config.Cli.Lip.Content.Foreground, "#FFB86C")).
+		Foreground(getFg(config.Cli.Lip.Think.Foreground, "#FFB86C")).
 		Bold(false).
 		Italic(true)
 
@@ -51,39 +51,39 @@ func Init(config *conf.Config) *Style {
 		Bold(false)
 
 	scroll := base.
-		Foreground(lipgloss.Color("#666666")).
+		Foreground(getFg(config.Cli.Lip.Scroll.Foreground, "#666666")).
 		Bold(false)
 
 	separatorStyle := base.
-		Foreground(lipgloss.Color("#444444")).
+		Foreground(getFg(config.Cli.Lip.Separator.Foreground, "#444444")).
 		Bold(false)
 
 	sepText := separatorStyle.Render("────────────────────────────────────────────────────────────")
 
 	help := base.
-		Foreground(lipgloss.Color("#888888")).
+		Foreground(getFg(config.Cli.Lip.Help.Foreground, "#888888")).
 		Bold(false)
 
 	// ---- 侧边栏样式 ----
 	sidebarContainer := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#555555")).
+		BorderForeground(getFg(config.Cli.Lip.Sidebar.Foreground, "#555555")).
 		Padding(1, 1)
 
 	sidebarActive := base.
-		Foreground(lipgloss.Color("#00D787")).
+		Foreground(getFg(config.Cli.Lip.SidebarActive.Foreground, "#00D787")).
 		Bold(true)
 
 	sidebarCompleted := base.
-		Foreground(lipgloss.Color("#666666")).
+		Foreground(getFg(config.Cli.Lip.SidebarCompleted.Foreground, "#666666")).
 		Bold(false)
 
 	sidebarSeparator := base.
-		Foreground(lipgloss.Color("#444444")).
+		Foreground(getFg(config.Cli.Lip.SidebarSeparator.Foreground, "#444444")).
 		Bold(false)
 
 	sidebarPlaceholder := base.
-		Foreground(lipgloss.Color("#555555")).
+		Foreground(getFg(config.Cli.Lip.SidebarPlaceholder.Foreground, "#555555")).
 		Bold(false).
 		Italic(true)
 

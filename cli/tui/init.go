@@ -23,11 +23,8 @@ import (
 	"mifer/cli/render/mark"
 	"mifer/pkg/conf"
 
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // NewModel 创建 TUI 核心 Model，初始化所有子组件和依赖。
@@ -40,39 +37,25 @@ import (
 //	mark    (glamour)  → 将 AI 返回的 markdown 文本渲染为终端 ANSI 彩色输出
 //	lip     (lipgloss) → 预定义的消息样式集合（用户/AI/系统/错误等颜色）
 func NewModel(client *client.Client, config *conf.Config) *Model {
+	// ---- lip 样式：先于组件初始化，供 spinner 等使用 ----
+	lipStyles := lip.Init(config)
+
 	// ---- textarea：输入组件 ----
-	ta := textarea.New()
-	ta.Placeholder = "输入消息... (Enter 发送, Ctrl+N 换行, ↑↓ 历史)"
-	ta.ShowLineNumbers = false
-	ta.SetHeight(1)
-	ta.MaxHeight = 5 // 输入框最多 5 行，防止占用过多屏幕
-	ta.Focus()
+	ta := lip.NewTextarea()
 
 	// ---- spinner：旋转动画组件 ----
-	// MiniDot 使用 braille 点阵字符（⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏），10 帧循环
-	// FPS 约 12（~83ms/帧），视觉效果平滑
-	sp := spinner.New(spinner.WithSpinner(spinner.MiniDot))
+	// 优先使用自定义帧，否则根据配置名称选择预置类型，均未设置时回退到 MiniDot
+	sp := lip.NewSpinner(lipStyles, config)
 
 	// ---- viewport：滚动视口组件 ----
 	// 初始尺寸为 0，由第一个 WindowSizeMsg 事件设置正确尺寸
-	vp := viewport.New(0, 0)
-	vp.MouseWheelDelta = 1 // 滚轮每次滚动 1 行
-	// 视口样式：沿用原来外层容器的背景色、内边距、圆角边框
-	bgColor := config.Cli.Lip.Base.Background
-	if bgColor == "" {
-		bgColor = "#1e1e1e" // 配置为空时降级到深色背景
-	}
-	vp.Style = lipgloss.NewStyle().
-		Background(lipgloss.Color(bgColor)).
-		Padding(0, 1).                   // 左右各 1 列留白
-		Border(lipgloss.RoundedBorder()) // 圆角边框
-
+	vp := lip.NewViewport(config)
 	return &Model{
 		// 依赖注入
 		client: client,
 		config: config,
-		mark:   mark.Init(),      // glamour 双渲染器（dark + notty 降级）
-		lip:    lip.Init(config), // lipgloss 样式集合
+		mark:   mark.Init(), // glamour 双渲染器（dark + notty 降级）
+		lip:    lipStyles,   // lipgloss 样式集合
 
 		// 消息与渲染
 		messages: make([]message, 0),

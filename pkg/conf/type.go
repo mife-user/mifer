@@ -23,28 +23,34 @@ type CliConfig struct {
 }
 
 type LipConfig struct {
-	Base    Colorlip `mapstructure:"base"`
-	Title   Colorlip `mapstructure:"title"`
-	Content Colorlip `mapstructure:"content"`
-	Err     Colorlip `mapstructure:"err"`
-	Help    Colorlip `mapstructure:"help"`
+	Base               Colorlip `mapstructure:"base"`
+	Title              Colorlip `mapstructure:"title"`
+	Content            Colorlip `mapstructure:"content"`
+	Err                Colorlip `mapstructure:"err"`
+	Help               Colorlip `mapstructure:"help"`
+	Think              Colorlip `mapstructure:"think"`
+	Scroll             Colorlip `mapstructure:"scroll"`
+	Separator          Colorlip `mapstructure:"separator"`
+	Sidebar            Colorlip `mapstructure:"sidebar"`
+	SidebarActive      Colorlip `mapstructure:"sidebar_active"`
+	SidebarCompleted   Colorlip `mapstructure:"sidebar_completed"`
+	SidebarSeparator   Colorlip `mapstructure:"sidebar_separator"`
+	SidebarPlaceholder Colorlip `mapstructure:"sidebar_placeholder"`
 }
 
 type TuiConfig struct {
 	MaxHistory          int      `mapstructure:"max_history"`
-	ThinkingTickMs      int      `mapstructure:"thinking_tick_ms"`
 	CompletableCommands []string `mapstructure:"completable_commands"`
 	ContentMargin       int      `mapstructure:"content_margin"`
 	MinHeight           int      `mapstructure:"min_height"`
+	SpinnerType         string   `mapstructure:"spinner_type"`  // 预置类型名，或为空使用自定义帧
+	SpinnerFrames       []string `mapstructure:"spinner_frames"` // 自定义动画帧序列，如 [".", "..", "..."]，非空时覆盖 spinner_type
+	SpinnerFPS          int      `mapstructure:"spinner_fps"`    // 自定义帧率（帧/秒），默认 10
 }
 
 type Colorlip struct {
 	Background string `mapstructure:"background"`
 	Foreground string `mapstructure:"foreground"`
-	BoldTop    string `mapstructure:"bold_top"`
-	BoldLeft   string `mapstructure:"bold_left"`
-	BoldRight  string `mapstructure:"bold_right"`
-	BoldBottom string `mapstructure:"bold_bottom"`
 }
 
 // 路径配置结构体

@@ -290,11 +290,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // 每次 textarea 行数变化时调用（输入内容增多、插入换行等）。
 //
 // 计算逻辑：
-//   contentHeight = 终端高度 - textarea 实际高度 - 1（间距）
-//   textarea 高度由行数决定，受 MaxHeight=5 约束
+//
+//	contentHeight = 终端高度 - textarea 实际高度 - 1（间距）
+//	textarea 高度由行数决定，受 MaxHeight=5 约束
 //
 // 例如终端 40 行，textarea 3 行：
-//   contentHeight = 40 - 3 - 1 = 36 行用于消息显示
+//
+//	contentHeight = 40 - 3 - 1 = 36 行用于消息显示
 func (m *Model) adjustInputHeight() {
 	lines := max(m.textarea.LineCount(), 1)
 	m.textarea.SetHeight(lines)
@@ -306,18 +308,18 @@ func (m *Model) adjustInputHeight() {
 // ============================================================================
 // 按输入内容分发到不同处理逻辑：
 //
-//   空输入      → 无操作
-//   exit/quit   → 返回 tea.Quit 退出程序
-//   help        → 追加系统帮助消息
-//   /viewmemory → 异步加载对话记忆并显示
-//   /excmem     → 异步切换记忆会话
-//   其他        → 作为聊天消息发送给 AI
+//	空输入      → 无操作
+//	exit/quit   → 返回 tea.Quit 退出程序
+//	help        → 追加系统帮助消息
+//	/viewmemory → 异步加载对话记忆并显示
+//	/excmem     → 异步切换记忆会话
+//	其他        → 作为聊天消息发送给 AI
 //
 // 每次提交后：
-//   1. 清空 textarea
-//   2. 重置 textarea 高度为 1 行
-//   3. 记录到输入历史（去重）
-//   4. 重置补全状态
+//  1. 清空 textarea
+//  2. 重置 textarea 高度为 1 行
+//  3. 记录到输入历史（去重）
+//  4. 重置补全状态
 func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	input := strings.TrimSpace(m.textarea.Value())
 	if input == "" {
@@ -339,9 +341,9 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		}
 		m.history = append(m.history, input)
 	}
-	m.historyIdx = -1      // 退出历史导航
-	m.pendingInput = ""    // 清空暂存
-	m.resetCompletion()    // 重置补全状态
+	m.historyIdx = -1   // 退出历史导航
+	m.pendingInput = "" // 清空暂存
+	m.resetCompletion() // 重置补全状态
 
 	// ---- 命令分发 ----
 	switch {
@@ -456,16 +458,18 @@ func (m *Model) handleHistoryDown() (tea.Model, tea.Cmd) {
 // ============================================================================
 //
 // 补全策略（三级）：
-//   0 个匹配    → 无操作
-//   1 个匹配    → 直接替换 textarea 内容为该命令 + 空格
-//   N 个匹配    → 首次 Tab：补全到最长公共前缀
-//               → 再次 Tab：循环切换到下一个匹配
+//
+//	0 个匹配    → 无操作
+//	1 个匹配    → 直接替换 textarea 内容为该命令 + 空格
+//	N 个匹配    → 首次 Tab：补全到最长公共前缀
+//	            → 再次 Tab：循环切换到下一个匹配
 //
 // 示例（假设可补全命令有 /viewmemory, /excmem, exit, help）：
-//   输入 /vi [Tab]    → 唯一匹配 /viewmemory → 直接补全
-//   输入 /v [Tab]     → 匹配 /viewmemory → 直接补全
-//   输入 e [Tab]      → 匹配 exit → 补全到 "exit "
-//   输入 / [Tab]      → 匹配 /viewmemory, /excmem → 无公共前缀（/ 之后不同）
+//
+//	输入 /vi [Tab]    → 唯一匹配 /viewmemory → 直接补全
+//	输入 /v [Tab]     → 匹配 /viewmemory → 直接补全
+//	输入 e [Tab]      → 匹配 exit → 补全到 "exit "
+//	输入 / [Tab]      → 匹配 /viewmemory, /excmem → 无公共前缀（/ 之后不同）
 func (m *Model) handleTabComplete() (tea.Model, tea.Cmd) {
 	input := m.textarea.Value()
 	trimmed := strings.TrimSpace(input)
@@ -571,9 +575,10 @@ func longestCommonPrefix(strs []string) string {
 // 通过传入的 channel 逐条推送流式消息回 Bubble Tea 事件循环。
 //
 // 流式消息分发逻辑：
-//   agent_start/agent_end/tool_start/tool_end → streamStatusMsg（侧边栏更新）
-//   response → streamContentMsg（累积到 accBuf）
-//   thinking → 跳过
+//
+//	agent_start/agent_end/tool_start/tool_end → streamStatusMsg（侧边栏更新）
+//	response → streamContentMsg（累积到 accBuf）
+//	thinking → 跳过
 //
 // goroutine 退出前关闭 channel，触发 listenStreamCmd 返回 nil 停止递归。
 func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.Cmd {
@@ -601,9 +606,10 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 // listenStreamCmd 从通道读取下一条流式消息的递归命令
 //
 // Bubble Tea 的标准"持续监听"模式：
-//   收到消息 → 在 Update 中处理后返回 listenStreamCmd(ch)
-//   → 阻塞等待下一条消息 → 收到后再次进入 Update → 循环
-//   通道关闭时返回 nil（递归终止），后续不再有 stream 消息
+//
+//	收到消息 → 在 Update 中处理后返回 listenStreamCmd(ch)
+//	→ 阻塞等待下一条消息 → 收到后再次进入 Update → 循环
+//	通道关闭时返回 nil（递归终止），后续不再有 stream 消息
 func listenStreamCmd(ch <-chan tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		msg, ok := <-ch

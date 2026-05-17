@@ -64,10 +64,6 @@ cli:
     base:
       foreground: "#00ff11"
       background: "#2c2c2cff"
-      bold_top: "#00ff11"
-      bold_left: "#00ff11"
-      bold_right: "#00ff11"
-      bold_bottom: "#00ff11"
     title:
       foreground: "#00D787"
     content:
@@ -76,10 +72,28 @@ cli:
       foreground: "#FF5555"
     help:
       foreground: "#8BE9FD"
+    think:
+      foreground: "#FFB86C"
+    scroll:
+      foreground: "#666666"
+    separator:
+      foreground: "#444444"
+    sidebar:
+      foreground: "#555555"
+    sidebar_active:
+      foreground: "#00D787"
+    sidebar_completed:
+      foreground: "#666666"
+    sidebar_separator:
+      foreground: "#444444"
+    sidebar_placeholder:
+      foreground: "#555555"
   tui:
     max_history: 100
-    thinking_tick_ms: 500
     completable_commands: ["help", "exit", "quit", "/viewmemory", "/excmem"]
     content_margin: 4
     min_height: 10
+    spinner_type: "MiniDot"
+    spinner_frames: []
+    spinner_fps: 0
 `

@@ -17,7 +17,11 @@
       "Bash(Get-Content \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\\\\cli\\\\tui\\\\update.go\")",
       "Bash(Select-Object -Index 226)",
       "Bash(echo \"GOPATH: $\\(go env GOPATH\\)\")",
-      "Bash(Select-Object -First 80)"
+      "Bash(Select-Object -First 80)",
+      "Bash(ls \"$\\(go env GOMODCACHE \\)/github.com/cloudwego/\")",
+      "PowerShell(go doc *)",
+      "Bash(go list *)",
+      "Bash(dir *)"
     ]
   }
 }

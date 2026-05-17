@@ -21,4 +21,11 @@ type Style struct {
 	Separator *lipgloss.Style // 分隔线样式
 	SeparatorText string // 预渲染的分隔线文本
 	Help *lipgloss.Style // 帮助/提示文本样式
+
+	// 侧边栏样式
+	SidebarContainer   *lipgloss.Style // 侧边栏容器（边框、背景）
+	SidebarActive      *lipgloss.Style // 当前活跃的agent/工具（高亮）
+	SidebarCompleted   *lipgloss.Style // 已完成的agent/工具（灰色）
+	SidebarSeparator   *lipgloss.Style // 侧边栏分隔线
+	SidebarPlaceholder *lipgloss.Style // 未来功能占位文本
 }

@@ -25,10 +25,12 @@ import (
 	"mifer/cli/render/lip"
 	"mifer/cli/render/mark"
 	"mifer/pkg/conf"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // ============================================================================
@@ -60,6 +62,57 @@ type message struct {
 type chatRespMsg struct {
 	content string // 累积的完整 AI 响应文本
 	err     error  // 网络或解析错误（非 nil 时显示错误不追加消息）
+}
+
+// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用）
+type streamStatusMsg struct {
+	event string // "agent_start" | "agent_end" | "tool_start" | "tool_end"
+	name  string // agent名称或工具名称
+}
+
+// streamContentMsg AI流式响应中的内容片段
+type streamContentMsg struct {
+	content string
+}
+
+// streamDoneMsg AI流式传输完成
+type streamDoneMsg struct {
+	err error
+}
+
+// SidebarState 右侧边栏状态，跟踪当前agent/工具执行情况
+type SidebarState struct {
+	CurrentAgent string   // 当前正在执行的Agent名称
+	CurrentTool  string   // 当前正在调用的工具名称
+	AgentTrail   []string // 已完成Agent的轨迹
+	ToolTrail    []string // 已完成工具的轨迹
+}
+
+// update 根据流式状态消息更新侧边栏状态
+func (s *SidebarState) update(msg streamStatusMsg) {
+	switch msg.event {
+	case "agent_start":
+		if s.CurrentAgent != "" {
+			s.AgentTrail = append(s.AgentTrail, s.CurrentAgent)
+		}
+		s.CurrentAgent = msg.name
+		s.CurrentTool = "" // 新agent开始时重置当前工具
+	case "agent_end":
+		if s.CurrentAgent == msg.name {
+			s.AgentTrail = append(s.AgentTrail, s.CurrentAgent)
+			s.CurrentAgent = ""
+		}
+	case "tool_start":
+		if s.CurrentTool != "" {
+			s.ToolTrail = append(s.ToolTrail, "  "+s.CurrentTool)
+		}
+		s.CurrentTool = msg.name
+	case "tool_end":
+		if s.CurrentTool == msg.name {
+			s.ToolTrail = append(s.ToolTrail, "  "+s.CurrentTool)
+			s.CurrentTool = ""
+		}
+	}
 }
 
 // systemMsg 由系统命令（/viewmemory、/excmem）的异步处理器发出。
@@ -149,4 +202,11 @@ type Model struct {
 
 	// 缓存：由 WindowSizeMsg 计算，避免 View 中重复计算
 	contentHeight int // 消息区域可用行数
+
+	// 侧边栏
+	sidebar SidebarState // agent/工具状态跟踪
+
+	// 流式传输
+	streamCh chan tea.Msg      // 流式消息通道（非nil时表示正在流式传输中）
+	accBuf   *strings.Builder // 累积AI响应内容的缓冲区
 }

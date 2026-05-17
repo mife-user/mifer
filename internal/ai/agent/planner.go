@@ -21,7 +21,7 @@ func newPlanner(c context.Context, llm *llm.LLM) (*adk.ChatModelAgent, error) {
 				Tools: tools.FileTools(),
 			},
 		},
-		MaxIterations: 3,
+		MaxIterations: 5,
 	})
 	if err != nil {
 		return nil, err

@@ -49,52 +49,49 @@ func (m *Model) View() string {
 	// ======================================================================
 	// 第 ① 步：门控检查
 	// ======================================================================
-	// 程序启动后首个 WindowSizeMsg 到达前 width 为 0，此时不渲染全部 UI
 	if m.width == 0 {
 		return "正在启动..."
 	}
-	// contentHeight < 1 表示窗口高度不足以显示消息区域
 	if m.contentHeight < 1 {
 		return fmt.Sprintf("窗口太小 (当前 %d, 最少 %d)", m.height, m.config.Cli.Tui.MinHeight)
+	}
+
+	// 计算侧边栏宽度：终端宽度 1/4，限制在 [20, 40]
+	sidebarWidth := m.width / 4
+	if sidebarWidth < 20 {
+		sidebarWidth = 20
+	}
+	if sidebarWidth > 40 {
+		sidebarWidth = 40
 	}
 
 	// ======================================================================
 	// 第 ② 步：构建消息行列表
 	// ======================================================================
-	// msgLines 是扁平的行切片，每行已应用对应的 lipgloss 样式
 	var msgLines []string
 	for _, msg := range m.messages {
 		switch msg.role {
 		case "user":
-			// 用户消息：绿色粗体 "You: " 前缀 + 原始内容，单行渲染
 			msgLines = append(msgLines, m.lip.User.Render("You: "+msg.content))
 
 		case "assistant":
-			// AI 消息：优先使用 glamour 预渲染的 ANSI 彩色输出
-			// 预渲染字符串按 "\n" 拆分为多行，直接追加
 			if msg.rendered != "" {
 				msgLines = append(msgLines, strings.Split(msg.rendered, "\n")...)
 			} else {
-				// 降级：直接显示原始内容（始终会触发，因为 chatRespMsg
-				// 处理中如果 mark.Render 失败会保留空 rendered）
 				msgLines = append(msgLines, msg.content)
 			}
 
 		case "system":
-			// 系统消息：青色渲染，支持多行（如记忆查看结果）
 			for _, line := range strings.Split(msg.content, "\n") {
 				msgLines = append(msgLines, m.lip.Sys.Render(line))
 			}
 		}
-		// 每条消息后追加灰色分隔线（预渲染的字符串，避免每帧重复 Render）
 		msgLines = append(msgLines, m.lip.SeparatorText)
 	}
 
 	// ======================================================================
 	// 第 ③ 步：追加 thinking 旋转动画行
 	// ======================================================================
-	// m.thinking 在 handleEnter() 中设为 true，在 chatRespMsg 到达时设为 false
-	// spinner.View() 返回当前帧的 braille 字符（由 tick 消息驱动帧切换）
 	if m.thinking {
 		thinkLine := fmt.Sprintf("%s Thinking...", m.spinner.View())
 		msgLines = append(msgLines, m.lip.Think.Render(thinkLine))
@@ -103,32 +100,92 @@ func (m *Model) View() string {
 	// ======================================================================
 	// 第 ④ 步：追加错误行
 	// ======================================================================
-	// err 在 chatRespMsg/systemMsg 解析失败时设置，在下一次发送消息时清空
 	if m.err != "" {
-		msgLines = append(msgLines, m.lip.Err.Render(m.err))
+		sanitized := strings.ReplaceAll(m.err, "\n", " ")
+		msgLines = append(msgLines, m.lip.Err.Render(sanitized))
 	}
 
 	// ======================================================================
 	// 第 ⑤ 步：设置 viewport 内容 + 自动滚底
 	// ======================================================================
-	// 将所有消息行拼接为单个字符串，设置到 viewport 中
-	// viewport 内部按 "\n" 拆分为行数组，自动处理滚动边界
 	content := strings.Join(msgLines, "\n")
 	m.viewport.SetContent(content)
-
-	// 仅在消息列表有新内容时才滚到底部
-	// 如果用户手动向上滚动了视口，我们不强制拉回底部
 	if m.needsAutoScroll {
 		m.viewport.GotoBottom()
 		m.needsAutoScroll = false
 	}
 
 	// ======================================================================
-	// 第 ⑥ 步：组合输出
+	// 第 ⑥ 步：渲染侧边栏
 	// ======================================================================
-	// viewport.View() 渲染消息区域（含背景色、圆角边框、内边距、滚动裁剪）
-	// textarea.View() 渲染输入区域（占位符、光标等）
-	// JoinVertical 将两者垂直拼接，Top 表示顶部对齐
+	sidebarContent := m.renderSidebar(sidebarWidth)
+	sidebar := m.lip.SidebarContainer.
+		Width(sidebarWidth).
+		MaxHeight(m.contentHeight).
+		Render(sidebarContent)
+
+	// ======================================================================
+	// 第 ⑦ 步：组合输出（水平：viewport | 侧边栏；垂直排列 textarea）
+	// ======================================================================
+	topRow := lipgloss.JoinHorizontal(lipgloss.Top, m.viewport.View(), sidebar)
 	inputBox := m.textarea.View()
-	return lipgloss.JoinVertical(lipgloss.Top, m.viewport.View(), inputBox)
+	return lipgloss.JoinVertical(lipgloss.Top, topRow, inputBox)
+}
+
+// renderSidebar 渲染右侧边栏内容
+func (m *Model) renderSidebar(width int) string {
+	var lines []string
+
+	// 标题行
+	title := m.lip.SidebarActive.Render(" Agent / Tool")
+	lines = append(lines, title)
+	lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
+
+	// 当前活跃 Agent（带 spinner 动画）
+	if m.sidebar.CurrentAgent != "" {
+		spinner := ""
+		if m.thinking {
+			spinner = m.spinner.View() + " "
+		}
+		lines = append(lines, m.lip.SidebarActive.Render(spinner+m.sidebar.CurrentAgent))
+	}
+
+	// 当前活跃工具（缩进显示，表示隶属于当前 Agent）
+	if m.sidebar.CurrentTool != "" {
+		spinner := ""
+		if m.thinking {
+			spinner = m.spinner.View() + " "
+		}
+		lines = append(lines, m.lip.SidebarActive.Render("  "+spinner+m.sidebar.CurrentTool))
+	}
+
+	// 空行分隔活跃项与已完成轨迹
+	if len(m.sidebar.AgentTrail) > 0 || len(m.sidebar.ToolTrail) > 0 {
+		lines = append(lines, "")
+	}
+
+	// 已完成 Agent 轨迹（灰色，最多 5 条）
+	agentStart := 0
+	if len(m.sidebar.AgentTrail) > 5 {
+		agentStart = len(m.sidebar.AgentTrail) - 5
+	}
+	for _, a := range m.sidebar.AgentTrail[agentStart:] {
+		lines = append(lines, m.lip.SidebarCompleted.Render(a))
+	}
+
+	// 已完成工具轨迹（灰色，缩进，最多 5 条）
+	toolStart := 0
+	if len(m.sidebar.ToolTrail) > 5 {
+		toolStart = len(m.sidebar.ToolTrail) - 5
+	}
+	for _, t := range m.sidebar.ToolTrail[toolStart:] {
+		lines = append(lines, m.lip.SidebarCompleted.Render(t))
+	}
+
+	// 底部占位：预留未来功能空间（代码预览等）
+	lines = append(lines, "")
+	lines = append(lines, m.lip.SidebarPlaceholder.Render("(代码预览)"))
+
+	content := strings.Join(lines, "\n")
+	return content
 }

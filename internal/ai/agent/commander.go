@@ -22,7 +22,7 @@ func newCommander(c context.Context, llm *llm.LLM, cfg *conf.Config) (*adk.ChatM
 				Tools: tools.CommandTools(cfg),
 			},
 		},
-		MaxIterations: 3,
+		MaxIterations: 5,
 	})
 	if err != nil {
 		return nil, err

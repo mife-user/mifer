@@ -64,6 +64,29 @@ func Init(config *conf.Config) *Style {
 		Foreground(lipgloss.Color("#888888")).
 		Bold(false)
 
+	// ---- 侧边栏样式 ----
+	sidebarContainer := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#555555")).
+		Padding(1, 1)
+
+	sidebarActive := base.
+		Foreground(lipgloss.Color("#00D787")).
+		Bold(true)
+
+	sidebarCompleted := base.
+		Foreground(lipgloss.Color("#666666")).
+		Bold(false)
+
+	sidebarSeparator := base.
+		Foreground(lipgloss.Color("#444444")).
+		Bold(false)
+
+	sidebarPlaceholder := base.
+		Foreground(lipgloss.Color("#555555")).
+		Bold(false).
+		Italic(true)
+
 	return &Style{
 		Base:          &base,
 		User:          &user,
@@ -75,5 +98,11 @@ func Init(config *conf.Config) *Style {
 		Separator:     &separatorStyle,
 		SeparatorText: sepText,
 		Help:          &help,
+		// 侧边栏
+		SidebarContainer:   &sidebarContainer,
+		SidebarActive:      &sidebarActive,
+		SidebarCompleted:   &sidebarCompleted,
+		SidebarSeparator:   &sidebarSeparator,
+		SidebarPlaceholder: &sidebarPlaceholder,
 	}
 }

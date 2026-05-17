@@ -33,11 +33,12 @@ import (
 // NewModel 创建 TUI 核心 Model，初始化所有子组件和依赖。
 //
 // 组件职责：
-//   textarea (bubbles) → 用户输入区域，支持多行、占位符
-//   viewport (bubbles) → 消息显示区域的滚动容器，处理鼠标滚轮和内容裁剪
-//   spinner  (bubbles) → 等待 AI 响应时的旋转动画
-//   mark    (glamour)  → 将 AI 返回的 markdown 文本渲染为终端 ANSI 彩色输出
-//   lip     (lipgloss) → 预定义的消息样式集合（用户/AI/系统/错误等颜色）
+//
+//	textarea (bubbles) → 用户输入区域，支持多行、占位符
+//	viewport (bubbles) → 消息显示区域的滚动容器，处理鼠标滚轮和内容裁剪
+//	spinner  (bubbles) → 等待 AI 响应时的旋转动画
+//	mark    (glamour)  → 将 AI 返回的 markdown 文本渲染为终端 ANSI 彩色输出
+//	lip     (lipgloss) → 预定义的消息样式集合（用户/AI/系统/错误等颜色）
 func NewModel(client *client.Client, config *conf.Config) *Model {
 	// ---- textarea：输入组件 ----
 	ta := textarea.New()
@@ -70,7 +71,7 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 		// 依赖注入
 		client: client,
 		config: config,
-		mark:   mark.Init(),    // glamour 双渲染器（dark + notty 降级）
+		mark:   mark.Init(),      // glamour 双渲染器（dark + notty 降级）
 		lip:    lip.Init(config), // lipgloss 样式集合
 
 		// 消息与渲染
@@ -84,6 +85,11 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 		history:      make([]string, 0, config.Cli.Tui.MaxHistory),
 		historyIdx:   -1, // -1 表示不在历史导航中
 		pendingInput: "",
+
+		// 侧边栏与流式传输
+		sidebar:  SidebarState{},
+		streamCh: nil,
+		accBuf:   nil,
 	}
 }
 

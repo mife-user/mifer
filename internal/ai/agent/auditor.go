@@ -21,7 +21,7 @@ func newAuditor(c context.Context, llm *llm.LLM) (*adk.ChatModelAgent, error) {
 				Tools: tools.AuditTools(),
 			},
 		},
-		MaxIterations: 3,
+		MaxIterations: 5,
 	})
 	if err != nil {
 		return nil, err

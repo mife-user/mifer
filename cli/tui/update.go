@@ -60,8 +60,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// 根据 textarea 行数动态计算消息区高度
 		m.adjustInputHeight()
-		// viewport 宽度比终端窄 2 列（左右各留 1 列边距）
-		m.viewport.Width = m.width - 2
+		// viewport 宽度减去侧边栏空间：侧边栏 1/4 + 间隙 1 + 边框内边距 2
+		sidebarW := m.width / 4
+		if sidebarW < 20 {
+			sidebarW = 20
+		}
+		if sidebarW > 40 {
+			sidebarW = 40
+		}
+		m.viewport.Width = m.width - sidebarW - 1 - 2
+		if m.viewport.Width < 10 {
+			m.viewport.Width = 10
+		}
 		m.viewport.Height = m.contentHeight
 		// 将 resize 事件转发给子组件，让它们自行调整内部布局
 		_, _ = m.textarea.Update(msg)
@@ -136,13 +146,71 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	// ======================================================================
+	// 4a. 流式状态更新（agent切换、工具调用）
+	// ======================================================================
+	// startSSECmd 在后台 goroutine 中通过 SSE 回调分发状态变化到 streamCh。
+	// 每次收到状态更新后递归监听下一条消息，保持流式通道活跃。
+	case streamStatusMsg:
+		m.sidebar.update(msg)
+		if m.streamCh != nil {
+			return m, listenStreamCmd(m.streamCh)
+		}
+		return m, nil
+
+	// ======================================================================
+	// 4b. 流式内容片段
+	// ======================================================================
+	// 每收到一段 response 文本就追加到累积缓冲区。
+	case streamContentMsg:
+		if m.accBuf != nil {
+			m.accBuf.WriteString(msg.content)
+		}
+		if m.streamCh != nil {
+			return m, listenStreamCmd(m.streamCh)
+		}
+		return m, nil
+
+	// ======================================================================
+	// 4c. 流式传输完成 → 处理最终响应
+	// ======================================================================
+	// SSE 流结束（收到 [DONE] 或错误），进行 markdown 渲染并追加到消息列表。
+	case streamDoneMsg:
+		m.thinking = false
+		m.streamCh = nil
+
+		if msg.err != nil {
+			m.err = "错误: " + msg.err.Error()
+			m.accBuf = nil
+			m.sidebar = SidebarState{}
+			return m, nil
+		}
+		content := strings.TrimSpace(m.accBuf.String())
+		m.accBuf = nil
+		if content == "" {
+			m.err = "AI 返回了空内容"
+			return m, nil
+		}
+		rendered, err := m.mark.Render(content)
+		if err != nil {
+			m.messages = append(m.messages, message{
+				role:    "assistant",
+				content: content,
+			})
+			m.err = "Markdown 渲染失败，显示原始内容"
+			return m, nil
+		}
+		m.messages = append(m.messages, message{
+			role:     "assistant",
+			content:  content,
+			rendered: rendered,
+		})
+		m.needsAutoScroll = true
+		return m, nil
+
+	// ======================================================================
 	// 4. AI 响应到达（SSE 流累积完成）
 	// ======================================================================
-	// sendChatCmd 在后台通过 HTTP SSE 积累 AI 的流式响应，
-	// 积累完成后发出 chatRespMsg。此处进行 markdown 渲染并追加到消息列表。
-	//
-	// 关键：收到响应后立即设置 m.thinking = false，停止 spinner 动画。
-	// 下一个 spinner.TickMsg 到达时会发现 thinking 为 false，不再返回新 tick。
+	// 保留用于回退场景。
 	case chatRespMsg:
 		m.thinking = false
 		// 错误处理：将错误信息显示为红色错误文本，不追加消息
@@ -304,20 +372,26 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		// ---- 用户聊天消息 ----
 		// 1. 追加 user message 到消息列表
 		// 2. 设置 thinking=true → View() 开始渲染 spinner
-		// 3. 同时启动两个异步命令：
-		//    - sendChatCmd：HTTP SSE 请求，积累 AI 响应
+		// 3. 初始化流式传输状态（channel + 累积缓冲区 + 侧边栏重置）
+		// 4. 同时启动三个异步命令：
+		//    - startSSECmd：HTTP SSE 请求，逐事件推送到 channel
+		//    - listenStreamCmd：从 channel 读取事件送入 Update
 		//    - spinner.Tick：启动旋转动画（每 ~83ms 一帧）
-		// tea.Batch 同时执行两个命令，互不阻塞
 		m.messages = append(m.messages, message{
 			role:    "user",
 			content: input,
 		})
 		m.thinking = true
 		m.needsAutoScroll = true
+		// 初始化流式传输
+		m.accBuf = &strings.Builder{}
+		m.streamCh = make(chan tea.Msg, 32)
+		m.sidebar = SidebarState{}
 		var spCmd tea.Cmd
 		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 		return m, tea.Batch(
-			sendChatCmd(m.client, input),
+			startSSECmd(m.client, input, m.streamCh),
+			listenStreamCmd(m.streamCh),
 			spCmd,
 		)
 	}
@@ -490,37 +564,53 @@ func longestCommonPrefix(strs []string) string {
 }
 
 // ============================================================================
-// sendChatCmd — 异步聊天命令：SSE 流式请求
+// startSSECmd — 启动 SSE 流式请求，将事件写入通道
 // ============================================================================
 //
-// 这是关键异步命令。返回一个 tea.Cmd（闭包），由 Bubble Tea 框架在
-// 后台 goroutine 中执行，不阻塞 UI 线程。
+// 返回的 tea.Cmd 在后台 goroutine 中执行 SSE 请求。
+// 通过传入的 channel 逐条推送流式消息回 Bubble Tea 事件循环。
 //
-// 流程：
-//   1. 通过 client.Chat.Send 发起 SSE 连接
-//   2. 回调函数逐 chunk 接收服务端推送的事件
-//   3. "thinking" 事件 → 跳过（仅用于服务端状态通知）
-//    其他事件    → 将 chunk 文本追加到 buffer
-//   4. SSE 流结束后，buffer 的内容作为 chatRespMsg 发送回 Update()
+// 流式消息分发逻辑：
+//   agent_start/agent_end/tool_start/tool_end → streamStatusMsg（侧边栏更新）
+//   response → streamContentMsg（累积到 accBuf）
+//   thinking → 跳过
 //
-// 注意：
-//   - 这是"非流式实现"——虽然底层是 SSE 流，但所有 chunk 在内存中累积，
-//     全部接收完成后才一次性更新消息列表。这意味着用户要等 AI 完全响应
-//     后才能看到回复，而非逐字显示。
-//   - 未来可以改造为流式渲染：在每个 chunk 到达时发送增量消息，逐步构建
-//     AI 回复，实现打字机效果。
-func sendChatCmd(client *client.Client, content string) tea.Cmd {
+// goroutine 退出前关闭 channel，触发 listenStreamCmd 返回 nil 停止递归。
+func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.Cmd {
 	return func() tea.Msg {
-		var buf strings.Builder
-		ctx := context.Background()
-		err := client.Chat.Send(ctx, content, func(event, chunk string) error {
-			if event == "thinking" {
-				return nil // 跳过 thinking 事件
-			}
-			buf.WriteString(chunk)
-			return nil
-		})
-		return chatRespMsg{content: buf.String(), err: err}
+		go func() {
+			defer close(ch)
+			ctx := context.Background()
+			err := client.Chat.Send(ctx, content, func(event, chunk string) error {
+				switch event {
+				case "agent_start", "agent_end", "tool_start", "tool_end":
+					ch <- streamStatusMsg{event: event, name: chunk}
+				case "thinking":
+					// 跳过 thinking 事件
+				case "response":
+					ch <- streamContentMsg{content: chunk}
+				}
+				return nil
+			})
+			ch <- streamDoneMsg{err: err}
+		}()
+		return nil // nil msg 被 Bubble Tea 忽略
+	}
+}
+
+// listenStreamCmd 从通道读取下一条流式消息的递归命令
+//
+// Bubble Tea 的标准"持续监听"模式：
+//   收到消息 → 在 Update 中处理后返回 listenStreamCmd(ch)
+//   → 阻塞等待下一条消息 → 收到后再次进入 Update → 循环
+//   通道关闭时返回 nil（递归终止），后续不再有 stream 消息
+func listenStreamCmd(ch <-chan tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		msg, ok := <-ch
+		if !ok {
+			return nil // 通道关闭，递归终止
+		}
+		return msg
 	}
 }
 

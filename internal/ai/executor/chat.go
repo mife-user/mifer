@@ -8,6 +8,8 @@ import (
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"strings"
+
+	"github.com/cloudwego/eino/schema"
 )
 
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
@@ -17,6 +19,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 
 	lastMsg := &strings.Builder{}
 	eventCount := 0
+	var currentAgent string // 跟踪当前执行的Agent，用于检测切换
 	for {
 		event, ok := iter.Next()
 		if !ok {
@@ -28,11 +31,41 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			return event.Err
 		}
 
+		// 检测Agent切换：AgentName变化时发射agent_start/agent_end
+		if event.AgentName != "" && event.AgentName != currentAgent {
+			if currentAgent != "" {
+				if err := callback("agent_end", currentAgent); err != nil {
+					return err
+				}
+			}
+			currentAgent = event.AgentName
+			if err := callback("agent_start", currentAgent); err != nil {
+				return err
+			}
+		}
+
 		if event.Output == nil || event.Output.MessageOutput == nil {
 			continue
 		}
 
 		msgOutput := event.Output.MessageOutput
+
+		// 检测工具调用请求：Assistant消息中包含ToolCalls（仅非流式完整消息）
+		if !msgOutput.IsStreaming && msgOutput.Role == schema.Assistant &&
+			msgOutput.Message != nil && len(msgOutput.Message.ToolCalls) > 0 {
+			for _, tc := range msgOutput.Message.ToolCalls {
+				if err := callback("tool_start", tc.Function.Name); err != nil {
+					return err
+				}
+			}
+		}
+
+		// 检测工具执行结果
+		if !msgOutput.IsStreaming && msgOutput.Role == schema.Tool && msgOutput.ToolName != "" {
+			if err := callback("tool_end", msgOutput.ToolName); err != nil {
+				return err
+			}
+		}
 
 		if msgOutput.IsStreaming {
 			for {
@@ -70,10 +103,20 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			if message == nil {
 				continue
 			}
-			lastMsg.WriteString(message.Content)
-			if err := callback("response", message.Content); err != nil {
-				return err
+			// 仅纯文本Assistant消息（无ToolCalls）才发射response
+			if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 {
+				lastMsg.WriteString(message.Content)
+				if err := callback("response", message.Content); err != nil {
+					return err
+				}
 			}
+		}
+	}
+
+	// 发送最后一个agent的结束事件
+	if currentAgent != "" {
+		if err := callback("agent_end", currentAgent); err != nil {
+			return err
 		}
 	}
 

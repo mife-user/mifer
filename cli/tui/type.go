@@ -1,49 +1,122 @@
 package tui
 
+// ============================================================================
+// type.go — 类型定义
+// ============================================================================
+//
+// 本文件定义 TUI（终端用户界面）所需的所有数据结构，包括：
+//   1. Bubble Tea 消息类型 —— 在 Update 方法中通过类型断言分发
+//   2. Model 结构体 —— 持有全部 UI 状态，实现 bubbletea.Model 接口
+//
+// Bubble Tea 框架基于 Elm Architecture 设计，核心是三个方法：
+//   Init()   → 返回初始命令（如光标闪烁）
+//   Update() → 接收消息，更新状态，返回新命令
+//   View()   → 根据当前状态渲染 UI 字符串
+//
+// 消息流转过程：
+//   用户按键 → tea.KeyMsg → Model.Update()
+//   子组件 tick → spinner.TickMsg → Model.Update()
+//   HTTP 响应 → chatRespMsg/systemMsg → Model.Update()
+//   窗口变化 → tea.WindowSizeMsg → Model.Update()
+//   鼠标事件 → tea.MouseMsg → viewport.Update() (委托)
+
 import (
 	"mifer/cli/client"
 	"mifer/cli/render/lip"
 	"mifer/cli/render/mark"
 	"mifer/pkg/conf"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
 )
 
-// ---- Bubble Tea 消息类型 ----
+// ============================================================================
+// Bubble Tea 消息类型
+// ============================================================================
+// 所有消息类型都实现了 tea.Msg 接口（空接口），在 Update() 中通过类型断言分发。
 
-// message 对话消息（在消息列表中渲染的条目）
+// message 对话消息，表示消息列表中渲染的一条记录。
+//
+// role 决定 View() 中的渲染方式：
+//   "user"      → 绿色 "You: " 前缀，整行渲染
+//   "assistant" → 优先使用 glamour 预渲染的 ANSI 输出
+//   "system"    → 青色整行渲染，支持多行
 type message struct {
 	role     string // "user" | "assistant" | "system"
 	content  string // 原始文本内容
 	rendered string // assistant 消息预渲染的 glamour ANSI 输出（其他角色为空）
 }
 
-// chatRespMsg SSE 流式响应全部积累完成后发出
+// chatRespMsg 由 sendChatCmd 在 SSE 流全部积累完成后发出。
+//
+// 异步流程：
+//   handleEnter() → tea.Batch(sendChatCmd, spinner.Tick)
+//   sendChatCmd 在 goroutine 中通过 HTTP SSE 积累 AI 响应
+//   积累完成后返回 chatRespMsg 到 Update()
+//
+// 与 systemMsg 的区别：chatRespMsg 走 markdown 渲染 + 追加 assistant 消息，
+// systemMsg 直接追加原始内容为 system 消息。
 type chatRespMsg struct {
-	content string // 累积的完整 AI 响应
-	err     error  // 网络或解析错误
+	content string // 累积的完整 AI 响应文本
+	err     error  // 网络或解析错误（非 nil 时显示错误不追加消息）
 }
 
-// thinkingTickMsg 思考动画 500ms tick（自旋消息）
-type thinkingTickMsg struct{}
-
-// systemMsg 系统命令结果（/viewmemory、/excmem 等）
+// systemMsg 由系统命令（/viewmemory、/excmem）的异步处理器发出。
+//
+// 与 chatRespMsg 的区别：systemMsg 的内容直接显示，不经过 markdown 渲染。
+// err 非 nil 时显示错误信息，不追加消息到列表。
 type systemMsg struct {
 	content string
 	err     error
 }
 
-// ---- TUI 核心 Model ----
+// ============================================================================
+// Model — TUI 核心状态
+// ============================================================================
 
 // Model 持有 TUI 的全部状态，实现 bubbletea.Model 接口。
 //
-// 渲染管线（详见 view.go）：
+// 字段分组说明：
 //
-//	View() → 构建消息行（带样式）→ scrollOff 切片 → 滚动指示器 → 填充 → JoinVertical(消息区, 输入区)
+// 【依赖注入】— 由外部传入，TUI 生命周期内不变
+//   client   — HTTP API 客户端，用于发送聊天请求、加载记忆、切换会话
+//   config   — 全局配置（样式颜色、历史条数、命令列表等）
+//   mark     — glamour markdown 渲染器（dark 主题 + notty 降级）
+//   lip      — lipgloss 样式集合（前景色、分隔线等），在 View() 中使用
 //
-// 消息流（详见 update.go）：
+// 【消息与渲染】— 对话内容与视觉状态
+//   messages        — 对话消息列表（user / assistant / system）
+//   thinking        — 是否正在等待 AI 响应（控制 spinner 动画显示与驱动）
+//   spinner         — bubbles/spinner 组件，管理旋转动画帧
+//   err             — 当前错误文本（显示在消息区底部，非空时显示红色）
+//   needsAutoScroll — 新消息到达标记，在 View() 中触发 viewport.GotoBottom()
 //
-//	用户输入 (tea.KeyMsg enter) → sendChatCmd (SSE 积累) → chatRespMsg → mark.Render() → 追加 message
+// 【视口】— 可滚动的消息显示区
+//   viewport        — bubbles/viewport 组件，处理滚动、鼠标滚轮、内容裁剪
+//   width           — 终端宽度（列数）
+//   height          — 终端高度（行数）
+//   contentHeight   — 消息区域可用行数（终端高度 - textarea 高度 - 间距）
+//
+// 【输入】— 用户交互
+//   textarea        — bubbles/textarea 组件，多行文本输入
+//   history         — 历史输入记录的环形缓冲区（最新在末尾）
+//   historyIdx      — 当前历史导航位置（-1 表示不在历史中）
+//   pendingInput    — 进入历史导航前暂存的 textarea 内容，用于恢复
+//
+// 【Tab 补全】— 命令自动完成
+//   completions     — 当前匹配到的命令列表
+//   completionIdx   — 当前补全循环索引（-1 表示未激活补全）
+//   completionBase  — 触发补全时的输入前缀，用于检测用户是否修改了输入
+//
+// 完整消息流：
+//   用户输入 → KeyMsg(enter) → handleEnter()
+//     → 追加 user message → 设置 thinking=true → 启动 spinner
+//     → tea.Batch(sendChatCmd, spinner.Tick)
+//       sendChatCmd → HTTP SSE 积累 → chatRespMsg
+//       spinner.Tick → TickMsg → 帧推进 → 自旋
+//     → chatRespMsg → 设置 thinking=false → mark.Render() → 追加 assistant message
+//     → View() 渲染所有消息到 viewport → 显示到终端
 type Model struct {
 	// 依赖注入
 	client *client.Client // HTTP API 客户端（Chat / Memory / Excmem）
@@ -52,19 +125,19 @@ type Model struct {
 	lip    *lip.Style     // lipgloss 样式集合（前景色、分隔线等）
 
 	// 消息与渲染
-	messages    []message // 对话消息列表（user / assistant / system）
-	thinking    bool      // true 时 View 渲染旋转动画
-	spinnerIdx  int       // 旋转动画当前帧索引 0..9
-	err         string    // 当前错误文本（显示在消息区底部）
-	lastMsgLine int       // 上次渲染时的消息总行数，用于检测新消息触发自动滚底
+	messages        []message     // 对话消息列表（user / assistant / system）
+	thinking        bool          // true 时 View() 渲染 spinner 动画
+	spinner         spinner.Model // bubbles/spinner 旋转动画组件
+	err             string        // 当前错误文本（显示在消息区底部）
+	needsAutoScroll bool          // 新消息到达标记，触发 viewport.GotoBottom()
 
-	// 视口滚动
-	scrollOff int // 从顶部偏移的行数（0=底部，>0=向上滚动）
-	width     int // 终端宽度（由 WindowSizeMsg 更新）
-	height    int // 终端高度（由 WindowSizeMsg 更新）
+	// 视口
+	viewport viewport.Model // bubbles/viewport 滚动视口组件
+	width    int            // 终端宽度（由 WindowSizeMsg 更新）
+	height   int            // 终端高度（由 WindowSizeMsg 更新）
 
 	// 输入
-	textarea     textarea.Model // bubbles 文本输入组件
+	textarea     textarea.Model // bubbles/textarea 文本输入组件
 	history      []string       // 历史输入记录（环形，最新追加）
 	historyIdx   int            // 当前历史导航位置（-1 = 不在历史中）
 	pendingInput string         // 进入历史导航前暂存的 textarea 内容（用于恢复）

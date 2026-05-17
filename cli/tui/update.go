@@ -1,166 +1,232 @@
 package tui
 
+// ============================================================================
+// update.go — Bubble Tea 消息分发器与业务逻辑
+// ============================================================================
+//
+// Update() 是 Bubble Tea 的核心——所有事件都经过此方法分发处理。
+// 签名：(tea.Model, tea.Cmd) 表示返回新状态和一个可选的后继命令。
+//
+// 消息处理优先级（按 switch 顺序）：
+//   1. tea.WindowSizeMsg  → 终端尺寸变化，重新计算布局
+//   2. tea.MouseMsg       → 鼠标事件，委托给 viewport 处理滚轮
+//   3. tea.KeyMsg         → 键盘输入，Enter/↑/↓/Tab/Ctrl+C 等
+//   4. chatRespMsg        → AI 对话响应，markdown 渲染并追加到消息列表
+//   5. systemMsg          → 系统命令结果（/viewmemory、/excmem）
+//   6. spinner.TickMsg    → 旋转动画帧推进（bubbles/spinner 内部定时器）
+//
+// 按键处理策略：
+//   - ↑ 键仅在 textarea 第一行时触发历史导航，否则转发给 textarea
+//   - ↓ 键仅在 textarea 最后一行时触发历史导航，否则转发给 textarea
+//   - 这样用户可以正常在 textarea 内使用 ↑↓ 移动光标（非首/末行时）
+//
+// 异步命令模型（tea.Cmd）：
+//   tea.Cmd 是 func() tea.Msg 的别名。所有耗时操作（HTTP 请求、定时器）
+//   都封装为 Cmd 返回，由 Bubble Tea 框架在后台执行，完成后将结果通过
+//   tea.Msg 送回 Update()。这保证了 UI 始终响应，不会被阻塞。
+
 import (
 	"context"
 	"strings"
-	"time"
 
 	"mifer/cli/client"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // ============================================================================
-// Update — Bubble Tea 核心消息分发器
+// Update — 消息分发器
 // ============================================================================
-// 消息处理优先级：
-//   1. WindowSizeMsg  → 布局重算（缓存 contentHeight）
-//   2. MouseMsg       → 滚轮滚动
-//   3. KeyMsg         → 按键处理（见 key 处理分支）
-//   4. chatRespMsg    → AI 响应（markdown 渲染 + 追加消息）
-//   5. systemMsg      → 系统命令结果
-//   6. thinkingTickMsg → 旋转动画帧推进
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-		// ---- 窗口尺寸变化：重算布局 ----
-		case tea.WindowSizeMsg:
-			m.width = msg.Width
-			m.height = msg.Height
-			if m.height < m.config.Cli.Tui.MinHeight && m.height > 0 {
-				m.height = m.config.Cli.Tui.MinHeight
-			}
-			// textarea 宽度：终端宽度减去左右边距
-			if m.width > m.config.Cli.Tui.ContentMargin*2 {
-				m.textarea.SetWidth(m.width - m.config.Cli.Tui.ContentMargin*2)
-			}
+	// ======================================================================
+	// 1. 窗口尺寸变化 → 重新计算布局
+	// ======================================================================
+	// 终端尺寸变化时（包括首次启动），Bubble Tea 发送 WindowSizeMsg。
+	// 需要同步更新 textarea 和 viewport 的宽高。
+	// 注意：MinHeight 约束防止窗口过小时 UI 崩溃。
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		if m.height < m.config.Cli.Tui.MinHeight && m.height > 0 {
+			m.height = m.config.Cli.Tui.MinHeight
+		}
+		// textarea 宽度：终端宽度减去内容边距（左右各 ContentMargin）
+		if m.width > m.config.Cli.Tui.ContentMargin*2 {
+			m.textarea.SetWidth(m.width - m.config.Cli.Tui.ContentMargin*2)
+		}
+		// 根据 textarea 行数动态计算消息区高度
+		m.adjustInputHeight()
+		// viewport 宽度比终端窄 2 列（左右各留 1 列边距）
+		m.viewport.Width = m.width - 2
+		m.viewport.Height = m.contentHeight
+		// 将 resize 事件转发给子组件，让它们自行调整内部布局
+		_, _ = m.textarea.Update(msg)
+		_, _ = m.viewport.Update(msg)
+		return m, nil
+
+	// ======================================================================
+	// 2. 鼠标事件 → 委托给 viewport
+	// ======================================================================
+	// viewport.Update() 内部处理滚轮事件（MouseWheelUp/Down），
+	// 每次滚动 MouseWheelDelta 行（此处配置为 1 行）。
+	// 不需要额外判断——viewport 自己知道是否已到顶部/底部边界。
+	case tea.MouseMsg:
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
+
+	// ======================================================================
+	// 3. 键盘输入 → 按键分发
+	// ======================================================================
+	case tea.KeyMsg:
+		switch msg.String() {
+
+		// ---- 退出：Ctrl+C 或 Esc ----
+		case "ctrl+c", "esc":
+			return m, tea.Quit // tea.Quit 是特殊命令，告诉框架停止事件循环
+
+		// ---- Ctrl+N：插入换行符（Windows 终端不支持 Ctrl/Alt+Enter） ----
+		case "ctrl+n":
+			m.textarea.InsertString("\n")
 			m.adjustInputHeight()
-			// 将 resize 转发给 textarea
-			_, _ = m.textarea.Update(msg)
 			return m, nil
 
-		// ---- 鼠标滚轮：上下滚动视口 ----
-		case tea.MouseMsg:
-			switch msg.Button {
-			case tea.MouseButtonWheelUp:
-				if m.scrollOff > 0 {
-					m.scrollOff--
-				}
-			case tea.MouseButtonWheelDown:
-				m.scrollOff++
+		// ---- Enter：提交输入（进入核心业务逻辑 handleEnter） ----
+		case "enter":
+			return m.handleEnter()
+
+		// ---- ↑ 键：首行时触发历史导航，否则光标上移 ----
+		// 这是为了实现"在 textarea 内可以正常移动光标，到边界时进入历史"
+		case "up":
+			if m.textarea.Line() == 0 {
+				return m.handleHistoryUp()
 			}
+			m.textarea, _ = m.textarea.Update(msg)
+			m.adjustInputHeight()
 			return m, nil
 
-		// ---- 键盘输入 ----
-		case tea.KeyMsg:
-			switch msg.String() {
-
-			// 退出
-			case "ctrl+c", "esc":
-				return m, tea.Quit
-
-			// Ctrl+N：在 textarea 中插入换行符（Windows 终端不支持 Ctrl/Shift/Alt+Enter）
-			case "ctrl+n":
-				m.textarea.InsertString("\n")
-				m.adjustInputHeight()
-				return m, nil
-
-			// Enter：提交输入
-			case "enter":
-				return m.handleEnter()
-
-			// ↑ 键：历史导航（上一条）
-			case "up":
-				if m.textarea.Line() == 0 {
-					return m.handleHistoryUp()
-				}
-				m.textarea, _ = m.textarea.Update(msg)
-				m.adjustInputHeight()
-				return m, nil
-
-			// ↓ 键：仅在末行时触发历史导航（下一条）
-			case "down":
-				if m.textarea.Line() == m.textarea.LineCount()-1 {
-					return m.handleHistoryDown()
-				}
-				m.textarea, _ = m.textarea.Update(msg)
-				m.adjustInputHeight()
-				return m, nil
-
-			// Tab：命令补全
-			case "tab":
-				return m.handleTabComplete()
-
-			// 其他按键：转发给 textarea 处理（同时重置补全状态）
-			default:
-				var cmd tea.Cmd
-				m.textarea, cmd = m.textarea.Update(msg)
-				m.adjustInputHeight()
-				// 用户手动修改输入后，重置补全状态
-				if m.completionIdx != -1 && m.textarea.Value() != m.completionBase && !strings.HasPrefix(m.textarea.Value(), m.completionBase) {
-					m.resetCompletion()
-				}
-				return m, cmd
+		// ---- ↓ 键：末行时触发历史导航，否则光标下移 ----
+		case "down":
+			if m.textarea.Line() == m.textarea.LineCount()-1 {
+				return m.handleHistoryDown()
 			}
-
-		// ---- AI 响应到达（SSE 流累积完成） ----
-		case chatRespMsg:
-			m.thinking = false
-			if msg.err != nil {
-				m.err = "错误: " + msg.err.Error()
-				return m, nil
-			}
-			content := strings.TrimSpace(msg.content)
-			if content == "" {
-				m.err = "AI 返回了空内容"
-				return m, nil
-			}
-			// 用 glamour 渲染 AI 响应的 markdown
-			rendered, err := m.mark.Render(content)
-			if err != nil {
-				m.messages = append(m.messages, message{
-					role:    "assistant",
-					content: content,
-				})
-				m.err = "Markdown 渲染失败，显示原始内容"
-				return m, nil
-			}
-			m.messages = append(m.messages, message{
-				role:     "assistant",
-				content:  content,
-				rendered: rendered,
-			})
-			m.autoScrollToBottom()
+			m.textarea, _ = m.textarea.Update(msg)
+			m.adjustInputHeight()
 			return m, nil
 
-		// ---- 系统命令结果 ----
-		case systemMsg:
-			if msg.err != nil {
-				m.err = "错误: " + msg.err.Error()
-				return m, nil
-			}
-			m.messages = append(m.messages, message{
-				role:    "system",
-				content: msg.content,
-			})
-			m.autoScrollToBottom()
-			return m, nil
+		// ---- Tab：命令补全 ----
+		case "tab":
+			return m.handleTabComplete()
 
-		// ---- 思考动画 tick ----
-		case thinkingTickMsg:
-			if m.thinking {
-				m.spinnerIdx = (m.spinnerIdx + 1) % len(spinnerFrames)
-				return m, m.thinkingTickCmd()
+		// ---- 其他按键：转发给 textarea 处理 ----
+		// textarea 处理所有可见字符、退格、删除、Home/End 等
+		default:
+			var cmd tea.Cmd
+			m.textarea, cmd = m.textarea.Update(msg)
+			m.adjustInputHeight()
+			// 用户手动修改输入后，重置补全状态（补全上下文不再有效）
+			if m.completionIdx != -1 && m.textarea.Value() != m.completionBase && !strings.HasPrefix(m.textarea.Value(), m.completionBase) {
+				m.resetCompletion()
 			}
+			return m, cmd
+		}
+
+	// ======================================================================
+	// 4. AI 响应到达（SSE 流累积完成）
+	// ======================================================================
+	// sendChatCmd 在后台通过 HTTP SSE 积累 AI 的流式响应，
+	// 积累完成后发出 chatRespMsg。此处进行 markdown 渲染并追加到消息列表。
+	//
+	// 关键：收到响应后立即设置 m.thinking = false，停止 spinner 动画。
+	// 下一个 spinner.TickMsg 到达时会发现 thinking 为 false，不再返回新 tick。
+	case chatRespMsg:
+		m.thinking = false
+		// 错误处理：将错误信息显示为红色错误文本，不追加消息
+		if msg.err != nil {
+			m.err = "错误: " + msg.err.Error()
 			return m, nil
 		}
+		content := strings.TrimSpace(msg.content)
+		if content == "" {
+			m.err = "AI 返回了空内容"
+			return m, nil
+		}
+		// glamour 将 markdown 渲染为带 ANSI 颜色码的终端字符串
+		rendered, err := m.mark.Render(content)
+		if err != nil {
+			// 渲染失败时仍追加消息，但显示原始内容
+			m.messages = append(m.messages, message{
+				role:    "assistant",
+				content: content,
+			})
+			m.err = "Markdown 渲染失败，显示原始内容"
+			return m, nil
+		}
+		// 正常追加 AI 响应（含预渲染的 ANSI 输出）
+		m.messages = append(m.messages, message{
+			role:     "assistant",
+			content:  content,
+			rendered: rendered,
+		})
+		// 标记需要自动滚底，下一次 View() 中调用 viewport.GotoBottom()
+		m.needsAutoScroll = true
+		return m, nil
+
+	// ======================================================================
+	// 5. 系统命令结果（/viewmemory、/excmem）
+	// ======================================================================
+	// loadMemoryCmd / excmemCmd 异步完成后发出 systemMsg。
+	// 与 chatRespMsg 的区别：内容不经过 markdown 渲染，直接以原始文本显示。
+	case systemMsg:
+		if msg.err != nil {
+			m.err = "错误: " + msg.err.Error()
+			return m, nil
+		}
+		m.messages = append(m.messages, message{
+			role:    "system",
+			content: msg.content,
+		})
+		m.needsAutoScroll = true
+		return m, nil
+
+	// ======================================================================
+	// 6. 旋转动画帧推进（spinner 内部 tick）
+	// ======================================================================
+	// bubbles/spinner 每隔 ~83ms 发出一次 TickMsg。
+	// 仅当 m.thinking == true 时才推进动画帧（返回下一个 tick 命令）。
+	// 当 m.thinking == false 时返回 nil，spinner 动画自然停止。
+	//
+	// 为什么不用额外的"停止"机制？
+	//   spinner 的 Update 方法总是返回下一个 tick 命令。
+	//   如果我们在 thinking=false 时不返回这个命令，动画就停止了。
+	//   这比之前手动维护的 thinkingTickCmd 更简洁。
+	case spinner.TickMsg:
+		if m.thinking {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd // cmd 是下一个 spinner.Tick() 命令，保持动画继续
+		}
+		return m, nil // thinking 为 false，返回 nil 停止动画
+	}
 
 	return m, nil
 }
 
-// adjustInputHeight 根据内容行数动态调整输入框高度，同步重算消息区可用行数。
-// 受 textarea.MaxHeight 约束，上限 5 行。
+// ============================================================================
+// adjustInputHeight — 动态调整输入区高度
+// ============================================================================
+// 每次 textarea 行数变化时调用（输入内容增多、插入换行等）。
+//
+// 计算逻辑：
+//   contentHeight = 终端高度 - textarea 实际高度 - 1（间距）
+//   textarea 高度由行数决定，受 MaxHeight=5 约束
+//
+// 例如终端 40 行，textarea 3 行：
+//   contentHeight = 40 - 3 - 1 = 36 行用于消息显示
 func (m *Model) adjustInputHeight() {
 	lines := max(m.textarea.LineCount(), 1)
 	m.textarea.SetHeight(lines)
@@ -168,99 +234,139 @@ func (m *Model) adjustInputHeight() {
 }
 
 // ============================================================================
-// 按键处理
+// handleEnter — Enter 键处理：核心用户交互入口
 // ============================================================================
-
-// handleEnter 处理 Enter 提交：读取 textarea 值 → 识别命令 → 发送聊天
+// 按输入内容分发到不同处理逻辑：
+//
+//   空输入      → 无操作
+//   exit/quit   → 返回 tea.Quit 退出程序
+//   help        → 追加系统帮助消息
+//   /viewmemory → 异步加载对话记忆并显示
+//   /excmem     → 异步切换记忆会话
+//   其他        → 作为聊天消息发送给 AI
+//
+// 每次提交后：
+//   1. 清空 textarea
+//   2. 重置 textarea 高度为 1 行
+//   3. 记录到输入历史（去重）
+//   4. 重置补全状态
 func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	input := strings.TrimSpace(m.textarea.Value())
 	if input == "" {
 		return m, nil
 	}
+
+	// ---- 重置输入区域 ----
 	m.textarea.Reset()
-	m.textarea.SetHeight(1)               // 提交后重置为 1 行
-	m.contentHeight = max(m.height-1-1, 1) // 恢复消息区高度
+	m.textarea.SetHeight(1)
+	m.contentHeight = max(m.height-1-1, 1)
+	m.viewport.Height = m.contentHeight // 同步 viewport 高度
 	m.err = ""
 
-	// 记录到历史（去重：与最近一条相同则不重复追加）
+	// ---- 记录到输入历史（去重） ----
+	// 与最近一条相同则不重复追加，避免连续相同的输入占满历史
 	if len(m.history) == 0 || m.history[len(m.history)-1] != input {
 		if len(m.history) >= m.config.Cli.Tui.MaxHistory {
 			m.history = m.history[1:] // 环形淘汰最早记录
 		}
 		m.history = append(m.history, input)
 	}
-	m.historyIdx = -1
-	m.pendingInput = ""
-	m.resetCompletion()
+	m.historyIdx = -1      // 退出历史导航
+	m.pendingInput = ""    // 清空暂存
+	m.resetCompletion()    // 重置补全状态
 
+	// ---- 命令分发 ----
 	switch {
 	case input == "exit" || input == "quit":
 		return m, tea.Quit
 
 	case input == "help":
+		// 帮助信息作为 system 消息追加，不发送到后端
 		m.messages = append(m.messages, message{
 			role:    "system",
 			content: "命令: ↑↓ 历史输入 | Ctrl+N 换行 | /viewmemory 查看记忆 | /excmem <id> 切换会话 | exit 退出 | help 帮助",
 		})
-		m.autoScrollToBottom()
+		m.needsAutoScroll = true
 		return m, nil
 
 	case strings.HasPrefix(input, "/viewmemory"):
+		// 异步加载记忆：loadMemoryCmd 通过 HTTP GET 获取指定会话的对话历史
+		// 完成后发出 systemMsg，在 Update() 中追加为 system 消息
 		id := strings.TrimSpace(strings.TrimPrefix(input, "/viewmemory"))
 		return m, loadMemoryCmd(m.client, id)
 
 	case strings.HasPrefix(input, "/excmem"):
+		// 异步切换会话：excmemCmd 通过 HTTP POST 切换到指定记忆会话
 		id := strings.TrimSpace(strings.TrimPrefix(input, "/excmem"))
 		return m, excmemCmd(m.client, id)
 
 	default:
-		// 用户聊天消息
+		// ---- 用户聊天消息 ----
+		// 1. 追加 user message 到消息列表
+		// 2. 设置 thinking=true → View() 开始渲染 spinner
+		// 3. 同时启动两个异步命令：
+		//    - sendChatCmd：HTTP SSE 请求，积累 AI 响应
+		//    - spinner.Tick：启动旋转动画（每 ~83ms 一帧）
+		// tea.Batch 同时执行两个命令，互不阻塞
 		m.messages = append(m.messages, message{
 			role:    "user",
 			content: input,
 		})
 		m.thinking = true
-		m.autoScrollToBottom()
+		m.needsAutoScroll = true
+		var spCmd tea.Cmd
+		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 		return m, tea.Batch(
 			sendChatCmd(m.client, input),
-			m.thinkingTickCmd(),
+			spCmd,
 		)
 	}
 }
 
-// handleHistoryUp 处理 ↑ 键：浏览上一条历史输入
+// ============================================================================
+// handleHistoryUp / handleHistoryDown — 历史输入导航
+// ============================================================================
+//
+// 交互设计：
+//   首次按 ↑（在首行）→ 暂存当前 textarea 内容到 pendingInput
+//                    → 显示最近一条历史记录
+//   继续按 ↑        → 显示更早的历史记录
+//   按 ↓             → 显示更新的历史记录
+//   到达最新后按 ↓   → 恢复 pendingInput（退出历史导航前的内容）
+//
+// 为什么需要 pendingInput？
+//   用户在输入框中写了一半的内容，按 ↑ 查看历史，再按 ↓ 回到最新时，
+//   应该恢复之前未发送的内容，而不是显示空输入框。
+
 func (m *Model) handleHistoryUp() (tea.Model, tea.Cmd) {
 	if len(m.history) == 0 {
 		return m, nil
 	}
-	// 首次进入历史导航，暂存当前 textarea 内容
+	// 首次进入历史导航：暂存当前 textarea 内容
 	if m.historyIdx == -1 {
 		m.pendingInput = m.textarea.Value()
-		m.historyIdx = len(m.history) - 1
+		m.historyIdx = len(m.history) - 1 // 从最新一条开始
 	} else if m.historyIdx > 0 {
-		m.historyIdx--
+		m.historyIdx-- // 向更早的历史移动
 	}
-	// 更新 textarea 显示
 	m.textarea.Reset()
 	m.textarea.InsertString(m.history[m.historyIdx])
-	// 光标移到末尾
 	m.textarea.CursorEnd()
 	m.adjustInputHeight()
 	return m, nil
 }
 
-// handleHistoryDown 处理 ↓ 键：浏览下一条历史输入
 func (m *Model) handleHistoryDown() (tea.Model, tea.Cmd) {
 	if m.historyIdx == -1 {
-		return m, nil
+		return m, nil // 不在历史导航中，无操作
 	}
 	if m.historyIdx < len(m.history)-1 {
-		m.historyIdx++
+		m.historyIdx++ // 向更新的历史移动
 		m.textarea.Reset()
 		m.textarea.InsertString(m.history[m.historyIdx])
 		m.textarea.CursorEnd()
 	} else {
-		// 已到最新，恢复暂存内容
+		// 已到达最新一条历史 → 恢复暂存的用户输入
 		m.historyIdx = -1
 		m.textarea.Reset()
 		m.textarea.InsertString(m.pendingInput)
@@ -272,28 +378,34 @@ func (m *Model) handleHistoryDown() (tea.Model, tea.Cmd) {
 }
 
 // ============================================================================
-// Tab 补全
+// handleTabComplete — Tab 命令补全
 // ============================================================================
-
-// handleTabComplete 处理 Tab 键：补全内置命令。
-// 补全规则：
-//   - 0 个匹配 → 无操作
-//   - 1 个匹配 → 直接补全到该命令
-//   - N 个匹配 → 首次补全最长公共前缀，再次 Tab 循环切换
+//
+// 补全策略（三级）：
+//   0 个匹配    → 无操作
+//   1 个匹配    → 直接替换 textarea 内容为该命令 + 空格
+//   N 个匹配    → 首次 Tab：补全到最长公共前缀
+//               → 再次 Tab：循环切换到下一个匹配
+//
+// 示例（假设可补全命令有 /viewmemory, /excmem, exit, help）：
+//   输入 /vi [Tab]    → 唯一匹配 /viewmemory → 直接补全
+//   输入 /v [Tab]     → 匹配 /viewmemory → 直接补全
+//   输入 e [Tab]      → 匹配 exit → 补全到 "exit "
+//   输入 / [Tab]      → 匹配 /viewmemory, /excmem → 无公共前缀（/ 之后不同）
 func (m *Model) handleTabComplete() (tea.Model, tea.Cmd) {
 	input := m.textarea.Value()
 	trimmed := strings.TrimSpace(input)
 
-	// 已激活补全循环且用户未修改前缀 → 切换到下一个匹配
+	// 补全循环已激活且用户未修改输入 → 切换到下一个匹配
 	if m.completionIdx >= 0 && trimmed == m.completionBase {
 		return m.cycleCompletion()
 	}
 
-	// 否则：计算新的匹配列表
+	// 从头计算匹配列表
 	matches := m.findMatches(trimmed)
 	switch len(matches) {
 	case 0:
-		return m, nil
+		return m, nil // 无匹配，不操作
 	case 1:
 		// 唯一匹配 → 直接替换
 		m.textarea.Reset()
@@ -304,13 +416,15 @@ func (m *Model) handleTabComplete() (tea.Model, tea.Cmd) {
 		return m, nil
 	default:
 		// 多个匹配 → 补全到最长公共前缀
+		// 例如 matches = ["/viewmemory", "/viewmodel"]
+		// 最长公共前缀 = "/viewmem"，输入 "/vi" → 补全到 "/viewmem"
 		common := longestCommonPrefix(matches)
 		if common != trimmed {
 			m.textarea.Reset()
 			m.textarea.InsertString(common)
 			m.textarea.CursorEnd()
 		}
-		// 记录补全状态，等待下次 Tab 循环
+		// 记录补全状态，等待下次 Tab 循环切换
 		m.completions = matches
 		m.completionIdx = -1
 		m.completionBase = common
@@ -332,7 +446,7 @@ func (m *Model) cycleCompletion() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// findMatches 返回以 prefix 开头的可补全命令列表
+// findMatches 返回以 prefix 开头的可补全命令列表（大小写不敏感）
 func (m *Model) findMatches(prefix string) []string {
 	if prefix == "" {
 		return nil
@@ -355,6 +469,10 @@ func (m *Model) resetCompletion() {
 }
 
 // longestCommonPrefix 返回字符串切片的最长公共前缀
+//
+// 算法：取第一个字符串为初始前缀，逐个与后续字符串比较，
+// 不断缩短前缀直到所有字符串都以它开头。
+// 示例：["hello", "help", "helicopter"] → "hel"
 func longestCommonPrefix(strs []string) string {
 	if len(strs) == 0 {
 		return ""
@@ -372,48 +490,25 @@ func longestCommonPrefix(strs []string) string {
 }
 
 // ============================================================================
-// 滚动控制
+// sendChatCmd — 异步聊天命令：SSE 流式请求
 // ============================================================================
-
-// autoScrollToBottom 新消息到达时自动滚到底部
-// 计算消息总行数，如果新增则更新 scrollOff 指向底部
-func (m *Model) autoScrollToBottom() {
-	// 预估消息总行数（粗略计算，View 中会精确控制）
-	totalLines := m.countMessageLines()
-	if totalLines != m.lastMsgLine {
-		m.lastMsgLine = totalLines
-		// 将 scrollOff 设到最大值，View 会自动 clamp
-		m.scrollOff = totalLines
-	}
-}
-
-// countMessageLines 统计消息渲染总行数
-// 每条消息按 "\n" 拆分后计数，外加分隔线
-func (m *Model) countMessageLines() int {
-	count := 0
-	for _, msg := range m.messages {
-		content := msg.rendered
-		if content == "" {
-			content = msg.content
-		}
-		count += len(strings.Split(content, "\n")) // 消息内容行数
-		count++                                      // 分隔线
-	}
-	if m.thinking {
-		count++ // 旋转动画行
-	}
-	if m.err != "" {
-		count++
-	}
-	return count
-}
-
-// ============================================================================
-// 异步命令
-// ============================================================================
-
-// sendChatCmd 发送聊天请求，积累所有 SSE chunk 后返回完整响应
-// 非流式实现：所有 chunk 在内存中累积，完成后一次性发出 chatRespMsg
+//
+// 这是关键异步命令。返回一个 tea.Cmd（闭包），由 Bubble Tea 框架在
+// 后台 goroutine 中执行，不阻塞 UI 线程。
+//
+// 流程：
+//   1. 通过 client.Chat.Send 发起 SSE 连接
+//   2. 回调函数逐 chunk 接收服务端推送的事件
+//   3. "thinking" 事件 → 跳过（仅用于服务端状态通知）
+//    其他事件    → 将 chunk 文本追加到 buffer
+//   4. SSE 流结束后，buffer 的内容作为 chatRespMsg 发送回 Update()
+//
+// 注意：
+//   - 这是"非流式实现"——虽然底层是 SSE 流，但所有 chunk 在内存中累积，
+//     全部接收完成后才一次性更新消息列表。这意味着用户要等 AI 完全响应
+//     后才能看到回复，而非逐字显示。
+//   - 未来可以改造为流式渲染：在每个 chunk 到达时发送增量消息，逐步构建
+//     AI 回复，实现打字机效果。
 func sendChatCmd(client *client.Client, content string) tea.Cmd {
 	return func() tea.Msg {
 		var buf strings.Builder
@@ -429,19 +524,11 @@ func sendChatCmd(client *client.Client, content string) tea.Cmd {
 	}
 }
 
-// thinkingTickCmd 思考动画 ticker：按配置的间隔发出 thinkingTickMsg
-// 在 tea.Batch 中启动，通过自旋保持动画运行直到 m.thinking = false
-func (m *Model) thinkingTickCmd() tea.Cmd {
-	interval := time.Duration(m.config.Cli.Tui.ThinkingTickMs) * time.Millisecond
-	tickCmd := tea.Tick(interval, func(_ time.Time) tea.Msg {
-		return thinkingTickMsg{}
-	})
-	return func() tea.Msg {
-		return tickCmd()
-	}
-}
-
 // loadMemoryCmd 异步加载指定会话的对话记忆
+//
+// 通过 HTTP GET /api/memory/:id 获取 JSONL 格式的对话历史。
+// id 为空时默认加载 "default" 会话。
+// 响应内容直接作为 systemMsg 显示，包含分隔线装饰。
 func loadMemoryCmd(client *client.Client, id string) tea.Cmd {
 	return func() tea.Msg {
 		if id == "" {
@@ -459,6 +546,9 @@ func loadMemoryCmd(client *client.Client, id string) tea.Cmd {
 }
 
 // excmemCmd 异步切换记忆会话
+//
+// 通过 HTTP POST /api/memory/exchange 切换到指定的记忆会话。
+// 切换后后续对话将读写该会话的记忆文件。
 func excmemCmd(client *client.Client, id string) tea.Cmd {
 	return func() tea.Msg {
 		if err := client.Excmem.Exchange(id); err != nil {

@@ -12,7 +12,12 @@
       "Bash(Select-Object -First 20)",
       "Bash(Get-Content \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\\\\cmd\\\\main\\\\main.go\" -Raw)",
       "Bash(Select-String \"runCLI\" -Context 0,3)",
-      "Bash(go version *)"
+      "Bash(go version *)",
+      "Bash(go run *)",
+      "Bash(Get-Content \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\\\\cli\\\\tui\\\\update.go\")",
+      "Bash(Select-Object -Index 226)",
+      "Bash(echo \"GOPATH: $\\(go env GOPATH\\)\")",
+      "Bash(Select-Object -First 80)"
     ]
   }
 }

@@ -46,7 +46,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				}
 
 				if chunk.ReasoningContent != "" {
-					if err := callback("thinking", chunk.ReasoningContent); err != nil {          
+					if err := callback("thinking", chunk.ReasoningContent); err != nil {
 						return err
 					}
 					_, err = lastMsg.WriteString(chunk.Content)

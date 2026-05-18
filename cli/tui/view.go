@@ -7,13 +7,17 @@ package tui
 // View() 在每次 Update() 返回后被 Bubble Tea 框架调用，生成终端 UI 字符串。
 // 调用频率：每次事件处理后都会调用（按键、tick、窗口变化等）。
 //
-// 渲染管线（6 步流水线）：
+// 渲染管线（7 步流水线）：
 //
-//   ① 门控检查
+//   ① 全屏记忆查看模式
+//     - showingMemoryView == true → 独立 viewport + 标题 "对话记忆 — Esc 返回"
+//     - 不显示侧边栏、textarea
+//
+//   ② 门控检查
 //     - width == 0 → 程序尚未就绪，显示 "正在启动..."
 //     - contentHeight < 1 → 窗口太小，提示最小高度
 //
-//   ② 构建消息行列表
+//   ③ 构建消息行列表
 //     - 遍历 m.messages，按 role 分发渲染
 //       · user      → "You: " + 内容，绿色粗体
 //       · assistant → glamour 预渲染的 ANSI 字符串（拆行）
@@ -47,7 +51,16 @@ import (
 
 func (m *Model) View() string {
 	// ======================================================================
-	// 第 ① 步：门控检查
+	// 第 ① 步：全屏记忆查看模式 — 独立 viewport，无其他 UI 元素
+	// ======================================================================
+	if m.showingMemoryView {
+		title := m.lip.SidebarActive.Render(" 对话记忆 — Esc 返回")
+		sep := m.lip.SidebarSeparator.Render(strings.Repeat("─", m.width-4))
+		return lipgloss.JoinVertical(lipgloss.Top, title, sep, m.memoryViewport.View())
+	}
+
+	// ======================================================================
+	// 第 ② 步：门控检查
 	// ======================================================================
 	if m.width == 0 {
 		return "正在启动..."
@@ -157,6 +170,10 @@ func (m *Model) renderSidebar(width int) string {
 			spinner = m.spinner.View() + " "
 		}
 		lines = append(lines, m.lip.SidebarActive.Render("  "+spinner+m.sidebar.CurrentTool))
+		// 活跃工具出错时显示错误消息
+		if m.sidebar.ToolError != "" {
+			lines = append(lines, m.lip.Err.Render("  E: "+m.sidebar.ToolError))
+		}
 	}
 
 	// 空行分隔活跃项与已完成轨迹
@@ -182,9 +199,17 @@ func (m *Model) renderSidebar(width int) string {
 		lines = append(lines, m.lip.SidebarCompleted.Render(t))
 	}
 
-	// 底部占位：预留未来功能空间（代码预览等）
+	// 底部：记忆选择列表或占位
 	lines = append(lines, "")
-	lines = append(lines, m.lip.SidebarPlaceholder.Render("(代码预览)"))
+	if m.selectingMem {
+		lines = append(lines, m.lip.SidebarActive.Render(" 选择记忆"))
+		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
+		// 设置 list 宽度（减去容器内边距和边框）
+		m.memoryList.SetWidth(width - 4)
+		lines = append(lines, m.memoryList.View())
+	} else {
+		lines = append(lines, m.lip.SidebarPlaceholder.Render("(代码预览)"))
+	}
 
 	content := strings.Join(lines, "\n")
 	return content

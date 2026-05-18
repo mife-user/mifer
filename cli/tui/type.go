@@ -27,6 +27,7 @@ import (
 	"mifer/pkg/conf"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -66,10 +67,11 @@ type chatRespMsg struct {
 	err     error  // 网络或解析错误（非 nil 时显示错误不追加消息）
 }
 
-// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用）
+// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用、工具错误）
 type streamStatusMsg struct {
-	event string // "agent_start" | "agent_end" | "tool_start" | "tool_end"
-	name  string // agent名称或工具名称
+	event  string // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error"
+	name   string // agent名称或工具名称
+	errMsg string // tool_error 时携带的错误消息
 }
 
 // streamContentMsg AI流式响应中的内容片段
@@ -82,47 +84,21 @@ type streamDoneMsg struct {
 	err error
 }
 
-// SidebarState 右侧边栏状态，跟踪当前agent/工具执行情况
-type SidebarState struct {
-	CurrentAgent string   // 当前正在执行的Agent名称
-	CurrentTool  string   // 当前正在调用的工具名称
-	AgentTrail   []string // 已完成Agent的轨迹
-	ToolTrail    []string // 已完成工具的轨迹
-}
 
-// update 根据流式状态消息更新侧边栏状态
-func (s *SidebarState) update(msg streamStatusMsg) {
-	switch msg.event {
-	case "agent_start":
-		if s.CurrentAgent != "" {
-			s.AgentTrail = append(s.AgentTrail, s.CurrentAgent)
-		}
-		s.CurrentAgent = msg.name
-		s.CurrentTool = "" // 新agent开始时重置当前工具
-	case "agent_end":
-		if s.CurrentAgent == msg.name {
-			s.AgentTrail = append(s.AgentTrail, s.CurrentAgent)
-			s.CurrentAgent = ""
-		}
-	case "tool_start":
-		if s.CurrentTool != "" {
-			s.ToolTrail = append(s.ToolTrail, "  "+s.CurrentTool)
-		}
-		s.CurrentTool = msg.name
-	case "tool_end":
-		if s.CurrentTool == msg.name {
-			s.ToolTrail = append(s.ToolTrail, "  "+s.CurrentTool)
-			s.CurrentTool = ""
-		}
-	}
-}
-
-// systemMsg 由系统命令（/viewmemory、/excmem）的异步处理器发出。
+// memoryListMsg 异步获取记忆列表的结果，由 listMemoriesCmd 发出。
 //
-// 与 chatRespMsg 的区别：systemMsg 的内容直接显示，不经过 markdown 渲染。
-// err 非 nil 时显示错误信息，不追加消息到列表。
-type systemMsg struct {
-	content string
+// 携带触发上下文（cmd 和 argID），用于判断是展示选择列表还是直接执行命令。
+type memoryListMsg struct {
+	current string   // 当前记忆ID
+	ids     []string // 所有可用记忆ID列表
+	err     error    // 网络或解析错误
+	cmd     string   // 触发命令："/viewmemory" 或 "/excmem"
+	argID   string   // 命令后跟的ID（空表示无ID，需进入选择模式）
+}
+
+// memoryViewMsg /viewmemory 加载完成，进入全屏记忆查看模式
+type memoryViewMsg struct {
+	content string // 格式化的对话记忆文本
 	err     error
 }
 
@@ -217,4 +193,14 @@ type Model struct {
 	// 流式传输
 	streamCh chan tea.Msg     // 流式消息通道（非nil时表示正在流式传输中）
 	accBuf   *strings.Builder // 累积AI响应内容的缓冲区
+
+	// 记忆选择模式
+	selectingMem  bool       // 是否正在显示记忆选择列表
+	pendingMemCmd string     // 等待执行的命令（"/viewmemory" 或 "/excmem"）
+	memoryList    list.Model // bubbles/list 记忆选择组件
+
+	// 全屏记忆查看模式
+	showingMemoryView bool           // 是否处于全屏记忆查看模式
+	memoryViewContent string         // 记忆内容（原始文本）
+	memoryViewport    viewport.Model // 独立的 viewport 用于全屏记忆查看
 }

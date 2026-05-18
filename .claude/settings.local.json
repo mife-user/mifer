@@ -21,7 +21,10 @@
       "Bash(ls \"$\\(go env GOMODCACHE \\)/github.com/cloudwego/\")",
       "PowerShell(go doc *)",
       "Bash(go list *)",
-      "Bash(dir *)"
+      "Bash(dir *)",
+      "Bash(Select-Object -First 30)",
+      "PowerShell(go list *)",
+      "Bash(go mod *)"
     ]
   }
 }

@@ -21,6 +21,32 @@ type MemCfg struct {
 	Id      string
 }
 
+// GetCurrentID 返回当前记忆会话ID
+func (m *Memory) GetCurrentID() string {
+	return m.Cfg.Id
+}
+
+// SwitchSession 切换到新的记忆会话：先持久化当前会话的未保存消息，再从新会话的JSONL文件加载消息
+func (m *Memory) SwitchSession(newID string) error {
+	// 先持久化当前会话（Save 内部加锁）
+	if err := m.Save(); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Cfg.Id = newID
+	msgs, err := load(&m.Cfg)
+	if err != nil {
+		return err
+	}
+	if msgs == nil {
+		msgs = []*schema.Message{}
+	}
+	m.Messages = msgs
+	m.savedCount = len(msgs)
+	return nil
+}
+
 func Init(config *conf.Config, id string) (*Memory, error) {
 	var memory Memory
 	memory.Cfg.Id = id

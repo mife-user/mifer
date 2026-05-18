@@ -23,6 +23,7 @@ import (
 	"mifer/cli/render/mark"
 	"mifer/pkg/conf"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -50,6 +51,20 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 	// ---- viewport：滚动视口组件 ----
 	// 初始尺寸为 0，由第一个 WindowSizeMsg 事件设置正确尺寸
 	vp := lip.NewViewport(config)
+
+	// ---- memoryList：记忆选择列表组件 ----
+	ml := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	ml.SetShowTitle(false)
+	ml.SetShowStatusBar(false)
+	ml.SetShowFilter(false)
+	ml.SetShowPagination(false)
+	ml.SetShowHelp(false)
+	ml.SetFilteringEnabled(false)
+	ml.DisableQuitKeybindings()
+
+	// ---- memoryViewport：全屏记忆查看独立视口 ----
+	mvp := lip.NewViewport(config)
+
 	return &Model{
 		// 依赖注入
 		client: client,
@@ -73,6 +88,14 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 		sidebar:  SidebarState{},
 		streamCh: nil,
 		accBuf:   nil,
+
+		// 记忆选择
+		selectingMem: false,
+		memoryList:   ml,
+
+		// 全屏记忆查看
+		showingMemoryView: false,
+		memoryViewport:    mvp,
 	}
 }
 

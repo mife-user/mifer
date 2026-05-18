@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"mifer/internal/domain"
@@ -64,6 +65,12 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		if !msgOutput.IsStreaming && msgOutput.Role == schema.Tool && msgOutput.ToolName != "" {
 			if err := callback("tool_end", msgOutput.ToolName); err != nil {
 				return err
+			}
+			if errMsg := extractToolError(msgOutput.Message.Content); errMsg != "" {
+				payload := msgOutput.ToolName + "\x00" + errMsg
+				if err := callback("tool_error", payload); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -130,4 +137,15 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		return err
 	}
 	return nil
+}
+
+// extractToolError 从工具返回的JSON结果中提取错误消息
+func extractToolError(content string) string {
+	var result struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		return ""
+	}
+	return result.Error
 }

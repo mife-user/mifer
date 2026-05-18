@@ -31,6 +31,7 @@ import (
 
 	"mifer/cli/client"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -73,9 +74,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Width = 10
 		}
 		m.viewport.Height = m.contentHeight
+		// 记忆列表尺寸：宽度跟随侧边栏，高度最多8行
+		m.memoryList.SetSize(sidebarW-4, 8)
+		// 全屏记忆视口：占据终端宽度减去边距
+		m.memoryViewport.Width = m.width - 4
+		m.memoryViewport.Height = m.height - 2
 		// 将 resize 事件转发给子组件，让它们自行调整内部布局
 		_, _ = m.textarea.Update(msg)
 		_, _ = m.viewport.Update(msg)
+		_, _ = m.memoryList.Update(msg)
 		return m, nil
 
 	// ======================================================================
@@ -85,6 +92,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 每次滚动 MouseWheelDelta 行（此处配置为 1 行）。
 	// 不需要额外判断——viewport 自己知道是否已到顶部/底部边界。
 	case tea.MouseMsg:
+		if m.showingMemoryView {
+			var cmd tea.Cmd
+			m.memoryViewport, cmd = m.memoryViewport.Update(msg)
+			return m, cmd
+		}
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
@@ -93,6 +105,38 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 3. 键盘输入 → 按键分发
 	// ======================================================================
 	case tea.KeyMsg:
+		// ---- 全屏记忆查看模式：仅响应 esc 和鼠标滚轮 ----
+		if m.showingMemoryView {
+			switch msg.String() {
+			case "esc", "ctrl+c":
+				m.showingMemoryView = false
+				m.memoryViewContent = ""
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.memoryViewport, cmd = m.memoryViewport.Update(msg)
+				return m, cmd
+			}
+		}
+
+		// ---- 记忆选择模式：拦截按键，委托给 memoryList 或处理选择 ----
+		if m.selectingMem {
+			switch msg.String() {
+			case "enter":
+				return m.handleMemorySelect()
+			case "esc":
+				m.selectingMem = false
+				m.pendingMemCmd = ""
+				return m, nil
+			case "up", "down", "k", "j", "home", "end", "pgup", "pgdown":
+				var cmd tea.Cmd
+				m.memoryList, cmd = m.memoryList.Update(msg)
+				return m, cmd
+			default:
+				return m, nil // 拦截其他按键
+			}
+		}
+
 		switch msg.String() {
 
 		// ---- 退出：Ctrl+C 或 Esc ----
@@ -160,7 +204,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ======================================================================
 	// 4b. 流式内容片段
 	// ======================================================================
-	// 每收到一段 response 文本就追加到累积缓冲区。
 	case streamContentMsg:
 		if m.accBuf != nil {
 			m.accBuf.WriteString(msg.content)
@@ -173,7 +216,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ======================================================================
 	// 4c. 流式传输完成 → 处理最终响应
 	// ======================================================================
-	// SSE 流结束（收到 [DONE] 或错误），进行 markdown 渲染并追加到消息列表。
 	case streamDoneMsg:
 		m.thinking = false
 		m.streamCh = nil
@@ -262,7 +304,62 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// ======================================================================
-	// 6. 旋转动画帧推进（spinner 内部 tick）
+	// 6. 记忆列表结果 → 校验ID或进入选择模式
+	// ======================================================================
+	case memoryListMsg:
+		if msg.err != nil {
+			m.err = "错误: " + msg.err.Error()
+			return m, nil
+		}
+
+		// 带ID参数：校验后直接执行
+		if msg.argID != "" {
+			found := false
+			for _, id := range msg.ids {
+				if id == msg.argID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				m.err = "记忆ID不存在: " + msg.argID
+				return m, nil
+			}
+			// ID存在，直接执行对应命令
+			switch msg.cmd {
+			case "/viewmemory":
+				return m, loadMemoryCmd(m.client, msg.argID)
+			default:
+				return m, excmemCmd(m.client, msg.argID)
+			}
+		}
+
+		// 无ID参数：进入选择模式，显示记忆列表
+		var items []list.Item
+		for _, id := range msg.ids {
+			items = append(items, memoryItem{id: id, current: id == msg.current})
+		}
+		m.selectingMem = true
+		m.pendingMemCmd = msg.cmd
+		m.memoryList.SetWidth(m.width / 4) // 初始宽度，View中会重新设置
+		return m, m.memoryList.SetItems(items)
+
+	// ======================================================================
+	// 7. 记忆查看结果 → 进入全屏记忆查看模式
+	// ======================================================================
+	case memoryViewMsg:
+		if msg.err != nil {
+			m.err = "错误: " + msg.err.Error()
+			return m, nil
+		}
+		m.showingMemoryView = true
+		m.memoryViewContent = msg.content
+		m.memoryViewport.SetContent(msg.content)
+		m.memoryViewport.GotoTop()
+		return m, nil
+
+	// ======================================================================
+	// 8. 旋转动画帧推进（spinner 内部 tick）
 	// ======================================================================
 	// bubbles/spinner 每隔 ~83ms 发出一次 TickMsg。
 	// 仅当 m.thinking == true 时才推进动画帧（返回下一个 tick 命令）。
@@ -360,15 +457,14 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case strings.HasPrefix(input, "/viewmemory"):
-		// 异步加载记忆：loadMemoryCmd 通过 HTTP GET 获取指定会话的对话历史
-		// 完成后发出 systemMsg，在 Update() 中追加为 system 消息
+		// 先异步获取记忆列表，在 memoryListMsg 中校验ID或进入选择模式
 		id := strings.TrimSpace(strings.TrimPrefix(input, "/viewmemory"))
-		return m, loadMemoryCmd(m.client, id)
+		return m, listMemoriesCmd(m.client, "/viewmemory", id)
 
 	case strings.HasPrefix(input, "/excmem"):
-		// 异步切换会话：excmemCmd 通过 HTTP POST 切换到指定记忆会话
+		// 先异步获取记忆列表，在 memoryListMsg 中校验ID或进入选择模式
 		id := strings.TrimSpace(strings.TrimPrefix(input, "/excmem"))
-		return m, excmemCmd(m.client, id)
+		return m, listMemoriesCmd(m.client, "/excmem", id)
 
 	default:
 		// ---- 用户聊天消息 ----
@@ -590,6 +686,10 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 				switch event {
 				case "agent_start", "agent_end", "tool_start", "tool_end":
 					ch <- streamStatusMsg{event: event, name: chunk}
+				case "tool_error":
+					if name, errMsg, ok := strings.Cut(chunk, "\x00"); ok {
+						ch <- streamStatusMsg{event: "tool_error", name: name, errMsg: errMsg}
+					}
 				case "thinking":
 					// 跳过 thinking 事件
 				case "response":
@@ -624,7 +724,7 @@ func listenStreamCmd(ch <-chan tea.Msg) tea.Cmd {
 //
 // 通过 HTTP GET /api/memory/:id 获取 JSONL 格式的对话历史。
 // id 为空时默认加载 "default" 会话。
-// 响应内容直接作为 systemMsg 显示，包含分隔线装饰。
+// 返回 memoryViewMsg 触发全屏记忆查看模式。
 func loadMemoryCmd(client *client.Client, id string) tea.Cmd {
 	return func() tea.Msg {
 		if id == "" {
@@ -632,12 +732,12 @@ func loadMemoryCmd(client *client.Client, id string) tea.Cmd {
 		}
 		memory, err := client.Memory.Load(id)
 		if err != nil {
-			return systemMsg{err: err}
+			return memoryViewMsg{err: err}
 		}
 		if memory == "" {
 			memory = "(暂无对话记忆)"
 		}
-		return systemMsg{content: "═══════ 对话记忆 ═══════\n" + memory + "\n══════════════════════════"}
+		return memoryViewMsg{content: memory}
 	}
 }
 
@@ -652,4 +752,35 @@ func excmemCmd(client *client.Client, id string) tea.Cmd {
 		}
 		return systemMsg{content: "已切换到记忆会话: " + id}
 	}
+}
+
+// listMemoriesCmd 异步获取记忆列表，用于校验ID或进入选择模式
+//
+// 由 handleEnter() 中 /viewmemory 和 /excmem 命令触发。
+// 结果以 memoryListMsg 返回，携带触发上下文（命令名和参数ID）。
+func listMemoriesCmd(client *client.Client, cmd, id string) tea.Cmd {
+	return func() tea.Msg {
+		current, ids, err := client.Memory.List()
+		return memoryListMsg{current: current, ids: ids, err: err, cmd: cmd, argID: id}
+	}
+}
+
+// handleMemorySelect 处理记忆选择列表中的 Enter 键
+//
+// 获取当前选中的记忆ID，根据 pendingMemCmd 执行对应命令后退出选择模式。
+func (m *Model) handleMemorySelect() (tea.Model, tea.Cmd) {
+	item := m.memoryList.SelectedItem()
+	if item == nil {
+		m.selectingMem = false
+		m.pendingMemCmd = ""
+		return m, nil
+	}
+	mi := item.(memoryItem)
+	cmd := m.pendingMemCmd
+	m.selectingMem = false
+	m.pendingMemCmd = ""
+	if cmd == "/viewmemory" {
+		return m, loadMemoryCmd(m.client, mi.id)
+	}
+	return m, excmemCmd(m.client, mi.id)
 }

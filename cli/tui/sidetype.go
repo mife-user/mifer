@@ -1,5 +1,7 @@
 package tui
 
+import "mifer/pkg/logger"
+
 // SidebarState 右侧边栏状态，跟踪当前agent/工具执行情况
 type SidebarState struct {
 	CurrentAgent string   // 当前正在执行的Agent名称
@@ -13,23 +15,27 @@ type SidebarState struct {
 func (s *SidebarState) update(msg streamStatusMsg) {
 	switch msg.event {
 	case "agent_start":
+		logger.Info("agent_start: %s", logger.S("agentName", msg.name))
 		if s.CurrentAgent != "" {
 			s.AgentTrail = append(s.AgentTrail, s.CurrentAgent)
 		}
 		s.CurrentAgent = msg.name
 		s.CurrentTool = "" // 新agent开始时重置当前工具
 	case "agent_end":
+		logger.Info("agent_end: %s", logger.S("agentName", msg.name))
 		if s.CurrentAgent == msg.name {
 			s.AgentTrail = append(s.AgentTrail, s.CurrentAgent)
 			s.CurrentAgent = ""
 		}
 	case "tool_start":
+		logger.Info("tool_start: %s", logger.S("toolName", msg.name))
 		if s.CurrentTool != "" {
 			s.ToolTrail = append(s.ToolTrail, "  "+s.CurrentTool)
 		}
 		s.CurrentTool = msg.name
 		s.ToolError = "" // 新工具启动时清空上一次错误
 	case "tool_end":
+		logger.Info("tool_end: %s", logger.S("toolName", msg.name))
 		if s.CurrentTool == msg.name {
 			trail := "  " + s.CurrentTool
 			if s.ToolError != "" {
@@ -39,6 +45,7 @@ func (s *SidebarState) update(msg streamStatusMsg) {
 			s.CurrentTool = ""
 		}
 	case "tool_error":
+		logger.Info("tool_error: %s", logger.S("toolName", msg.errMsg))
 		s.ToolError = msg.errMsg
 	}
 }

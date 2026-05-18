@@ -34,24 +34,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// ============================================================================
-// Bubble Tea 消息类型
-// ============================================================================
-// 所有消息类型都实现了 tea.Msg 接口（空接口），在 Update() 中通过类型断言分发。
-
-// message 对话消息，表示消息列表中渲染的一条记录。
-//
-// role 决定 View() 中的渲染方式：
-//
-//	"user"      → 绿色 "You: " 前缀，整行渲染
-//	"assistant" → 优先使用 glamour 预渲染的 ANSI 输出
-//	"system"    → 青色整行渲染，支持多行
-type message struct {
-	role     string // "user" | "assistant" | "system"
-	content  string // 原始文本内容
-	rendered string // assistant 消息预渲染的 glamour ANSI 输出（其他角色为空）
-}
-
 // chatRespMsg 由 sendChatCmd 在 SSE 流全部积累完成后发出。
 //
 // 异步流程：
@@ -65,41 +47,6 @@ type message struct {
 type chatRespMsg struct {
 	content string // 累积的完整 AI 响应文本
 	err     error  // 网络或解析错误（非 nil 时显示错误不追加消息）
-}
-
-// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用、工具错误）
-type streamStatusMsg struct {
-	event  string // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error"
-	name   string // agent名称或工具名称
-	errMsg string // tool_error 时携带的错误消息
-}
-
-// streamContentMsg AI流式响应中的内容片段
-type streamContentMsg struct {
-	content string
-}
-
-// streamDoneMsg AI流式传输完成
-type streamDoneMsg struct {
-	err error
-}
-
-
-// memoryListMsg 异步获取记忆列表的结果，由 listMemoriesCmd 发出。
-//
-// 携带触发上下文（cmd 和 argID），用于判断是展示选择列表还是直接执行命令。
-type memoryListMsg struct {
-	current string   // 当前记忆ID
-	ids     []string // 所有可用记忆ID列表
-	err     error    // 网络或解析错误
-	cmd     string   // 触发命令："/viewmemory" 或 "/excmem"
-	argID   string   // 命令后跟的ID（空表示无ID，需进入选择模式）
-}
-
-// memoryViewMsg /viewmemory 加载完成，进入全屏记忆查看模式
-type memoryViewMsg struct {
-	content string // 格式化的对话记忆文本
-	err     error
 }
 
 // ============================================================================
@@ -203,4 +150,22 @@ type Model struct {
 	showingMemoryView bool           // 是否处于全屏记忆查看模式
 	memoryViewContent string         // 记忆内容（原始文本）
 	memoryViewport    viewport.Model // 独立的 viewport 用于全屏记忆查看
+}
+
+// ============================================================================
+// Bubble Tea 消息类型
+// ============================================================================
+// 所有消息类型都实现了 tea.Msg 接口（空接口），在 Update() 中通过类型断言分发。
+
+// message 对话消息，表示消息列表中渲染的一条记录。
+//
+// role 决定 View() 中的渲染方式：
+//
+//	"user"      → 绿色 "You: " 前缀，整行渲染
+//	"assistant" → 优先使用 glamour 预渲染的 ANSI 输出
+//	"system"    → 青色整行渲染，支持多行
+type message struct {
+	role     string // "user" | "assistant" | "system"
+	content  string // 原始文本内容
+	rendered string // assistant 消息预渲染的 glamour ANSI 输出（其他角色为空）
 }

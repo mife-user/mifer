@@ -63,6 +63,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 
 		// 检测工具执行结果
 		if !msgOutput.IsStreaming && msgOutput.Role == schema.Tool && msgOutput.ToolName != "" {
+			logger.Info("工具执行结果", logger.S("toolName", msgOutput.ToolName))
 			if err := callback("tool_end", msgOutput.ToolName); err != nil {
 				return err
 			}

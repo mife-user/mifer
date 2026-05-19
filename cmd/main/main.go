@@ -93,7 +93,7 @@ func runDefault(app *bootstrap.Application) {
 	time.Sleep(1 * time.Second) // 等待服务器启动
 
 	cliDone := make(chan error, 1)
-	go func() { cliDone <- app.Clier.RunTUI() }()
+	go func() { cliDone <- app.Clier.Run() }()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -116,12 +116,6 @@ func runDefault(app *bootstrap.Application) {
 
 func runCLI(app *bootstrap.Application) {
 	if err := app.Clier.Run(); err != nil {
-		log.Fatal("CLI 运行失败: ", err)
-	}
-}
-
-func runTUI(app *bootstrap.Application) {
-	if err := app.Clier.RunTUI(); err != nil {
 		log.Fatal("TUI 运行失败: ", err)
 	}
 }

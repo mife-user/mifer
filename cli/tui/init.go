@@ -4,7 +4,7 @@ package tui
 // init.go — Model 初始化与 Bubble Tea 生命周期入口
 // ============================================================================
 //
-// 外部调用流程（cli/cli.go → RunTUI）：
+// 外部调用流程（cli/init.go → Run）：
 //
 //   m := tui.NewModel(client, config)            // ① 创建 Model
 //   p := tea.NewProgram(m, WithAltScreen(), ...)  // ② 创建 Bubble Tea 程序
@@ -23,7 +23,6 @@ import (
 	"mifer/cli/render/mark"
 	"mifer/pkg/conf"
 
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -53,14 +52,7 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 	vp := lip.NewViewport(config)
 
 	// ---- memoryList：记忆选择列表组件 ----
-	ml := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-	ml.SetShowTitle(false)
-	ml.SetShowStatusBar(false)
-	ml.SetShowFilter(false)
-	ml.SetShowPagination(false)
-	ml.SetShowHelp(false)
-	ml.SetFilteringEnabled(false)
-	ml.DisableQuitKeybindings()
+	ml := lip.NewChoseList()
 
 	// ---- memoryViewport：全屏记忆查看独立视口 ----
 	mvp := lip.NewViewport(config)

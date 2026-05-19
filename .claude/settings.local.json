@@ -35,7 +35,8 @@
       "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/components/model/\")",
       "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/components/\")",
       "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.1-alpha/components/model/\")",
-      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/\")"
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/\")",
+      "Bash(Remove-Item *)"
     ]
   }
 }

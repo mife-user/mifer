@@ -9,14 +9,18 @@ func StatusConfig() error {
 		return fmt.Errorf("jwt密钥未配置")
 	}
 	//ai配置检查
-	if globalConfig.Ai.BaseURL == "" {
-		return fmt.Errorf("ai基础URL未配置")
+	defaultBackend, ok := globalConfig.Ai.Backends["default"]
+	if !ok || defaultBackend.Provider == "" {
+		return fmt.Errorf("ai默认后端未配置，请配置 ai.backends.default")
 	}
-	if globalConfig.Ai.Model == "" {
-		return fmt.Errorf("ai模型未配置")
+	if defaultBackend.BaseURL == "" && defaultBackend.Provider == "openai" {
+		return fmt.Errorf("ai默认后端 base_url 未配置")
 	}
-	if globalConfig.Ai.ApiKey == "" {
-		return fmt.Errorf("ai API密钥未配置")
+	if defaultBackend.Model == "" {
+		return fmt.Errorf("ai默认后端模型未配置")
+	}
+	if defaultBackend.APIKey == "" {
+		return fmt.Errorf("ai默认后端 api_key 未配置")
 	}
 	return nil
 }

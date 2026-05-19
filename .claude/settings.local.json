@@ -24,7 +24,18 @@
       "Bash(dir *)",
       "Bash(Select-Object -First 30)",
       "PowerShell(go list *)",
-      "Bash(go mod *)"
+      "Bash(go mod *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(curl -s \"https://api.github.com/repos/cloudwego/eino-ext/contents/components/model\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(d['name']\\) for d in data]\")",
+      "Bash(curl -s \"https://api.github.com/repos/cloudwego/eino-ext/contents/components\")",
+      "Bash(curl -s https://api.github.com/repos/cloudwego/eino-ext/contents/components/__TRACKED_VAR__)",
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext/components/model/\")",
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/\")",
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/components/model/\")",
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/components/\")",
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.1-alpha/components/model/\")",
+      "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/\")"
     ]
   }
 }

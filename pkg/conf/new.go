@@ -48,9 +48,29 @@ redis:
 jwt:
   secret: "123456"
 ai:
-  base_url: "https://api.deepseek.com"
-  model: "deepseek-v4-flash"
-  api_key: "your_api_key"
+  backends:
+    default:
+      provider: "openai"
+      base_url: "https://api.deepseek.com"
+      model: "deepseek-v4-flash"
+      api_key: ""
+    multi_modal:
+      provider: "gemini"
+      model: "gemini-2.5-flash"
+      api_key: ""
+    haiku:
+      provider: "openai"
+      base_url: "https://api.deepseek.com"
+      model: "deepseek-v4-flash"
+      api_key: ""
+    sonnet:
+      provider: "claude"
+      model: "claude-sonnet-4-6"
+      api_key: ""
+    opus:
+      provider: "claude"
+      model: "claude-opus-4-7"
+      api_key: ""
 gin:
   mode: "debug"
   port: 15555

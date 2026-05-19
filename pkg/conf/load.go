@@ -80,13 +80,18 @@ func applyEnvOverrides(v *viper.Viper) {
 		"redis.host":     "MIFER_REDIS_HOST",
 		"redis.password": "MIFER_REDIS_PASSWORD",
 		"jwt.secret":     "MIFER_JWT_SECRET",
-		"ai.base_url":    "MIFER_AI_BASEURL",
-		"ai.model":       "MIFER_AI_MODEL",
-		"ai.api_key":     "MIFER_AI_APIKEY",
 	}
+	// 基础字段
 	for key, envVar := range overrides {
 		if val := os.Getenv(envVar); val != "" {
 			v.Set(key, val)
+		}
+	}
+	// 后端模型配置 — 支持 MIFER_AI_<BACKEND>_<FIELD> 格式
+	for _, backend := range []string{"DEFAULT", "MULTI", "HAIKU", "SONNET", "OPUS"} {
+		envVar := "MIFER_AI_" + backend + "_" + "APIKEY"
+		if val := os.Getenv(envVar); val != "" {
+			v.Set("ai.backends."+backend+"."+"api_key", val)
 		}
 	}
 }

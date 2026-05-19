@@ -43,7 +43,7 @@ type TuiConfig struct {
 	CompletableCommands []string `mapstructure:"completable_commands"`
 	ContentMargin       int      `mapstructure:"content_margin"`
 	MinHeight           int      `mapstructure:"min_height"`
-	SpinnerType         string   `mapstructure:"spinner_type"`  // 预置类型名，或为空使用自定义帧
+	SpinnerType         string   `mapstructure:"spinner_type"`   // 预置类型名，或为空使用自定义帧
 	SpinnerFrames       []string `mapstructure:"spinner_frames"` // 自定义动画帧序列，如 [".", "..", "..."]，非空时覆盖 spinner_type
 	SpinnerFPS          int      `mapstructure:"spinner_fps"`    // 自定义帧率（帧/秒），默认 10
 }
@@ -66,12 +66,18 @@ type LogConfig struct {
 	Level      string `mapstructure:"level"`       // 日志级别（debug/info/warn/error），为空时由 env 决定
 }
 
+// 后端模型配置结构体
+type BackendConfig struct {
+	Provider string `mapstructure:"provider"` // 模型提供商：openai / claude / gemini / ollama
+	BaseURL  string `mapstructure:"base_url"`
+	Model    string `mapstructure:"model"`
+	APIKey   string `mapstructure:"api_key"`
+}
+
 // ai配置结构体
 type AiConfig struct {
-	BaseURL   string   `mapstructure:"base_url"`
-	Model     string   `mapstructure:"model"`
-	ApiKey    string   `mapstructure:"api_key"`
-	AllowList []string `mapstructure:"allow_list"` // 命令执行白名单，非空时仅允许白名单内的命令
+	Backends  map[string]BackendConfig `mapstructure:"backends"`
+	AllowList []string                 `mapstructure:"allow_list"` // 命令执行白名单，非空时仅允许白名单内的命令
 }
 
 // redis配置结构体

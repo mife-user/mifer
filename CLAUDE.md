@@ -36,7 +36,7 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 
 ### 各层职责
 
-- **`pkg/conf/`** — Viper 配置管理。`LoadConfig()` 根据 `MIFER_ENV` 加载 `./config/dev.yaml` 或 `~/.mifer/config/prod.yaml`，首次运行通过 `newDefaultCfg()` 自动创建默认配置文件。环境变量可覆盖关键字段（`MIFER_AI_BASEURL`, `MIFER_AI_APIKEY`, `MIFER_AI_MODEL`, `MIFER_REDIS_HOST`, `MIFER_REDIS_PASSWORD`, `MIFER_JWT_SECRET`）。`StatusConfig()` 校验必填项。全局配置通过 `conf.GetConfig()` 获取。
+- **`pkg/conf/`** — Viper 配置管理。`LoadConfig()` 根据 `MIFER_ENV` 加载 `./config/dev.yaml` 或 `~/.mifer/config/prod.yaml`，首次运行通过 `newDefaultCfg()` 自动创建默认配置文件。环境变量可覆盖关键字段（`MIFER_AI_<BACKEND>_<FIELD>` 格式，如 `MIFER_AI_DEFAULT_APIKEY`、`MIFER_AI_DEFAULT_MODEL`、`MIFER_AI_DEFAULT_BASEURL`；兼容旧格式 `MIFER_AI_BASEURL`、`MIFER_AI_APIKEY`、`MIFER_AI_MODEL`，自动迁移到 `backends.default`）。`StatusConfig()` 校验必填项。全局配置通过 `conf.GetConfig()` 获取。
 - **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），dev 模式控制台彩色输出，prod 模式 JSON 输出。快捷方法：`logger.Info()`, `logger.Error()` 等。
 - **`pkg/auth/`** — JWT Token 生成与验证。
 - **`pkg/cache/`** — Redis 缓存封装（go-redis/v8）。当前 `initRedis` 已注释，预留待启用。
@@ -52,7 +52,7 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 - **`internal/service/agentservice/`** — Agent 服务层，实现 `domain.AgentService`，通过 `task.Do` 包装调用 executor。
 - **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。`Humen` 结构体聚合 `adk.Agent` 和 `*memory.Memory`。"Mifer" 主 Agent（`deep.New`，Orchestrator）管理 "MiTalker" 子 Agent（`ChatModelAgent`，闲聊）。最大迭代 3 次。
 - **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 执行 agent 迭代，处理流式/非流式消息，自动追加记忆并保存。
-- **`internal/ai/llm/`** — OpenAI 兼容 ChatModel 初始化（Eino `openai.ChatModel`）。默认指向 DeepSeek API（`deepseek-v4-flash`），支持通过配置切换模型。
+- **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。`InitRegistry()` 根据 `ai.backends` 配置创建多个模型实例（支持 openai/claude/gemini/ollama 四种 provider），按名称索引（default/haiku/sonnet/opus/multi_modal），缺失后端自动 fallback 到 default。`providers.go` 包含各 provider 的初始化函数。
 - **`internal/ai/memory/`** — JSONL 文件持久化对话历史（每行一条 JSON）。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。`AppendUser`/`AppendAssistant` 加锁追加到内存，`Save()` 增量写入文件。
 - **`internal/ai/tool/`** — 工具定义（Function Calling）。注册给 Agent 使用的工具集合。
 - **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。
@@ -81,7 +81,7 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 ## 当前实现状态
 
 ### 已完成
-- [x] LLM 对话（OpenAI 兼容协议，DeepSeek 默认）
+- [x] LLM 对话（多后端支持：OpenAI 兼容 / Claude / Gemini / Ollama，haiku/sonnet/opus 三级分配）
 - [x] 多 Agent 编排（ADK Orchestrator + 子 Agent，最大 3 轮迭代）
 - [x] 流式响应（SSE）
 - [x] 对话记忆（JSONL 文件持久化，增量追加，基于 context session ID 隔离）
@@ -108,9 +108,14 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 ## 新增功能指南
 
 ### 新增 Agent
-1. 在 `internal/ai/agent/` 创建子 Agent 定义
-2. 在 Orchestrator（`agent/init.go`）的 `deep.New` 配置中注册新子 Agent
+1. 在 `internal/ai/agent/` 创建子 Agent 定义，接收 `model.BaseChatModel` 参数
+2. 在 Orchestrator（`agent/init.go`）的 `deep.New` 配置中注册新子 Agent，通过 `registry.Get("<backend>")` 分配模型
 3. 如需新工具，在 `internal/ai/tool/` 定义
+
+### 新增 LLM Provider
+1. 在 `internal/ai/llm/providers.go` 添加 `init<Provider>Model` 函数
+2. 在 `providerInitMap` 注册新 provider 名称
+3. `go get` 对应的 eino-ext 包
 
 ### 新增 HTTP 接口
 1. 在 `internal/api/dto/request/` 和 `response/` 定义 DTO

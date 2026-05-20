@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mifer/internal/domain"
 	"mifer/pkg/errorer"
@@ -14,13 +15,15 @@ import (
 )
 
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
-	e.Humen.Memory.AppendUser(req.Content)
+	e.Humen.Prompt.Memory.AppendUser(req.Content)
 
-	iter := e.Runner.Run(c, e.Humen.Memory.Messages)
+	iter := e.Runner.Run(c, e.Humen.Prompt.Build())
 
 	lastMsg := &strings.Builder{}
 	eventCount := 0
 	var currentAgent string // 跟踪当前执行的Agent，用于检测切换
+	// Token 累计统计
+	var totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning int
 	for {
 		event, ok := iter.Next()
 		if !ok {
@@ -94,6 +97,11 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 					if err != nil {
 						return err
 					}
+					if accumulateToken(&totalPrompt, &totalCompletion, &totalTotal, &totalCached, &totalReasoning, chunk) {
+						if err := sendToken(callback, totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning); err != nil {
+							return err
+						}
+					}
 					continue
 				}
 
@@ -105,6 +113,12 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				if err := callback("response", chunk.Content); err != nil {
 					return err
 				}
+
+				if accumulateToken(&totalPrompt, &totalCompletion, &totalTotal, &totalCached, &totalReasoning, chunk) {
+					if err := sendToken(callback, totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning); err != nil {
+						return err
+					}
+				}
 			}
 		} else {
 			message := msgOutput.Message
@@ -115,6 +129,18 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 {
 				lastMsg.WriteString(message.Content)
 				if err := callback("response", message.Content); err != nil {
+					return err
+				}
+			}
+			// 累加 token 用量（非流式消息）
+			if message.ResponseMeta != nil && message.ResponseMeta.Usage != nil {
+				usage := message.ResponseMeta.Usage
+				totalPrompt += usage.PromptTokens
+				totalCompletion += usage.CompletionTokens
+				totalTotal += usage.TotalTokens
+				totalCached += usage.PromptTokenDetails.CachedTokens
+				totalReasoning += usage.CompletionTokensDetails.ReasoningTokens
+				if err := sendToken(callback, totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning); err != nil {
 					return err
 				}
 			}
@@ -133,11 +159,31 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	if lastMsg.String() == "" {
 		return errorer.New(errorer.ErrCallBackNull)
 	}
-	e.Humen.Memory.AppendAssistant(lastMsg.String())
-	if err := e.Humen.Memory.Save(); err != nil {
+	e.Humen.Prompt.Memory.AppendAssistant(lastMsg.String())
+	if err := e.Humen.Prompt.Memory.Save(); err != nil {
 		return err
 	}
 	return nil
+}
+
+// accumulateToken 从 schema.Message 中累加 token 用量，返回是否有新数据
+func accumulateToken(prompt, completion, total, cached, reasoning *int, msg *schema.Message) bool {
+	if msg == nil || msg.ResponseMeta == nil || msg.ResponseMeta.Usage == nil {
+		return false
+	}
+	usage := msg.ResponseMeta.Usage
+	*prompt += usage.PromptTokens
+	*completion += usage.CompletionTokens
+	*total += usage.TotalTokens
+	*cached += usage.PromptTokenDetails.CachedTokens
+	*reasoning += usage.CompletionTokensDetails.ReasoningTokens
+	return true
+}
+
+// sendToken 发送 token 事件（仅当有变更时）
+func sendToken(callback func(event, content string) error, prompt, completion, total, cached, reasoning int) error {
+	payload := fmt.Sprintf("%d\x00%d\x00%d\x00%d\x00%d", prompt, completion, total, cached, reasoning)
+	return callback("token", payload)
 }
 
 // extractToolError 从工具返回的JSON结果中提取错误消息

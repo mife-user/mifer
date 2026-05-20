@@ -10,7 +10,7 @@ import (
 
 func (e *Executor) LoadMemory(c context.Context, req *domain.MemoryReq) (*domain.MemoryResp, error) {
 	var sb strings.Builder
-	for _, msg := range e.Humen.Memory.Messages {
+	for _, msg := range e.Humen.Prompt.Memory.Messages {
 		sb.WriteString("[")
 		sb.WriteString(roleToChinese(msg.Role))
 		sb.WriteString("]: ")

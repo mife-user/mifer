@@ -40,19 +40,22 @@ func NewApplication(ctx context.Context) (*Application, error) {
 
 // Run 运行应用
 func (a *Application) Run() error {
-	a.printStartupInfo()
-
-	a.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", a.Config.Gin.Port),
-		Handler: a.Engine,
+	var err error
+	for a.Config.Gin.Port <= 18000 {
+		a.printStartupInfo()
+		a.server = &http.Server{
+			Addr:    fmt.Sprintf(":%d", a.Config.Gin.Port),
+			Handler: a.Engine,
+		}
+		logger.Info("HTTP 服务器启动", logger.I("port", a.Config.Gin.Port))
+		err = a.server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			a.Config.Gin.Port += 10
+			continue
+		}
+		return nil
 	}
-
-	logger.Info("HTTP 服务器启动", logger.I("port", a.Config.Gin.Port))
-	err := a.server.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("服务器运行失败: %w", err)
-	}
-	return nil
+	return fmt.Errorf("服务器运行失败: %w", err)
 }
 
 // printStartupInfo 打印启动信息

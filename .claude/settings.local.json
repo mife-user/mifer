@@ -36,7 +36,25 @@
       "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/components/\")",
       "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.1-alpha/components/model/\")",
       "Bash(ls \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino-ext@v0.0.0-20260427010451-749e3706378b/\")",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\" -Depth 2 -Directory | ForEach-Object { $_.FullName })",
+      "PowerShell(go env *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:proxy.golang.org)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:www.cloudwego.io)",
+      "WebSearch",
+      "Read(//d/vscode/VsCodeWork/pkg/mod/github.com/cloudwego/**)",
+      "PowerShell(Get-Content \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\\\\cli\\\\client\\\\chathandler\\\\chat.go\" | Select-Object -Skip 65 -First 6 | ForEach-Object { $_.Replace\\(\"`t\", \"[TAB]\"\\) })",
+      "Bash(git checkout *)",
+      "Bash(sed -i '58a\\\\\\\\t\\\\tsvp := lip.NewViewport\\(config\\)' internal/ai/agent/../.../cli/tui/init.go)",
+      "Bash(sed -i '/mvp := lip.NewViewport/a\\\\\\\\t\\\\tsvp := lip.NewViewport\\(config\\)' cli/tui/init.go)",
+      "Bash(mapstructure:\\\\\"completion_max_visible\\\\\")",
+      "Bash(python -c ' *)",
+      "Bash(python *)",
+      "Bash(cmd.exe /c \"where /r D:\\\\vscode\\\\VsCodeWork\\\\mifer deep 2>nul || echo no matches\")"
     ]
   }
 }

@@ -5,7 +5,7 @@ import (
 
 	"mifer/pkg/conf"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // Redis初始化
@@ -16,6 +16,8 @@ func Init(config *conf.Config) (*redis.Client, error) {
 		Username: config.Redis.Username,
 		Password: config.Redis.Password,
 		DB:       config.Redis.DB,
+		Protocol: config.Redis.Protocol,
 	})
+	redisbase.Options().UnstableResp3 = config.Redis.UnstableResp3
 	return redisbase, nil
 }

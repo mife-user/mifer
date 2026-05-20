@@ -15,6 +15,7 @@ package tui
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"mifer/cli/client"
@@ -22,11 +23,21 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用、工具错误）
+// TokenUsageData token 消耗统计
+type TokenUsageData struct {
+	PromptTokens     int // 输入 token
+	CompletionTokens int // 输出 token
+	TotalTokens      int // 合计 token
+	CachedTokens     int // 缓存命中 token
+	ReasoningTokens  int // 推理 token
+}
+
+// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用、工具错误、token统计）
 type streamStatusMsg struct {
-	event  string // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error"
-	name   string // agent名称或工具名称
-	errMsg string // tool_error 时携带的错误消息
+	event      string          // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error" | "token"
+	name       string          // agent名称或工具名称
+	errMsg     string          // tool_error 时携带的错误消息
+	tokenUsage *TokenUsageData // token 事件时的数据（nil 表示非 token 事件）
 }
 
 // streamContentMsg AI流式响应中的内容片段
@@ -43,9 +54,9 @@ type streamDoneMsg struct {
 // Update() 中的流式消息处理器
 // ============================================================================
 
-// handleStreamStatus 处理流式状态更新（agent切换、工具调用）
+// handleStreamStatus 处理流式状态更新（agent切换、工具调用、token统计）
 func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
-	m.sidebar.update(msg)
+	m.sidebar.update(msg, m.config.Cli.Tui.SidebarShowTiming, m.config.Cli.Tui.SidebarMaxLog)
 	if m.streamCh != nil {
 		return m, listenStreamCmd(m.streamCh)
 	}
@@ -110,6 +121,8 @@ func (m *Model) handleStreamDone(msg streamDoneMsg) (tea.Model, tea.Cmd) {
 // 流式消息分发逻辑：
 //
 //	agent_start/agent_end/tool_start/tool_end → streamStatusMsg（侧边栏更新）
+//	tool_error → streamStatusMsg（工具错误）
+//	token → streamStatusMsg（token 统计）
 //	response → streamContentMsg（累积到 accBuf）
 //	thinking → 跳过
 //
@@ -126,6 +139,17 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 				case "tool_error":
 					if name, errMsg, ok := strings.Cut(chunk, "\x00"); ok {
 						ch <- streamStatusMsg{event: "tool_error", name: name, errMsg: errMsg}
+					}
+				case "token":
+					parts := strings.Split(chunk, "\x00")
+					if len(parts) == 5 {
+						usage := &TokenUsageData{}
+						usage.PromptTokens, _ = strconv.Atoi(parts[0])
+						usage.CompletionTokens, _ = strconv.Atoi(parts[1])
+						usage.TotalTokens, _ = strconv.Atoi(parts[2])
+						usage.CachedTokens, _ = strconv.Atoi(parts[3])
+						usage.ReasoningTokens, _ = strconv.Atoi(parts[4])
+						ch <- streamStatusMsg{event: "token", tokenUsage: usage}
 					}
 				case "thinking":
 					// 跳过 thinking 事件

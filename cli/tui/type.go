@@ -127,15 +127,17 @@ type Model struct {
 	pendingInput string         // 进入历史导航前暂存的 textarea 内容（用于恢复）
 
 	// Tab 补全
-	completions    []string // 当前匹配到的命令列表
-	completionIdx  int      // 当前补全循环索引（-1 = 未激活）
-	completionBase string   // 触发补全时的原始输入前缀（用于检测用户是否修改了输入）
+	completions         []string // 当前匹配到的命令列表
+	completionIdx       int      // 当前补全循环索引（-1 = 未激活）
+	completionBase      string   // 触发补全时的原始输入前缀
+	showingCompletions  bool     // 是否显示补全列表（输入 / 开头且有匹配）（用于检测用户是否修改了输入）
 
 	// 缓存：由 WindowSizeMsg 计算，避免 View 中重复计算
 	contentHeight int // 消息区域可用行数
 
 	// 侧边栏
-	sidebar SidebarState // agent/工具状态跟踪
+	sidebar   SidebarState   // agent/工具状态跟踪（Current + Log + Token）
+	sidebarVP viewport.Model // 状态日志滚动视口
 
 	// 流式传输
 	streamCh chan tea.Msg     // 流式消息通道（非nil时表示正在流式传输中）

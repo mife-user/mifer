@@ -28,41 +28,21 @@ import (
 )
 
 // NewModel 创建 TUI 核心 Model，初始化所有子组件和依赖。
-//
-// 组件职责：
-//
-//	textarea (bubbles) → 用户输入区域，支持多行、占位符
-//	viewport (bubbles) → 消息显示区域的滚动容器，处理鼠标滚轮和内容裁剪
-//	spinner  (bubbles) → 等待 AI 响应时的旋转动画
-//	mark    (glamour)  → 将 AI 返回的 markdown 文本渲染为终端 ANSI 彩色输出
-//	lip     (lipgloss) → 预定义的消息样式集合（用户/AI/系统/错误等颜色）
 func NewModel(client *client.Client, config *conf.Config) *Model {
-	// ---- lip 样式：先于组件初始化，供 spinner 等使用 ----
 	lipStyles := lip.Init(config)
-
-	// ---- textarea：输入组件 ----
 	ta := lip.NewTextarea()
-
-	// ---- spinner：旋转动画组件 ----
-	// 优先使用自定义帧，否则根据配置名称选择预置类型，均未设置时回退到 MiniDot
 	sp := lip.NewSpinner(lipStyles, config)
-
-	// ---- viewport：滚动视口组件 ----
-	// 初始尺寸为 0，由第一个 WindowSizeMsg 事件设置正确尺寸
 	vp := lip.NewViewport(config)
-
-	// ---- memoryList：记忆选择列表组件 ----
 	ml := lip.NewChoseList()
-
-	// ---- memoryViewport：全屏记忆查看独立视口 ----
 	mvp := lip.NewViewport(config)
+	svp := lip.NewViewport(config)
 
 	return &Model{
 		// 依赖注入
 		client: client,
 		config: config,
-		mark:   mark.Init(), // glamour 双渲染器（dark + notty 降级）
-		lip:    lipStyles,   // lipgloss 样式集合
+		mark:   mark.Init(),
+		lip:    lipStyles,
 
 		// 消息与渲染
 		messages: make([]message, 0),
@@ -73,13 +53,14 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 
 		// 输入历史
 		history:      make([]string, 0, config.Cli.Tui.MaxHistory),
-		historyIdx:   -1, // -1 表示不在历史导航中
+		historyIdx:   -1,
 		pendingInput: "",
 
 		// 侧边栏与流式传输
-		sidebar:  SidebarState{},
-		streamCh: nil,
-		accBuf:   nil,
+		sidebar:   SidebarState{},
+		sidebarVP: svp,
+		streamCh:  nil,
+		accBuf:    nil,
 
 		// 记忆选择
 		selectingMem: false,
@@ -91,12 +72,7 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 	}
 }
 
-// Init 是 Bubble Tea 生命周期的入口，返回初始命令。
-//
-// 这里返回 textarea.Blink 命令，让 textarea 的光标开始闪烁。
-// Bubble Tea 框架会执行此命令，生成的 tea.Msg 进入 Update()。
-//
-// 注意：如果在此返回 nil，程序仍然正常运行，只是光标不会闪烁。
+// Init Bubble Tea 生命周期入口
 func (m *Model) Init() tea.Cmd {
 	return textarea.Blink
 }

@@ -45,6 +45,8 @@ redis:
   username: "mifer"
   password: "mifer"
   db: 0
+  protocol: 2
+  unstable_resp3: true
 jwt:
   secret: "123456"
 ai:
@@ -71,6 +73,11 @@ ai:
       provider: "claude"
       model: "claude-opus-4-7"
       api_key: ""
+    embedder:
+      provider: "ollama"
+      base_url: "http://localhost:11434/v1"
+      model: "nomic-embed-text"
+      api_key: "ollama"
 gin:
   mode: "debug"
   port: 15555
@@ -110,10 +117,14 @@ cli:
       foreground: "#555555"
   tui:
     max_history: 100
-    completable_commands: ["help", "exit", "quit", "/viewmemory", "/excmem"]
+    completable_commands: ["/help", "/exit", "/quit", "/viewmemory", "/excmem"]
     content_margin: 4
     min_height: 10
     spinner_type: "MiniDot"
     spinner_frames: []
     spinner_fps: 0
+    sidebar_max_log: 100
+    sidebar_show_tokens: true
+    sidebar_show_timing: true
+    completion_max_visible: 5
 `

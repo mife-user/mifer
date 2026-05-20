@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mifer/internal/ai/llm"
 	"mifer/internal/ai/memory"
+	"mifer/internal/ai/prompt"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
@@ -14,7 +15,7 @@ import (
 
 type Humen struct {
 	Agent  adk.Agent
-	Memory *memory.Memory
+	Prompt *prompt.Prompty
 }
 
 func Init(c context.Context, config *conf.Config) (*Humen, error) {
@@ -70,7 +71,7 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 			EmitInternalEvents: true, // 转发子Agent内部事件到父级事件流，使TUI侧边栏可显示子Agent及工具调用
 		},
 		SubAgents:    []adk.Agent{chatAgent, editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
-		MaxIteration: 5,
+		MaxIteration: 2,
 	})
 	if err != nil {
 		logger.Error("init agent failed", logger.C(err))
@@ -81,11 +82,12 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 		logger.Error("id is not string")
 		return nil, fmt.Errorf("id is not string")
 	}
-	memory, err := memory.Init(config, id)
+	mem, err := memory.Init(config, id)
 	if err != nil {
 		logger.Error("init memory failed", logger.C(err))
 		return nil, err
 	}
 
-	return &Humen{Agent: agent, Memory: memory}, nil
+	prompty := prompt.New(mem)
+	return &Humen{Agent: agent, Prompt: prompty}, nil
 }

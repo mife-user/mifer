@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -65,8 +64,7 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(eve
 		default:
 			if strings.HasPrefix(data, "[ERROR]") {
 				errMsg := strings.TrimPrefix(data, "[ERROR] ")
-				fmt.Fprintf(os.Stderr, "\n错误: %s\n", errMsg)
-				return nil
+				return fmt.Errorf("%s", errMsg)
 			}
 			if err := onChunk(currentEvent, data); err != nil {
 				return err

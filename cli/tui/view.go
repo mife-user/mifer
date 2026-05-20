@@ -24,23 +24,23 @@ package tui
 //       · system    → 青色渲染，支持多行内容
 //     - 每条消息后追加分隔线（灰色虚线）
 //
-//   ③ 追加 thinking 旋转动画行
+//   ④ 追加 thinking 旋转动画行
 //     - 仅当 m.thinking == true 时渲染
 //     - 格式：<spinner字符> Thinking...（橙色斜体）
 //
-//   ④ 追加错误行
+//   ⑤ 追加错误行
 //     - 仅当 m.err != "" 时渲染
 //     - 红色文本，显示在消息列表末尾
 //
-//   ⑤ 设置 viewport 内容 + 自动滚底
+//   ⑥ 设置 viewport 内容 + 自动滚底
 //     - 将所有消息行用 "\n" 拼接为完整内容字符串
 //     - 调用 viewport.SetContent(content) 设置行数据
 //     - 如果 needsAutoScroll 标记为 true，调用 GotoBottom() 并重置标记
 //
-//   ⑥ 组合输出
-//     - viewport.View() → 消息区域（含背景色、边框、内边距、滚动裁剪）
-//     - textarea.View() → 输入区域
-//     - lipgloss.JoinVertical(Top, viewport, textarea) → 垂直拼接
+//   ⑦ 组合输出
+//     - topRow = viewport.View() | 侧边栏（水平拼接）
+//     - 如果输入以 / 开头，在 topRow 和 textarea 之间插入补全弹出栏
+//     - 垂直拼接: topRow [, completionBar], textarea
 
 import (
 	"fmt"
@@ -79,7 +79,7 @@ func (m *Model) View() string {
 	}
 
 	// ======================================================================
-	// 第 ② 步：构建消息行列表
+	// 第 ③ 步：构建消息行列表
 	// ======================================================================
 	var msgLines []string
 	for _, msg := range m.messages {
@@ -103,7 +103,7 @@ func (m *Model) View() string {
 	}
 
 	// ======================================================================
-	// 第 ③ 步：追加 thinking 旋转动画行
+	// 第 ④ 步：追加 thinking 旋转动画行
 	// ======================================================================
 	if m.thinking {
 		thinkLine := fmt.Sprintf("%s Thinking...", m.spinner.View())
@@ -111,7 +111,7 @@ func (m *Model) View() string {
 	}
 
 	// ======================================================================
-	// 第 ④ 步：追加错误行
+	// 第 ⑤ 步：追加错误行
 	// ======================================================================
 	if m.err != "" {
 		sanitized := strings.ReplaceAll(m.err, "\n", " ")
@@ -119,7 +119,7 @@ func (m *Model) View() string {
 	}
 
 	// ======================================================================
-	// 第 ⑤ 步：设置 viewport 内容 + 自动滚底
+	// 第 ⑥ 步：设置 viewport 内容 + 自动滚底
 	// ======================================================================
 	content := strings.Join(msgLines, "\n")
 	m.viewport.SetContent(content)
@@ -129,7 +129,7 @@ func (m *Model) View() string {
 	}
 
 	// ======================================================================
-	// 第 ⑥ 步：渲染侧边栏
+	// 第 ⑦ 步：渲染侧边栏
 	// ======================================================================
 	sidebarContent := m.renderSidebar(sidebarWidth)
 	sidebar := m.lip.SidebarContainer.
@@ -138,65 +138,61 @@ func (m *Model) View() string {
 		Render(sidebarContent)
 
 	// ======================================================================
-	// 第 ⑦ 步：组合输出（水平：viewport | 侧边栏；垂直排列 textarea）
+	// 第 ⑧ 步：组合输出（水平：viewport | 侧边栏；垂直排列 textarea + [补全列表]）
 	// ======================================================================
 	topRow := lipgloss.JoinHorizontal(lipgloss.Top, m.viewport.View(), sidebar)
 	inputBox := m.textarea.View()
+	if list := m.renderCompletionList(); list != "" {
+		return lipgloss.JoinVertical(lipgloss.Top, topRow, inputBox, list)
+	}
 	return lipgloss.JoinVertical(lipgloss.Top, topRow, inputBox)
 }
 
-// renderSidebar 渲染右侧边栏内容
+// renderSidebar 渲染右侧状态侧边栏
 func (m *Model) renderSidebar(width int) string {
 	var lines []string
 
 	// 标题行
-	title := m.lip.SidebarActive.Render(" Agent / Tool")
+	title := m.lip.SidebarActive.Render(" 状态")
 	lines = append(lines, title)
 	lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 
-	// 当前活跃 Agent（带 spinner 动画）
-	if m.sidebar.CurrentAgent != "" {
+	// 当前活跃项（带 spinner 动画）
+	if m.sidebar.Current != "" {
 		spinner := ""
 		if m.thinking {
 			spinner = m.spinner.View() + " "
 		}
-		lines = append(lines, m.lip.SidebarActive.Render(spinner+m.sidebar.CurrentAgent))
+		lines = append(lines, m.lip.SidebarActive.Render(spinner+m.sidebar.Current))
 	}
 
-	// 当前活跃工具（缩进显示，表示隶属于当前 Agent）
-	if m.sidebar.CurrentTool != "" {
-		spinner := ""
-		if m.thinking {
-			spinner = m.spinner.View() + " "
+	// Token 统计行（可配置）
+	if m.config.Cli.Tui.SidebarShowTokens && m.sidebar.Token != nil {
+		t := m.sidebar.Token
+		tokenLine := fmt.Sprintf("Token: ↑%d ↓%d Σ%d", t.PromptTokens, t.CompletionTokens, t.TotalTokens)
+		lines = append(lines, m.lip.SidebarCompleted.Render(tokenLine))
+		if t.CachedTokens > 0 {
+			lines = append(lines, m.lip.SidebarCompleted.Render(fmt.Sprintf("  缓存: %d", t.CachedTokens)))
 		}
-		lines = append(lines, m.lip.SidebarActive.Render("  "+spinner+m.sidebar.CurrentTool))
-		// 活跃工具出错时显示错误消息
-		if m.sidebar.ToolError != "" {
-			lines = append(lines, m.lip.Err.Render("  E: "+m.sidebar.ToolError))
+		if t.ReasoningTokens > 0 {
+			lines = append(lines, m.lip.SidebarCompleted.Render(fmt.Sprintf("  推理: %d", t.ReasoningTokens)))
 		}
 	}
 
-	// 空行分隔活跃项与已完成轨迹
-	if len(m.sidebar.AgentTrail) > 0 || len(m.sidebar.ToolTrail) > 0 {
-		lines = append(lines, "")
+	// 分隔线
+	if len(m.sidebar.Log) > 0 || m.sidebar.Current != "" {
+		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 	}
 
-	// 已完成 Agent 轨迹（灰色，最多 5 条）
-	agentStart := 0
-	if len(m.sidebar.AgentTrail) > 5 {
-		agentStart = len(m.sidebar.AgentTrail) - 5
+	// 事件日志（viewport 滚动区域）
+	logContent := strings.Join(m.sidebar.Log, "\n")
+	m.sidebarVP.SetContent(logContent)
+	if m.thinking && len(m.sidebar.Log) > 0 {
+		m.sidebarVP.GotoBottom()
 	}
-	for _, a := range m.sidebar.AgentTrail[agentStart:] {
-		lines = append(lines, m.lip.SidebarCompleted.Render(a))
-	}
-
-	// 已完成工具轨迹（灰色，缩进，最多 5 条）
-	toolStart := 0
-	if len(m.sidebar.ToolTrail) > 5 {
-		toolStart = len(m.sidebar.ToolTrail) - 5
-	}
-	for _, t := range m.sidebar.ToolTrail[toolStart:] {
-		lines = append(lines, m.lip.SidebarCompleted.Render(t))
+	logView := m.sidebarVP.View()
+	if logView != "" {
+		lines = append(lines, logView)
 	}
 
 	// 底部：记忆选择列表或占位
@@ -204,13 +200,53 @@ func (m *Model) renderSidebar(width int) string {
 	if m.selectingMem {
 		lines = append(lines, m.lip.SidebarActive.Render(" 选择记忆"))
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
-		// 设置 list 宽度（减去容器内边距和边框）
 		m.memoryList.SetWidth(width - 4)
 		lines = append(lines, m.memoryList.View())
 	} else {
-		lines = append(lines, m.lip.SidebarPlaceholder.Render("(代码预览)"))
+		lines = append(lines, m.lip.SidebarPlaceholder.Render("(按 Tab 补全命令)"))
 	}
 
-	content := strings.Join(lines, "\n")
-	return content
+	return strings.Join(lines, "\n")
+}
+
+// renderCompletionList 渲染斜杠命令补全列表（输入框下方）
+// 仅在 showingCompletions && 存在匹配命令时显示
+// 最多显示 CompletionMaxVisible 条，超出部分基于 completionIdx 滚动视窗
+func (m *Model) renderCompletionList() string {
+	if !m.showingCompletions || len(m.completions) == 0 {
+		return ""
+	}
+	maxVis := m.config.Cli.Tui.CompletionMaxVisible
+	if maxVis <= 0 {
+		maxVis = 5
+	}
+	// 计算可见窗口
+	start := 0
+	if m.completionIdx >= maxVis {
+		start = m.completionIdx - maxVis + 1
+	}
+	end := start + maxVis
+	if end > len(m.completions) {
+		end = len(m.completions)
+		start = end - maxVis
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	var lines []string
+	for i := start; i < end; i++ {
+		prefix := "  "
+		if i == m.completionIdx {
+			prefix = "> "
+		}
+		line := prefix + m.completions[i]
+		if i == m.completionIdx {
+			lines = append(lines, m.lip.SidebarActive.Render(line))
+		} else {
+			lines = append(lines, m.lip.SidebarCompleted.Render(line))
+		}
+	}
+	list := strings.Join(lines, "\n")
+	return m.lip.SidebarContainer.Render(list)
 }

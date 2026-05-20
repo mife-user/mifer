@@ -6,5 +6,5 @@ import (
 )
 
 func (e *Executor) ExchangeMemory(c context.Context, req *domain.MemoryReq) error {
-	return e.Humen.Memory.SwitchSession(req.ID)
+	return e.Humen.Prompt.Memory.SwitchSession(req.ID)
 }

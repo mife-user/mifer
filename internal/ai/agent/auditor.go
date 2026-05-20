@@ -21,7 +21,7 @@ func newAuditor(c context.Context, chatModel model.BaseChatModel) (*adk.ChatMode
 				Tools: tools.AuditTools(),
 			},
 		},
-		MaxIterations: 5,
+		MaxIterations: 600,
 	})
 	if err != nil {
 		return nil, err

@@ -3,27 +3,6 @@ package tui
 // ============================================================================
 // update.go — Bubble Tea 消息分发器与核心交互逻辑
 // ============================================================================
-//
-// Update() 是 Bubble Tea 的核心——所有事件都经过此方法分发处理。
-// 签名：(tea.Model, tea.Cmd) 表示返回新状态和一个可选的后继命令。
-//
-// 消息处理优先级（按 switch 顺序）：
-//   1. tea.WindowSizeMsg  → 终端尺寸变化，重新计算布局
-//   2. tea.MouseMsg       → 鼠标事件，委托给 viewport 处理滚轮
-//   3. tea.KeyMsg         → 键盘输入，Enter/↑/↓/Tab/Ctrl+C 等
-//   4. streamStatusMsg    → 委托给 handleStreamStatus（stream.go）
-//   5. streamContentMsg   → 委托给 handleStreamContent（stream.go）
-//   6. streamDoneMsg      → 委托给 handleStreamDone（stream.go）
-//   7. chatRespMsg        → AI 对话响应（回退场景）
-//   8. systemMsg          → 系统命令结果
-//   9. memoryListMsg      → 委托给 handleMemoryList（memory.go）
-//  10. memoryViewMsg      → 委托给 handleMemoryView（memory.go）
-//  11. spinner.TickMsg    → 旋转动画帧推进
-//
-// 按键处理策略：
-//   - ↑ 键仅在 textarea 第一行时触发历史导航，否则转发给 textarea
-//   - ↓ 键仅在 textarea 最后一行时触发历史导航，否则转发给 textarea
-//   - 这样用户可以正常在 textarea 内使用 ↑↓ 移动光标（非首/末行时）
 
 import (
 	"strings"
@@ -64,16 +43,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Width = 10
 		}
 		m.viewport.Height = m.contentHeight
+		// 侧边栏 viewport 尺寸（日志区最多占终端 1/4）
+		m.sidebarVP.Width = sidebarW - 2
+		m.sidebarVP.Height = m.height / 4
+		if m.sidebarVP.Width < 10 {
+			m.sidebarVP.Width = 10
+		}
 		m.memoryList.SetSize(sidebarW-4, 8)
 		m.memoryViewport.Width = m.width - 4
 		m.memoryViewport.Height = m.height - 2
 		_, _ = m.textarea.Update(msg)
 		_, _ = m.viewport.Update(msg)
+		_, _ = m.sidebarVP.Update(msg)
 		_, _ = m.memoryList.Update(msg)
 		return m, nil
 
 	// ======================================================================
-	// 2. 鼠标事件 → 委托给 viewport
+	// 2. 鼠标事件 → 委托给对应 viewport
 	// ======================================================================
 	case tea.MouseMsg:
 		if m.showingMemoryView {
@@ -123,8 +109,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 
-		// ---- 退出：Ctrl+C 或 Esc ----
+		// ---- 退出：Ctrl+C 或 Esc（补全列表显示时仅关闭列表） ----
 		case "ctrl+c", "esc":
+			if m.showingCompletions {
+				m.showingCompletions = false
+				m.resetCompletion()
+				return m, nil
+			}
 			return m, tea.Quit
 
 		// ---- Ctrl+N：插入换行符 ----
@@ -133,12 +124,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.adjustInputHeight()
 			return m, nil
 
-		// ---- Enter：提交输入 ----
+		// ---- Enter：提交输入（补全列表显示时填入选中命令） ----
 		case "enter":
+			if m.showingCompletions && m.completionIdx >= 0 && m.completionIdx < len(m.completions) {
+				m.textarea.Reset()
+				m.textarea.InsertString(m.completions[m.completionIdx] + " ")
+				m.textarea.CursorEnd()
+				m.resetCompletion()
+				m.showingCompletions = false
+				m.adjustInputHeight()
+				return m, nil
+			}
 			return m.handleEnter()
 
-		// ---- ↑ 键：首行时触发历史导航，否则光标上移 ----
+		// ---- ↑ 键：补全列表导航 / 首行时触发历史导航 / 否则光标上移 ----
 		case "up":
+			if m.showingCompletions && m.completionIdx > 0 {
+				m.completionIdx--
+				return m, nil
+			}
 			if m.textarea.Line() == 0 {
 				return m.handleHistoryUp()
 			}
@@ -146,8 +150,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.adjustInputHeight()
 			return m, nil
 
-		// ---- ↓ 键：末行时触发历史导航，否则光标下移 ----
+		// ---- ↓ 键：补全列表导航 / 末行时触发历史导航 / 否则光标下移 ----
 		case "down":
+			if m.showingCompletions && m.completionIdx < len(m.completions)-1 {
+				m.completionIdx++
+				return m, nil
+			}
 			if m.textarea.Line() == m.textarea.LineCount()-1 {
 				return m.handleHistoryDown()
 			}
@@ -164,26 +172,28 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.textarea, cmd = m.textarea.Update(msg)
 			m.adjustInputHeight()
+			// 输入变更时检测 / 前缀，自动触发补全匹配
 			if m.completionIdx != -1 && m.textarea.Value() != m.completionBase && !strings.HasPrefix(m.textarea.Value(), m.completionBase) {
 				m.resetCompletion()
 			}
+			m.updateCompletionForInput()
 			return m, cmd
 		}
 
 	// ======================================================================
-	// 4a. 流式状态更新（agent切换、工具调用）→ 委托给 stream.go
+	// 4a. 流式状态更新（agent切换、工具调用、token统计）
 	// ======================================================================
 	case streamStatusMsg:
 		return m.handleStreamStatus(msg)
 
 	// ======================================================================
-	// 4b. 流式内容片段 → 委托给 stream.go
+	// 4b. 流式内容片段
 	// ======================================================================
 	case streamContentMsg:
 		return m.handleStreamContent(msg)
 
 	// ======================================================================
-	// 4c. 流式传输完成 → 委托给 stream.go
+	// 4c. 流式传输完成
 	// ======================================================================
 	case streamDoneMsg:
 		return m.handleStreamDone(msg)
@@ -235,19 +245,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// ======================================================================
-	// 7. 记忆列表结果 → 委托给 memory.go
+	// 7. 记忆列表结果
 	// ======================================================================
 	case memoryListMsg:
 		return m.handleMemoryList(msg)
 
 	// ======================================================================
-	// 8. 记忆查看结果 → 委托给 memory.go
+	// 8. 记忆查看结果
 	// ======================================================================
 	case memoryViewMsg:
 		return m.handleMemoryView(msg)
 
 	// ======================================================================
-	// 9. 旋转动画帧推进（spinner 内部 tick）
+	// 9. 旋转动画帧推进
 	// ======================================================================
 	case spinner.TickMsg:
 		if m.thinking {
@@ -268,6 +278,33 @@ func (m *Model) adjustInputHeight() {
 	lines := max(m.textarea.LineCount(), 1)
 	m.textarea.SetHeight(lines)
 	m.contentHeight = max(m.height-m.textarea.Height()-1, 1)
+}
+
+// ============================================================================
+// updateCompletionForInput — 输入以 / 开头时自动匹配补全命令
+// ============================================================================
+func (m *Model) updateCompletionForInput() {
+	input := strings.TrimSpace(m.textarea.Value())
+	if !strings.HasPrefix(input, "/") {
+		if m.showingCompletions {
+			m.showingCompletions = false
+			m.resetCompletion()
+		}
+		return
+	}
+	matches := m.findMatches(input)
+	if len(matches) == 0 {
+		if m.showingCompletions {
+			m.showingCompletions = false
+			m.resetCompletion()
+		}
+		return
+	}
+	m.completions = matches
+	m.showingCompletions = true
+	if m.completionIdx == -1 || m.completionIdx >= len(matches) {
+		m.completionIdx = -1
+	}
 }
 
 // ============================================================================
@@ -299,13 +336,13 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	// ---- 命令分发 ----
 	switch {
-	case input == "exit" || input == "quit":
+	case input == "/exit" || input == "/quit":
 		return m, tea.Quit
 
-	case input == "help":
+	case input == "/help":
 		m.messages = append(m.messages, message{
 			role:    "system",
-			content: "命令: ↑↓ 历史输入 | Ctrl+N 换行 | /viewmemory 查看记忆 | /excmem <id> 切换会话 | exit 退出 | help 帮助",
+			content: "命令: ↑↓ 历史输入 | Ctrl+N 换行 | /viewmemory 查看记忆 | /excmem <id> 切换会话 | /exit 退出 | /help 帮助",
 		})
 		m.needsAutoScroll = true
 		return m, nil

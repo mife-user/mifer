@@ -81,9 +81,14 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 更新历史选择功能
-            - [x] 修复一些bug
-            - [x] 添加更多日志
+            - [x] 重构Prompt与记忆模块，统一记忆访问路径,通过Prompt自主退出agent迭代
+            - [x] 提升各Agent最大迭代次数至600次
+            - [x] 更新Redis依赖与配置，新增RESP3支持
+            - [x] 新增嵌入器初始化与默认配置  
+            - [x] 优化TUI侧边栏与补全功能
+            - [x] 修复流式响应错误处理与日志输出
+            - [x] 新增Token统计与流式推送支持
+            - [x] 调整服务器端口启动逻辑
           files: artifacts/**/*
           draft: false
           prerelease: false

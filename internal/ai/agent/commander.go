@@ -22,7 +22,7 @@ func newCommander(c context.Context, chatModel model.BaseChatModel, cfg *conf.Co
 				Tools: tools.CommandTools(cfg),
 			},
 		},
-		MaxIterations: 600,
+		MaxIterations: 0,
 	})
 	if err != nil {
 		return nil, err

@@ -21,7 +21,7 @@ func newSummarizer(c context.Context, chatModel model.BaseChatModel) (*adk.ChatM
 				Tools: tools.AuditTools(),
 			},
 		},
-		MaxIterations: 600,
+		MaxIterations: 0,
 	})
 	if err != nil {
 		return nil, err

@@ -21,7 +21,7 @@ func newPlanner(c context.Context, chatModel model.BaseChatModel) (*adk.ChatMode
 				Tools: tools.FileTools(),
 			},
 		},
-		MaxIterations: 600,
+		MaxIterations: 0,
 	})
 	if err != nil {
 		return nil, err

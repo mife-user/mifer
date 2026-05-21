@@ -21,7 +21,7 @@ func newChatEditer(c context.Context, chatModel model.BaseChatModel) (*adk.ChatM
 				Tools: tools.FileTools(),
 			},
 		},
-		MaxIterations: 600,
+		MaxIterations: 0,
 	})
 	if err != nil {
 		return nil, err

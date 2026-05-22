@@ -6,16 +6,17 @@ import (
 	"mifer/internal/ai/rag/chunker"
 	"mifer/internal/ai/rag/embedder"
 	"mifer/internal/ai/rag/loader"
-	ollamaembed "github.com/cloudwego/eino-ext/components/embedding/ollama"
 	"mifer/internal/ai/rag/vectorstore"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"mifer/pkg/res"
 	"strings"
 
-	"github.com/cloudwego/eino/components/document"
+	ollamaembed "github.com/cloudwego/eino-ext/components/embedding/ollama"
+
 	redisindexer "github.com/cloudwego/eino-ext/components/indexer/redis"
 	redisretriever "github.com/cloudwego/eino-ext/components/retriever/redis"
+	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/schema"
 	redisv9 "github.com/redis/go-redis/v9"
 )
@@ -150,7 +151,7 @@ func (s *Service) Retrieve(ctx context.Context, query string) ([]*schema.Documen
 }
 
 // FormatDocs 将检索结果格式化为 Prompt 可用的上下文字符串
-func FormatDocs(docs []*schema.Document) string {
+func (s *Service) FormatDocs(docs []*schema.Document) string {
 	if len(docs) == 0 {
 		return "暂无相关知识库内容"
 	}

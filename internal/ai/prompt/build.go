@@ -3,7 +3,6 @@ package prompt
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/cloudwego/eino/schema"
 )
@@ -17,7 +16,7 @@ func (p *Prompty) Build(ctx context.Context, query string) ([]*schema.Message, e
 		if err != nil {
 			return nil, fmt.Errorf("RAG检索失败: %w", err)
 		}
-		contextStr = formatDocs(docs)
+		contextStr = p.RAGService.FormatDocs(docs)
 	}
 
 	// 若未配置模板，回退到手工拼接（保持向后兼容）
@@ -46,16 +45,4 @@ func (p *Prompty) buildLegacy(contextStr, query string) []*schema.Message {
 	msgs = append(msgs, p.Memory.Messages...)
 	msgs = append(msgs, schema.UserMessage(query))
 	return msgs
-}
-
-// formatDocs 将检索到的文档格式化为上下文字符串
-func formatDocs(docs []*schema.Document) string {
-	if len(docs) == 0 {
-		return "暂无相关知识库内容"
-	}
-	var sb strings.Builder
-	for i, doc := range docs {
-		sb.WriteString(fmt.Sprintf("【文档%d】%s\n", i+1, doc.Content))
-	}
-	return sb.String()
 }

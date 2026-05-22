@@ -23,7 +23,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	eventCount := 0
 	var currentAgent string // 跟踪当前执行的Agent，用于检测切换
 	// Token 累计统计
-	var totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning int
+	e.Token.reset()
 	for {
 		event, ok := iter.Next()
 		if !ok {
@@ -97,8 +97,8 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 					if err != nil {
 						return err
 					}
-					if accumulateToken(&totalPrompt, &totalCompletion, &totalTotal, &totalCached, &totalReasoning, chunk) {
-						if err := sendToken(callback, totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning); err != nil {
+					if e.Token.accumulate(chunk) {
+						if err := e.Token.send(callback); err != nil {
 							return err
 						}
 					}
@@ -114,8 +114,8 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 					return err
 				}
 
-				if accumulateToken(&totalPrompt, &totalCompletion, &totalTotal, &totalCached, &totalReasoning, chunk) {
-					if err := sendToken(callback, totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning); err != nil {
+				if e.Token.accumulate(chunk) {
+					if err := e.Token.send(callback); err != nil {
 						return err
 					}
 				}
@@ -133,14 +133,8 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				}
 			}
 			// 累加 token 用量（非流式消息）
-			if message.ResponseMeta != nil && message.ResponseMeta.Usage != nil {
-				usage := message.ResponseMeta.Usage
-				totalPrompt += usage.PromptTokens
-				totalCompletion += usage.CompletionTokens
-				totalTotal += usage.TotalTokens
-				totalCached += usage.PromptTokenDetails.CachedTokens
-				totalReasoning += usage.CompletionTokensDetails.ReasoningTokens
-				if err := sendToken(callback, totalPrompt, totalCompletion, totalTotal, totalCached, totalReasoning); err != nil {
+			if e.Token.accumulate(message) {
+				if err := e.Token.send(callback); err != nil {
 					return err
 				}
 			}
@@ -166,24 +160,43 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	return nil
 }
 
-// accumulateToken 从 schema.Message 中累加 token 用量，返回是否有新数据
-func accumulateToken(prompt, completion, total, cached, reasoning *int, msg *schema.Message) bool {
+// TokenUsage token 累计用量统计
+type TokenUsage struct {
+	Prompt     int // 输入 token
+	Completion int // 输出 token
+	Total      int // 合计 token
+	Cached     int // 缓存命中 token
+	Reasoning  int // 推理 token
+}
+
+// accumulate 从 schema.Message 中累加 token 用量，返回是否有新数据
+func (t *TokenUsage) accumulate(msg *schema.Message) bool {
 	if msg == nil || msg.ResponseMeta == nil || msg.ResponseMeta.Usage == nil {
 		return false
 	}
 	usage := msg.ResponseMeta.Usage
-	*prompt += usage.PromptTokens
-	*completion += usage.CompletionTokens
-	*total += usage.TotalTokens
-	*cached += usage.PromptTokenDetails.CachedTokens
-	*reasoning += usage.CompletionTokensDetails.ReasoningTokens
+	t.Prompt += usage.PromptTokens
+	t.Completion += usage.CompletionTokens
+	t.Total += usage.TotalTokens
+	t.Cached += usage.PromptTokenDetails.CachedTokens
+	t.Reasoning += usage.CompletionTokensDetails.ReasoningTokens
 	return true
 }
 
-// sendToken 发送 token 事件（仅当有变更时）
-func sendToken(callback func(event, content string) error, prompt, completion, total, cached, reasoning int) error {
-	payload := fmt.Sprintf("%d\x00%d\x00%d\x00%d\x00%d", prompt, completion, total, cached, reasoning)
+// send 发送 token 事件到回调
+func (t *TokenUsage) send(callback func(event, content string) error) error {
+	payload := fmt.Sprintf("%d\x00%d\x00%d\x00%d\x00%d",
+		t.Prompt, t.Completion, t.Total, t.Cached, t.Reasoning)
 	return callback("token", payload)
+}
+
+// reset 重置所有计数为零
+func (t *TokenUsage) reset() {
+	t.Prompt = 0
+	t.Completion = 0
+	t.Total = 0
+	t.Cached = 0
+	t.Reasoning = 0
 }
 
 // extractToolError 从工具返回的JSON结果中提取错误消息

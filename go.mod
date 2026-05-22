@@ -60,6 +60,8 @@ require (
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.5.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
+	github.com/cloudwego/eino-ext/components/indexer/redis v0.0.0-20260521063832-407552a64b76 // indirect
+	github.com/cloudwego/eino-ext/components/retriever/redis v0.0.0-20260521063832-407552a64b76 // indirect
 	github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

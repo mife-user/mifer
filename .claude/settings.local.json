@@ -54,7 +54,10 @@
       "Bash(mapstructure:\\\\\"completion_max_visible\\\\\")",
       "Bash(python -c ' *)",
       "Bash(python *)",
-      "Bash(cmd.exe /c \"where /r D:\\\\vscode\\\\VsCodeWork\\\\mifer deep 2>nul || echo no matches\")"
+      "Bash(cmd.exe /c \"where /r D:\\\\vscode\\\\VsCodeWork\\\\mifer deep 2>nul || echo no matches\")",
+      "Bash(Get-Content *)",
+      "Bash(Select-Object Name)",
+      "Bash(wait)"
     ]
   }
 }

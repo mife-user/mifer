@@ -115,6 +115,8 @@ github.com/cloudwego/eino v0.8.13 h1:z5dhaZNN8TWZbP/lgKxGmF26Ii8fPeUlQCGV/NTtms0
 github.com/cloudwego/eino v0.8.13/go.mod h1:+2N4nsMPxA6kGBHpH+75JuTfEcGprAMTdsZESrShKpU=
 github.com/cloudwego/eino-ext/components/embedding/ark v0.1.1 h1:PM/+XAvJtrBqFlBY15ws0pb0+92XKHQv0ei3M7PIJcQ=
 github.com/cloudwego/eino-ext/components/embedding/ark v0.1.1/go.mod h1:6O6x0fHfM3uCLr3lX1DnB/my7fC3WRUA5hpkCkrkZrg=
+github.com/cloudwego/eino-ext/components/indexer/redis v0.0.0-20260521063832-407552a64b76 h1:a/x7qKD8RZlmeGTUeeu2ttHaMP1iqwIQgH/o5WOqEVQ=
+github.com/cloudwego/eino-ext/components/indexer/redis v0.0.0-20260521063832-407552a64b76/go.mod h1:yx19qVmk970TjutWgNwlLcaRkrTR0fEHKecLkJGcxoA=
 github.com/cloudwego/eino-ext/components/model/claude v0.1.18 h1:px9LBFcj+GfVkSdhS8PTe54y0H3reRuwN5xOLDQI+d4=
 github.com/cloudwego/eino-ext/components/model/claude v0.1.18/go.mod h1:2sGGgwpR60LW+RdG/hcjdGBVEVEJ6EkKxlva8mju9BI=
 github.com/cloudwego/eino-ext/components/model/gemini v0.1.31 h1:kCtTuIBRWfajPXNdDOe4x7AxPB9AHmg6peOXhz7Y8tE=
@@ -123,6 +125,8 @@ github.com/cloudwego/eino-ext/components/model/ollama v0.1.9 h1:+eZbquy5lF3WHvK9
 github.com/cloudwego/eino-ext/components/model/ollama v0.1.9/go.mod h1:C3rf3yy2nEoXFP/CQJne4gbiu1pREKplHKmFlhuOzPE=
 github.com/cloudwego/eino-ext/components/model/openai v0.1.13 h1:5XHRTiTD5bt9KQrMHcfvuWNklEC3tpm3XHejdozt9vM=
 github.com/cloudwego/eino-ext/components/model/openai v0.1.13/go.mod h1:mgIoqYYOc0eECCqvLbEYpOJrQNTNxkwXzSJzFU+v5sQ=
+github.com/cloudwego/eino-ext/components/retriever/redis v0.0.0-20260521063832-407552a64b76 h1:2cI9Ae5G5o/NBn7JZUW3yMyzfHRsT1JNHTyNkYuiy3Y=
+github.com/cloudwego/eino-ext/components/retriever/redis v0.0.0-20260521063832-407552a64b76/go.mod h1:C+JX7vgZmt/XBEXCS2KeJvyVBUeQ0Aem+xTI8AWdx3s=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17 h1:EeVcR1TslRA2IdNW1h/2LaGbPlffwGhQm99jM3zWZiI=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17/go.mod h1:Zkcx6DPTR2NfWmtSXbhItswGw6hqUezNPhNcke0pOG8=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=

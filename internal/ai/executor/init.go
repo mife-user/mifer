@@ -12,6 +12,7 @@ import (
 type Executor struct {
 	Runner *adk.Runner
 	Humen  *agent.Humen
+	Token  *TokenUsage // token 累计用量统计
 }
 
 func Init(c context.Context, config *conf.Config) (*Executor, error) {
@@ -26,6 +27,6 @@ func Init(c context.Context, config *conf.Config) (*Executor, error) {
 		Agent:           ag.Agent,
 		EnableStreaming: true,
 	})
-	return &Executor{Runner: runner, Humen: ag}, nil
+	return &Executor{Runner: runner, Humen: ag, Token: &TokenUsage{}}, nil
 
 }

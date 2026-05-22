@@ -28,13 +28,30 @@ type Service struct {
 	indexer   *redisindexer.Indexer
 	retriever *redisretriever.Retriever
 	client    *redisv9.Client
-	config    *RAGConfig
 }
 
 // NewService 创建 RAG 服务，内部初始化 Redis 客户端
 // 若 Redis 不可用则返回 error，调用方应降级为无 RAG 模式
 func NewService(ctx context.Context, config *conf.Config) (*Service, error) {
-	ragCfg := DefaultRAGConfig()
+	ragCfg := config.Rag
+	if ragCfg.ChunkSize == 0 {
+		ragCfg.ChunkSize = 500
+	}
+	if ragCfg.ChunkOverlap == 0 {
+		ragCfg.ChunkOverlap = 50
+	}
+	if ragCfg.IndexName == "" {
+		ragCfg.IndexName = "mifer_docs"
+	}
+	if ragCfg.KeyPrefix == "" {
+		ragCfg.KeyPrefix = "mifer:docs:"
+	}
+	if ragCfg.TopK == 0 {
+		ragCfg.TopK = 5
+	}
+	if ragCfg.Dim == 0 {
+		ragCfg.Dim = 768
+	}
 
 	emb, err := embedder.NewEmbedder(ctx, config)
 	if err != nil {
@@ -92,7 +109,6 @@ func NewService(ctx context.Context, config *conf.Config) (*Service, error) {
 		indexer:   idx,
 		retriever: ret,
 		client:    redisClient,
-		config:    ragCfg,
 	}, nil
 }
 

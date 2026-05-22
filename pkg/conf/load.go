@@ -87,6 +87,18 @@ func applyEnvOverrides(v *viper.Viper) {
 			v.Set(key, val)
 		}
 	}
+	// RAG 配置
+	ragOverrides := map[string]string{
+		"rag.chunk_size":    "MIFER_RAG_CHUNK_SIZE",
+		"rag.chunk_overlap": "MIFER_RAG_CHUNK_OVERLAP",
+		"rag.index_name":    "MIFER_RAG_INDEX_NAME",
+		"rag.top_k":         "MIFER_RAG_TOP_K",
+	}
+	for key, envVar := range ragOverrides {
+		if val := os.Getenv(envVar); val != "" {
+			v.Set(key, val)
+		}
+	}
 	// 后端模型配置 — 支持 MIFER_AI_<BACKEND>_<FIELD> 格式
 	for _, backend := range []string{"DEFAULT", "MULTI", "HAIKU", "SONNET", "OPUS"} {
 		envVar := "MIFER_AI_" + backend + "_" + "APIKEY"

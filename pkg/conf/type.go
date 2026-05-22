@@ -11,7 +11,8 @@ type Config struct {
 	JWT   JWTConfig   `mapstructure:"jwt"`
 	Ai    AiConfig    `mapstructure:"ai"`
 	Path  PathConfig  `mapstructure:"path"`
-	Cli   CliConfig   `mapstructure:"cli"`
+	Cli CliConfig  `mapstructure:"cli"`
+	Rag RAGConfig `mapstructure:"rag"`
 }
 
 // cli配置结构体
@@ -111,4 +112,14 @@ type CorsConfig struct {
 // JWT配置结构体
 type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
+}
+
+// RAG配置结构体
+type RAGConfig struct {
+	ChunkSize    int    `mapstructure:"chunk_size"`    // 分块大小（字符数），默认 500
+	ChunkOverlap int    `mapstructure:"chunk_overlap"` // 重叠字符数，默认 50
+	IndexName    string `mapstructure:"index_name"`    // Redis 向量索引名，默认 "mifer_docs"
+	KeyPrefix    string `mapstructure:"key_prefix"`    // Redis key 前缀，默认 "mifer:docs:"
+	TopK         int    `mapstructure:"top_k"`         // 检索返回数量，默认 5
+	Dim          int    `mapstructure:"dim"`            // 向量维度，默认 768（nomic-embed-text）
 }

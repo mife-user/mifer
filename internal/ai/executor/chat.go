@@ -17,7 +17,11 @@ import (
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
 
-	iter := e.Runner.Run(c, e.Humen.Prompt.Build())
+	msgs, err := e.Humen.Prompt.Build(c, req.Content)
+	if err != nil {
+		return err
+	}
+	iter := e.Runner.Run(c, msgs)
 
 	lastMsg := &strings.Builder{}
 	eventCount := 0

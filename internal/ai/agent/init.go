@@ -6,6 +6,7 @@ import (
 	"mifer/internal/ai/llm"
 	"mifer/internal/ai/memory"
 	"mifer/internal/ai/prompt"
+	"mifer/internal/ai/rag"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
@@ -88,6 +89,12 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 		return nil, err
 	}
 
-	prompty := prompt.New(mem)
+	ragSvc, err := rag.NewService(c, config)
+	if err != nil {
+		logger.Warn("RAG服务初始化失败，降级为无RAG模式", logger.C(err))
+		ragSvc = nil
+	}
+
+	prompty := prompt.NewWithRAG(mem, ragSvc)
 	return &Humen{Agent: agent, Prompt: prompty}, nil
 }

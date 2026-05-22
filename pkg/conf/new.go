@@ -42,13 +42,20 @@ log:
 redis:
   host: "127.0.0.1"
   port: "6379"
-  username: "mifer"
-  password: "mifer"
+  username: ""
+  password: ""
   db: 0
   protocol: 2
   unstable_resp3: true
 jwt:
   secret: "123456"
+rag:
+  chunk_size: 500
+  chunk_overlap: 50
+  index_name: "mifer_docs"
+  key_prefix: "mifer:docs:"
+  top_k: 5
+  dim: 768
 ai:
   backends:
     default:
@@ -75,7 +82,7 @@ ai:
       api_key: ""
     embedder:
       provider: "ollama"
-      base_url: "http://localhost:11434/v1"
+      base_url: "http://localhost:11434"
       model: "nomic-embed-text"
       api_key: "ollama"
 gin:

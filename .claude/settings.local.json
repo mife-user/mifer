@@ -57,7 +57,17 @@
       "Bash(cmd.exe /c \"where /r D:\\\\vscode\\\\VsCodeWork\\\\mifer deep 2>nul || echo no matches\")",
       "Bash(Get-Content *)",
       "Bash(Select-Object Name)",
-      "Bash(wait)"
+      "Bash(wait)",
+      "PowerShell(New-Item *)",
+      "PowerShell(\\(Get-Content \"D:\\\\vscode\\\\VsCodeWork\\\\mifer\\\\pkg\\\\conf\\\\new.go\" -Raw\\).Substring\\(1100, 300\\) | Out-String)",
+      "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:11434/api/tags\" -TimeoutSec 5; Write-Host \"Ollama OK - models:\"; $r.models.name } catch { Write-Host \"Ollama NOT reachable: $_\" })",
+      "PowerShell($r = Invoke-RestMethod -Uri \"http://localhost:11434/api/tags\" -TimeoutSec 5; Write-Host \"Ollama: OK\"; $r.models.name)",
+      "PowerShell(redis-cli *)",
+      "PowerShell(Get-ChildItem -Recurse -Directory -Path \"D:\\\\vscode\\\\VsCodeWork\\\\pkg\\\\mod\\\\github.com\\\\cloudwego\\\\eino@v0.8.13\\\\\" | Where-Object { $_.Name -match 'split|chunk|load|dedup|file|text|transform' } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\vscode\\\\VsCodeWork\\\\pkg\\\\mod\\\\github.com\\\\cloudwego\\\\eino@v0.8.13\\\\components\\\\document\\\\parser\\\\\" -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer } | Select-Object FullName, Length)",
+      "Bash(findstr /i \"eino\")",
+      "PowerShell(Set-Content *)",
+      "PowerShell(Get-Content *)"
     ]
   }
 }

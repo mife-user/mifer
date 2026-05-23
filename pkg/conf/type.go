@@ -108,8 +108,8 @@ type RAGConfig struct {
 	ChunkOverlap     int    `mapstructure:"chunk_overlap"`      // 重叠字符数，默认 50
 	TopK             int    `mapstructure:"top_k"`              // 检索返回数量，默认 5
 	Dim              int    `mapstructure:"dim"`                // 向量维度，默认 768（nomic-embed-text）
-	MilvusAddress    string `mapstructure:"milvus_address"`     // Milvus 服务地址，默认 "localhost:19530"
-	MilvusCollection string `mapstructure:"milvus_collection"`  // Milvus 集合名，默认 "mifer_docs"
-	MilvusUsername   string `mapstructure:"milvus_username"`    // Milvus 认证用户名
-	MilvusPassword   string `mapstructure:"milvus_password"`    // Milvus 认证密码
+	QdrantHost       string `mapstructure:"qdrant_host"`        // Qdrant 服务地址，默认 "localhost"
+	QdrantPort       int    `mapstructure:"qdrant_port"`        // Qdrant gRPC 端口，默认 6334
+	QdrantCollection string `mapstructure:"qdrant_collection"`  // Qdrant 集合名，默认 "mifer_docs"
+	QdrantAPIKey     string `mapstructure:"qdrant_api_key"`     // Qdrant API Key（可选）
 }

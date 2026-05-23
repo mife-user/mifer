@@ -5,17 +5,16 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 
-	milvus2indexer "github.com/cloudwego/eino-ext/components/indexer/milvus2"
-	milvus2retriever "github.com/cloudwego/eino-ext/components/retriever/milvus2"
-	"github.com/cloudwego/eino-ext/components/retriever/milvus2/search_mode"
+	qdrantindexer "github.com/cloudwego/eino-ext/components/indexer/qdrant"
+	qdrantretriever "github.com/cloudwego/eino-ext/components/retriever/qdrant"
 	"github.com/cloudwego/eino/components/embedding"
-	"github.com/milvus-io/milvus/client/v2/milvusclient"
+	qdrant "github.com/qdrant/go-client/qdrant"
 )
 
-// NewIndexer 基于 Eino Milvus2 Indexer 创建向量索引器
-func NewIndexer(ctx context.Context, client *milvusclient.Client, emb embedding.Embedder) (*milvus2indexer.Indexer, error) {
+// NewIndexer 基于 Eino Qdrant Indexer 创建向量索引器
+func NewIndexer(ctx context.Context, client *qdrant.Client, emb embedding.Embedder) (*qdrantindexer.Indexer, error) {
 	ragCfg := conf.GetConfig().Rag
-	collection := ragCfg.MilvusCollection
+	collection := ragCfg.QdrantCollection
 	if collection == "" {
 		collection = "mifer_docs"
 	}
@@ -23,14 +22,12 @@ func NewIndexer(ctx context.Context, client *milvusclient.Client, emb embedding.
 	if dim == 0 {
 		dim = 768
 	}
-	idx, err := milvus2indexer.NewIndexer(ctx, &milvus2indexer.IndexerConfig{
+	idx, err := qdrantindexer.NewIndexer(ctx, &qdrantindexer.Config{
 		Client:     client,
 		Collection: collection,
-		Vector: &milvus2indexer.VectorConfig{
-			Dimension:  int64(dim),
-			MetricType: milvus2indexer.COSINE,
-		},
-		Embedding: emb,
+		VectorDim:  dim,
+		Distance:   qdrant.Distance_Cosine,
+		Embedding:  emb,
 	})
 	if err != nil {
 		return nil, errorer.NewS(errorer.ErrCreateIndexFailed, err)
@@ -38,10 +35,10 @@ func NewIndexer(ctx context.Context, client *milvusclient.Client, emb embedding.
 	return idx, nil
 }
 
-// NewRetriever 基于 Eino Milvus2 Retriever 创建向量检索器
-func NewRetriever(ctx context.Context, client *milvusclient.Client, emb embedding.Embedder) (*milvus2retriever.Retriever, error) {
+// NewRetriever 基于 Eino Qdrant Retriever 创建向量检索器
+func NewRetriever(ctx context.Context, client *qdrant.Client, emb embedding.Embedder) (*qdrantretriever.Retriever, error) {
 	ragCfg := conf.GetConfig().Rag
-	collection := ragCfg.MilvusCollection
+	collection := ragCfg.QdrantCollection
 	if collection == "" {
 		collection = "mifer_docs"
 	}
@@ -49,11 +46,10 @@ func NewRetriever(ctx context.Context, client *milvusclient.Client, emb embeddin
 	if topK == 0 {
 		topK = 5
 	}
-	r, err := milvus2retriever.NewRetriever(ctx, &milvus2retriever.RetrieverConfig{
+	r, err := qdrantretriever.NewRetriever(ctx, &qdrantretriever.Config{
 		Client:     client,
 		Collection: collection,
 		TopK:       topK,
-		SearchMode: search_mode.NewApproximate(milvus2retriever.COSINE),
 		Embedding:  emb,
 	})
 	if err != nil {

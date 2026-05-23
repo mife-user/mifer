@@ -2,8 +2,8 @@ package rag
 
 import (
 	ollamaembed "github.com/cloudwego/eino-ext/components/embedding/ollama"
-	milvus2indexer "github.com/cloudwego/eino-ext/components/indexer/milvus2"
-	milvus2retriever "github.com/cloudwego/eino-ext/components/retriever/milvus2"
+	qdrantindexer "github.com/cloudwego/eino-ext/components/indexer/qdrant"
+	qdrantretriever "github.com/cloudwego/eino-ext/components/retriever/qdrant"
 
 	"github.com/cloudwego/eino/components/document"
 )
@@ -13,6 +13,6 @@ type Service struct {
 	embedder  *ollamaembed.Embedder
 	loader    document.Loader
 	chunker   document.Transformer
-	indexer   *milvus2indexer.Indexer
-	retriever *milvus2retriever.Retriever
+	indexer   *qdrantindexer.Indexer
+	retriever *qdrantretriever.Retriever
 }

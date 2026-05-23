@@ -31,7 +31,7 @@ const (
 	ErrInitEmbedderFailed   = "初始化嵌入器失败"
 	ErrInitFileLoaderFailed = "初始化文件加载器失败"
 	ErrInitChunkerFailed    = "初始化分块器失败"
-	ErrInitMilvusFailed     = "初始化Milvus客户端失败"
+	ErrInitQdrantFailed     = "初始化Qdrant客户端失败"
 	ErrInitIndexerFailed    = "初始化Indexer失败"
 	ErrInitRetrieverFailed  = "初始化Retriever失败"
 	ErrLoadFileFailed       = "加载文件失败"

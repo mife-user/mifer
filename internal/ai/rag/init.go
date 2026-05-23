@@ -9,11 +9,11 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
-	"mifer/pkg/milvus"
+	"mifer/pkg/qdrant"
 )
 
-// NewService 创建 RAG 服务，内部初始化 Milvus 客户端
-// 若 Milvus 不可用则返回 error，调用方应降级为无 RAG 模式
+// NewService 创建 RAG 服务，内部初始化 Qdrant 客户端
+// 若 Qdrant 不可用则返回 error，调用方应降级为无 RAG 模式
 func NewService(ctx context.Context) (*Service, error) {
 	// 初始化嵌入模型
 	emb, err := embedder.NewEmbedder(ctx)
@@ -30,26 +30,27 @@ func NewService(ctx context.Context) (*Service, error) {
 	if err != nil {
 		return nil, errorer.NewS(errorer.ErrInitChunkerFailed, err)
 	}
-	// 初始化 Milvus 客户端
-	milvusClient, err := milvus.Init(ctx)
+	// 初始化 Qdrant 客户端
+	qdrantClient, err := qdrant.Init(ctx)
 	if err != nil {
-		return nil, errorer.NewS(errorer.ErrInitMilvusFailed, err)
+		return nil, errorer.NewS(errorer.ErrInitQdrantFailed, err)
 	}
-	// 初始化向量索引器（Milvus2 自动建 Collection / 索引）
-	idx, err := vectorstore.NewIndexer(ctx, milvusClient, emb)
+	// 初始化向量索引器（Qdrant 自动建 Collection）
+	idx, err := vectorstore.NewIndexer(ctx, qdrantClient, emb)
 	if err != nil {
 		return nil, errorer.NewS(errorer.ErrInitIndexerFailed, err)
 	}
 	// 初始化向量检索器
-	ret, err := vectorstore.NewRetriever(ctx, milvusClient, emb)
+	ret, err := vectorstore.NewRetriever(ctx, qdrantClient, emb)
 	if err != nil {
 		return nil, errorer.NewS(errorer.ErrInitRetrieverFailed, err)
 	}
 
 	ragCfg := conf.GetConfig().Rag
 	logger.Info("RAG服务初始化成功",
-		logger.S("collection", ragCfg.MilvusCollection),
-		logger.S("address", ragCfg.MilvusAddress),
+		logger.S("collection", ragCfg.QdrantCollection),
+		logger.S("host", ragCfg.QdrantHost),
+		logger.I("port", ragCfg.QdrantPort),
 		logger.I("topK", ragCfg.TopK),
 	)
 

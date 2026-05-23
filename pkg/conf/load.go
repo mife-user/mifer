@@ -90,8 +90,9 @@ func applyEnvOverrides(v *viper.Viper) {
 		"rag.chunk_size":        "MIFER_RAG_CHUNK_SIZE",
 		"rag.chunk_overlap":     "MIFER_RAG_CHUNK_OVERLAP",
 		"rag.top_k":             "MIFER_RAG_TOP_K",
-		"rag.milvus_address":    "MIFER_RAG_MILVUS_ADDRESS",
-		"rag.milvus_collection": "MIFER_RAG_MILVUS_COLLECTION",
+		"rag.qdrant_host":       "MIFER_RAG_QDRANT_HOST",
+		"rag.qdrant_port":       "MIFER_RAG_QDRANT_PORT",
+		"rag.qdrant_collection": "MIFER_RAG_QDRANT_COLLECTION",
 	}
 	for key, envVar := range ragOverrides {
 		if val := os.Getenv(envVar); val != "" {

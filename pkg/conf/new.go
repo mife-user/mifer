@@ -46,10 +46,10 @@ rag:
   chunk_overlap: 50
   top_k: 5
   dim: 768
-  milvus_address: "localhost:19530"
-  milvus_collection: "mifer_docs"
-  milvus_username: ""
-  milvus_password: ""
+  qdrant_host: "localhost"
+  qdrant_port: 6334
+  qdrant_collection: "mifer_docs"
+  qdrant_api_key: ""
 ai:
   backends:
     default:

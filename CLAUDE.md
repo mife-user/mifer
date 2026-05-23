@@ -40,7 +40,7 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 - **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），dev 模式控制台彩色输出，prod 模式 JSON 输出。快捷方法：`logger.Info()`, `logger.Error()` 等。
 - **`pkg/auth/`** — JWT Token 生成与验证。
 - **`pkg/cache/`** — Redis 缓存封装（go-redis/v8）。预留待启用。
-- **`pkg/milvus/`** — Milvus gRPC 客户端初始化，用于 RAG 向量存储连接。
+- **`pkg/qdrant/`** — Qdrant gRPC 客户端初始化，用于 RAG 向量存储连接。
 - **`pkg/res/`** — Redis 客户端工厂（参数化，预留）和 HTTP 响应格式工具。
 - **`pkg/errorer/`** — 统一错误码与错误包装。
 - **`pkg/task/`** — 异步任务管理，`task.Do(ctx, fn)` 提供 context 感知的任务执行。
@@ -64,7 +64,7 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 - **CloudWeGo Eino** (`github.com/cloudwego/eino v0.7.13`) — ADK、ChatModel、DeepAgent 编排
 - **Eino OpenAI 扩展** (`github.com/cloudwego/eino-ext/components/model/openai`) — OpenAI 兼容 ChatModel
 - **Gin** (`v1.12.0`) — HTTP 框架
-- **Milvus** (`milvus-io/milvus/client/v2`) — RAG 向量存储
+- **Qdrant** (`github.com/qdrant/go-client`) — RAG 向量存储
 - **Uber Zap** — 结构化日志
 - **Viper** — 配置管理
 
@@ -91,7 +91,7 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 - [x] JWT 认证（中间件已实现，路由未强制启用）
 - [x] 结构化日志
 - [x] 配置管理（dev/prod 双模式，环境变量覆盖）
-- [x] RAG 检索增强（Milvus 向量存储 + Ollama 嵌入 + 知识库检索）
+- [x] RAG 检索增强（Qdrant 向量存储 + Ollama 嵌入 + 知识库检索）
 
 ### 规划中
 - [ ] MCP 协议支持（Client / Server）

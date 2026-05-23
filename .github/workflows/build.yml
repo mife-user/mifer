@@ -81,20 +81,17 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 移除Redis相关依赖与配置，新增Milvus客户端初始化与配置项
-            - [x] 重构RAG服务的向量存储实现，从Redis迁移到Milvus
-            - [x] 更新错误码与日志信息，适配新的Milvus集成逻辑
-            - [x] 清理不再使用的代码文件与依赖包
-            - [x] 新增记忆清空API接口与相关逻辑，支持生成新会话ID并切换
-            - [x] 新增系统提示词增查改重置API，支持自定义提示词与重置默认值
-            - [x] 为TUI终端添加/clear、/prompt相关命令支持
-            - [x] 补全DTO、领域模型、服务层与CLI客户端代码
-            - [x] 移除Application结构体中的Config字段，改为通过conf.GetConfig()全局获取配置
-            - [x] 简化cli.New、logger.Init、res.Init等函数签名，移除传入的config参数
-            - [x] 重构RAG、Memory、Agent等模块的初始化逻辑，移除配置参数传递
-            - [x] 替换原生错误为自定义errorer包错误，统一错误处理
-            - [x] 拆分合并重复的代码文件，优化代码结构
-            - [x] 修复auth中间件中的缩进错误
+            - [x] RAG 向量存储从 Redis 迁移到 Qdrant（单容器部署，默认持久化，零外部依赖）
+            - [x] 删除 Redis 配置相关代码（RedisConfig 结构体、redis 配置段、环境变量映射）
+            - [x] 重构 pkg/res/init.go 为参数化 Redis 客户端工厂（预留缓存功能）
+            - [x] 新增 pkg/qdrant/init.go Qdrant gRPC 客户端初始化
+            - [x] 新增记忆清空 API 接口，支持生成新会话 ID 并切换
+            - [x] 新增系统提示词增查改重置 API，支持自定义提示词与重置默认值
+            - [x] 为 TUI 终端添加 /clear、/prompt 相关命令支持
+            - [x] 重构配置依赖，统一使用 conf.GetConfig() 全局获取配置
+            - [x] 简化 cli.New、logger.Init 等函数签名，移除传入的 config 参数
+            - [x] 替换原生错误为自定义 errorer 包错误，统一错误处理
+            - [x] 拆分合并重复代码文件，优化代码结构
           files: artifacts/**/*
           draft: false
           prerelease: false

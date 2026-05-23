@@ -76,10 +76,8 @@ func LoadConfig() (*Config, error) {
 // Viper 的 Unmarshal 不走 BindEnv 的懒加载路径，必须显式 Set 才能被 Unmarshal 识别。
 func applyEnvOverrides(v *viper.Viper) {
 	overrides := map[string]string{
-		"env":            "MIFER_ENV",
-		"redis.host":     "MIFER_REDIS_HOST",
-		"redis.password": "MIFER_REDIS_PASSWORD",
-		"jwt.secret":     "MIFER_JWT_SECRET",
+		"env":        "MIFER_ENV",
+		"jwt.secret": "MIFER_JWT_SECRET",
 	}
 	// 基础字段
 	for key, envVar := range overrides {
@@ -89,10 +87,11 @@ func applyEnvOverrides(v *viper.Viper) {
 	}
 	// RAG 配置
 	ragOverrides := map[string]string{
-		"rag.chunk_size":    "MIFER_RAG_CHUNK_SIZE",
-		"rag.chunk_overlap": "MIFER_RAG_CHUNK_OVERLAP",
-		"rag.index_name":    "MIFER_RAG_INDEX_NAME",
-		"rag.top_k":         "MIFER_RAG_TOP_K",
+		"rag.chunk_size":        "MIFER_RAG_CHUNK_SIZE",
+		"rag.chunk_overlap":     "MIFER_RAG_CHUNK_OVERLAP",
+		"rag.top_k":             "MIFER_RAG_TOP_K",
+		"rag.milvus_address":    "MIFER_RAG_MILVUS_ADDRESS",
+		"rag.milvus_collection": "MIFER_RAG_MILVUS_COLLECTION",
 	}
 	for key, envVar := range ragOverrides {
 		if val := os.Getenv(envVar); val != "" {

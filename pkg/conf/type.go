@@ -4,15 +4,14 @@ var globalConfig Config
 
 // 配置结构体
 type Config struct {
-	Env   string      `mapstructure:"env"`
-	Log   LogConfig   `mapstructure:"log"`
-	Redis RedisConfig `mapstructure:"redis"`
-	Gin   GinConfig   `mapstructure:"gin"`
-	JWT   JWTConfig   `mapstructure:"jwt"`
-	Ai    AiConfig    `mapstructure:"ai"`
-	Path  PathConfig  `mapstructure:"path"`
-	Cli CliConfig  `mapstructure:"cli"`
-	Rag RAGConfig `mapstructure:"rag"`
+	Env  string     `mapstructure:"env"`
+	Log  LogConfig  `mapstructure:"log"`
+	Gin  GinConfig  `mapstructure:"gin"`
+	JWT  JWTConfig  `mapstructure:"jwt"`
+	Ai   AiConfig   `mapstructure:"ai"`
+	Path PathConfig `mapstructure:"path"`
+	Cli  CliConfig  `mapstructure:"cli"`
+	Rag  RAGConfig  `mapstructure:"rag"`
 }
 
 // cli配置结构体
@@ -85,17 +84,6 @@ type AiConfig struct {
 	AllowList []string                 `mapstructure:"allow_list"` // 命令执行白名单，非空时仅允许白名单内的命令
 }
 
-// redis配置结构体
-type RedisConfig struct {
-	Host          string `mapstructure:"host"`
-	Port          string `mapstructure:"port"`
-	Username      string `mapstructure:"username"`
-	Password      string `mapstructure:"password"`
-	DB            int    `mapstructure:"db"`
-	Protocol      int    `mapstructure:"protocol"`
-	UnstableResp3 bool   `mapstructure:"unstable_resp3"`
-}
-
 // gin配置结构体
 type GinConfig struct {
 	Mode string     `mapstructure:"mode"`
@@ -116,10 +104,12 @@ type JWTConfig struct {
 
 // RAG配置结构体
 type RAGConfig struct {
-	ChunkSize    int    `mapstructure:"chunk_size"`    // 分块大小（字符数），默认 500
-	ChunkOverlap int    `mapstructure:"chunk_overlap"` // 重叠字符数，默认 50
-	IndexName    string `mapstructure:"index_name"`    // Redis 向量索引名，默认 "mifer_docs"
-	KeyPrefix    string `mapstructure:"key_prefix"`    // Redis key 前缀，默认 "mifer:docs:"
-	TopK         int    `mapstructure:"top_k"`         // 检索返回数量，默认 5
-	Dim          int    `mapstructure:"dim"`            // 向量维度，默认 768（nomic-embed-text）
+	ChunkSize        int    `mapstructure:"chunk_size"`         // 分块大小（字符数），默认 500
+	ChunkOverlap     int    `mapstructure:"chunk_overlap"`      // 重叠字符数，默认 50
+	TopK             int    `mapstructure:"top_k"`              // 检索返回数量，默认 5
+	Dim              int    `mapstructure:"dim"`                // 向量维度，默认 768（nomic-embed-text）
+	MilvusAddress    string `mapstructure:"milvus_address"`     // Milvus 服务地址，默认 "localhost:19530"
+	MilvusCollection string `mapstructure:"milvus_collection"`  // Milvus 集合名，默认 "mifer_docs"
+	MilvusUsername   string `mapstructure:"milvus_username"`    // Milvus 认证用户名
+	MilvusPassword   string `mapstructure:"milvus_password"`    // Milvus 认证密码
 }

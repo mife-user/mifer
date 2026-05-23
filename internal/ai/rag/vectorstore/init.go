@@ -5,21 +5,31 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 
-	redisindexer "github.com/cloudwego/eino-ext/components/indexer/redis"
-	redisretriever "github.com/cloudwego/eino-ext/components/retriever/redis"
+	milvus2indexer "github.com/cloudwego/eino-ext/components/indexer/milvus2"
+	milvus2retriever "github.com/cloudwego/eino-ext/components/retriever/milvus2"
+	"github.com/cloudwego/eino-ext/components/retriever/milvus2/search_mode"
 	"github.com/cloudwego/eino/components/embedding"
-	redisv9 "github.com/redis/go-redis/v9"
+	"github.com/milvus-io/milvus/client/v2/milvusclient"
 )
 
-// NewIndexer 基于 Eino 官方 Redis Indexer 创建向量索引器
-func NewIndexer(ctx context.Context, client *redisv9.Client, emb embedding.Embedder) (*redisindexer.Indexer, error) {
-	keyPrefix := conf.GetConfig().Rag.KeyPrefix
-	if keyPrefix == "" {
-		keyPrefix = "mifer:docs:"
+// NewIndexer 基于 Eino Milvus2 Indexer 创建向量索引器
+func NewIndexer(ctx context.Context, client *milvusclient.Client, emb embedding.Embedder) (*milvus2indexer.Indexer, error) {
+	ragCfg := conf.GetConfig().Rag
+	collection := ragCfg.MilvusCollection
+	if collection == "" {
+		collection = "mifer_docs"
 	}
-	idx, err := redisindexer.NewIndexer(ctx, &redisindexer.IndexerConfig{
-		Client:    client,
-		KeyPrefix: keyPrefix,
+	dim := ragCfg.Dim
+	if dim == 0 {
+		dim = 768
+	}
+	idx, err := milvus2indexer.NewIndexer(ctx, &milvus2indexer.IndexerConfig{
+		Client:     client,
+		Collection: collection,
+		Vector: &milvus2indexer.VectorConfig{
+			Dimension:  int64(dim),
+			MetricType: milvus2indexer.COSINE,
+		},
 		Embedding: emb,
 	})
 	if err != nil {
@@ -28,22 +38,23 @@ func NewIndexer(ctx context.Context, client *redisv9.Client, emb embedding.Embed
 	return idx, nil
 }
 
-// NewRetriever 基于 Eino 官方 Redis Retriever 创建向量检索器
-func NewRetriever(ctx context.Context, client *redisv9.Client, emb embedding.Embedder) (*redisretriever.Retriever, error) {
+// NewRetriever 基于 Eino Milvus2 Retriever 创建向量检索器
+func NewRetriever(ctx context.Context, client *milvusclient.Client, emb embedding.Embedder) (*milvus2retriever.Retriever, error) {
 	ragCfg := conf.GetConfig().Rag
-	indexName := ragCfg.IndexName
-	if indexName == "" {
-		indexName = "mifer_docs"
+	collection := ragCfg.MilvusCollection
+	if collection == "" {
+		collection = "mifer_docs"
 	}
 	topK := ragCfg.TopK
 	if topK == 0 {
 		topK = 5
 	}
-	r, err := redisretriever.NewRetriever(ctx, &redisretriever.RetrieverConfig{
-		Client:    client,
-		Index:     indexName,
-		TopK:      topK,
-		Embedding: emb,
+	r, err := milvus2retriever.NewRetriever(ctx, &milvus2retriever.RetrieverConfig{
+		Client:     client,
+		Collection: collection,
+		TopK:       topK,
+		SearchMode: search_mode.NewApproximate(milvus2retriever.COSINE),
+		Embedding:  emb,
 	})
 	if err != nil {
 		return nil, errorer.NewS(errorer.ErrCreateRetrieverFailed, err)

@@ -24,21 +24,20 @@ const (
 	ErrCreateEmbedderFailed  = "创建Ollama嵌入器失败"
 
 	// 向量存储
-	ErrCreateIndexFailed     = "创建Redis向量索引失败"
-	ErrCreateRetrieverFailed = "创建Redis Retriever失败"
+	ErrCreateIndexFailed     = "创建向量索引失败"
+	ErrCreateRetrieverFailed = "创建Retriever失败"
 
 	// RAG 服务
-	ErrInitEmbedderFailed    = "初始化嵌入器失败"
-	ErrInitFileLoaderFailed  = "初始化文件加载器失败"
-	ErrInitChunkerFailed     = "初始化分块器失败"
-	ErrInitRedisFailed       = "初始化Redis失败"
-	ErrInitIndexerFailed     = "初始化Indexer失败"
-	ErrInitRetrieverFailed   = "初始化Retriever失败"
-	ErrLoadFileFailed        = "加载文件失败"
-	ErrChunkProcessFailed    = "分块处理失败"
-	ErrVectorStoreFailed     = "向量存储失败"
-	ErrVectorRetrieveFailed  = "向量检索失败"
-	ErrEnsureIndexFailed     = "初始化向量索引失败"
+	ErrInitEmbedderFailed   = "初始化嵌入器失败"
+	ErrInitFileLoaderFailed = "初始化文件加载器失败"
+	ErrInitChunkerFailed    = "初始化分块器失败"
+	ErrInitMilvusFailed     = "初始化Milvus客户端失败"
+	ErrInitIndexerFailed    = "初始化Indexer失败"
+	ErrInitRetrieverFailed  = "初始化Retriever失败"
+	ErrLoadFileFailed       = "加载文件失败"
+	ErrChunkProcessFailed   = "分块处理失败"
+	ErrVectorStoreFailed    = "向量存储失败"
+	ErrVectorRetrieveFailed = "向量检索失败"
 
 	// Chunker
 	ErrCreateRecursiveChunkerFailed = "创建递归分块器失败"

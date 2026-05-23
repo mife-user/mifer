@@ -39,23 +39,17 @@ log:
   max_size: 100
   max_backups: 7
   level: ""
-redis:
-  host: "127.0.0.1"
-  port: "6379"
-  username: ""
-  password: ""
-  db: 0
-  protocol: 2
-  unstable_resp3: true
 jwt:
   secret: "123456"
 rag:
   chunk_size: 500
   chunk_overlap: 50
-  index_name: "mifer_docs"
-  key_prefix: "mifer:docs:"
   top_k: 5
   dim: 768
+  milvus_address: "localhost:19530"
+  milvus_collection: "mifer_docs"
+  milvus_username: ""
+  milvus_password: ""
 ai:
   backends:
     default:

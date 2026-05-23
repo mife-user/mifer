@@ -1,24 +1,18 @@
 package res
 
 import (
-	"fmt"
-
-	"mifer/pkg/conf"
-
 	"github.com/redis/go-redis/v9"
 )
 
-// Redis初始化
-func Init() (*redis.Client, error) {
-	config := conf.GetConfig()
-	dsn := fmt.Sprintf("%s:%s", config.Redis.Host, config.Redis.Port)
+// Init 创建 Redis 客户端连接，参数由调用方传入
+func Init(addr, username, password string, db, protocol int, unstableResp3 bool) (*redis.Client, error) {
 	redisbase := redis.NewClient(&redis.Options{
-		Addr:     dsn,
-		Username: config.Redis.Username,
-		Password: config.Redis.Password,
-		DB:       config.Redis.DB,
-		Protocol: config.Redis.Protocol,
+		Addr:     addr,
+		Username: username,
+		Password: password,
+		DB:       db,
+		Protocol: protocol,
 	})
-	redisbase.Options().UnstableResp3 = config.Redis.UnstableResp3
+	redisbase.Options().UnstableResp3 = unstableResp3
 	return redisbase, nil
 }

@@ -36,12 +36,12 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		}
 		var msg schema.Message
 		if err := json.Unmarshal(line, &msg); err != nil {
-			return nil, fmt.Errorf("解析行失败：%w", err)
+			return nil, errorer.NewS(errorer.ErrParseLineFailed, err)
 		}
 		messages = append(messages, &msg)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("读取文件失败：%w", err)
+		return nil, errorer.NewS(errorer.ErrReadFileFailed, err)
 	}
 	return messages, nil
 }

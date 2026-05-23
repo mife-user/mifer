@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
 	"sort"
@@ -59,7 +60,7 @@ func (r *rotatingFile) Write(p []byte) (n int, err error) {
 
 	if r.currentSize >= r.maxSize {
 		if err := r.rotate(); err != nil {
-			return 0, fmt.Errorf("rotate failed: %w", err)
+			return 0, errorer.NewS(errorer.ErrRotateFailed, err)
 		}
 	}
 

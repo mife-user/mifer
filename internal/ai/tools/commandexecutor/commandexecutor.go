@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mifer/pkg/conf"
+	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/tool"
@@ -101,15 +102,15 @@ func (w *limitWriter) String() string {
 	return result
 }
 
-func New(cfg *conf.Config) (tool.InvokableTool, error) {
-	// 通过闭包将 config 注入执行函数，消除对全局 conf.GetConfig() 的依赖
+func New() (tool.InvokableTool, error) {
 	execute := func(ctx context.Context, input CommandExecutorInput) (CommandExecutorOutput, error) {
-		return executeCommand(ctx, input, cfg)
+		return executeCommand(ctx, input)
 	}
 	return utils.InferTool("command_executor", "安全执行shell命令，包含危险命令检测、工作目录限制、超时控制和输出大小限制。", execute)
 }
 
-func executeCommand(ctx context.Context, input CommandExecutorInput, cfg *conf.Config) (CommandExecutorOutput, error) {
+func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExecutorOutput, error) {
+	cfg := conf.GetConfig()
 	// 1. 校验命令非空
 	if strings.TrimSpace(input.Command) == "" {
 		return CommandExecutorOutput{Error: "命令不能为空"}, nil
@@ -237,7 +238,7 @@ func resolveSandboxDir(workDir, projectDir string) (string, error) {
 	}
 	// 规范化路径分隔符比较
 	if !strings.HasPrefix(strings.ToLower(filepath.ToSlash(abs)), strings.ToLower(filepath.ToSlash(absProject))) {
-		return "", fmt.Errorf("工作目录必须在项目目录内: %s", absProject)
+		return "", errorer.NewF(errorer.ErrWorkDirNotInProject, absProject)
 	}
 	return abs, nil
 }

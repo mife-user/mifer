@@ -2,7 +2,7 @@ package prompt
 
 import (
 	"context"
-	"fmt"
+	"mifer/pkg/errorer"
 
 	"github.com/cloudwego/eino/schema"
 )
@@ -14,7 +14,7 @@ func (p *Prompty) Build(ctx context.Context, query string) ([]*schema.Message, e
 	if p.RAGService != nil {
 		docs, err := p.RAGService.Retrieve(ctx, query)
 		if err != nil {
-			return nil, fmt.Errorf("RAG检索失败: %w", err)
+			return nil, errorer.NewS(errorer.ErrRAGRetrieveFailed, err)
 		}
 		contextStr = p.RAGService.FormatDocs(docs)
 	}

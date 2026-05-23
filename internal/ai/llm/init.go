@@ -11,8 +11,8 @@ import (
 )
 
 // InitRegistry 根据配置初始化所有模型后端
-func InitRegistry(ctx context.Context, cfg *conf.Config) (*Registry, error) {
-	backends := cfg.Ai.Backends
+func InitRegistry(ctx context.Context) (*Registry, error) {
+	backends := conf.GetConfig().Ai.Backends
 	if len(backends) == 0 {
 		return nil, errorer.New(errorer.ErrNoBackendConfig)
 	}

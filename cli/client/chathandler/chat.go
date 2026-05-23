@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"mifer/pkg/errorer"
 	"net/http"
 	"strings"
 )
@@ -18,24 +18,24 @@ type chatReq struct {
 func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(event, chunk string) error) error {
 	body, err := json.Marshal(chatReq{Content: content})
 	if err != nil {
-		return fmt.Errorf("序列化请求失败: %w", err)
+		return errorer.NewS(errorer.ErrSerializeRequestFailed, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, h.url, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
+		return errorer.NewS(errorer.ErrCreateRequestFailed, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
 
 	resp, err := h.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("请求失败: %w", err)
+		return errorer.NewS(errorer.ErrRequestFailed, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("服务器返回状态码: %d", resp.StatusCode)
+		return errorer.NewF(errorer.ErrServerStatusCode, resp.StatusCode)
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
@@ -64,7 +64,7 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(eve
 		default:
 			if strings.HasPrefix(data, "[ERROR]") {
 				errMsg := strings.TrimPrefix(data, "[ERROR] ")
-				return fmt.Errorf("%s", errMsg)
+				return errorer.New(errMsg)
 			}
 			if err := onChunk(currentEvent, data); err != nil {
 				return err

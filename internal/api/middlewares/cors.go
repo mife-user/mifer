@@ -8,8 +8,9 @@ import (
 )
 
 // CORSMiddleware 创建 CORS 中间件
-func CORSMiddleware(config *conf.Config) gin.HandlerFunc {
+func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		config := conf.GetConfig()
 		requestOrigin := c.Request.Header.Get("Origin")
 		allowOrigin := ""
 		for _, o := range config.Gin.Cors.AllowOrigins {

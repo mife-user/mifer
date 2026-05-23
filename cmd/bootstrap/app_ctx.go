@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"mifer/pkg/conf"
 	"mifer/pkg/utils"
 )
 
@@ -17,7 +18,7 @@ func (a *Application) initontext(ctx context.Context) error {
 		return err
 	}
 	// 生成应用ID
-	id := []byte(a.Config.Path.Workdir + random)
+	id := []byte(conf.GetConfig().Path.Workdir + random)
 	idstr := utils.PseudoRandom(id)
 	a.Context = context.WithValue(ctx, "id", idstr)
 	return nil

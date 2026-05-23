@@ -5,6 +5,7 @@ package tui
 // ============================================================================
 
 import (
+	"mifer/pkg/conf"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -24,11 +25,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if m.height < m.config.Cli.Tui.MinHeight && m.height > 0 {
-			m.height = m.config.Cli.Tui.MinHeight
+		if m.height < conf.GetConfig().Cli.Tui.MinHeight && m.height > 0 {
+			m.height = conf.GetConfig().Cli.Tui.MinHeight
 		}
-		if m.width > m.config.Cli.Tui.ContentMargin*2 {
-			m.textarea.SetWidth(m.width - m.config.Cli.Tui.ContentMargin*2)
+		if m.width > conf.GetConfig().Cli.Tui.ContentMargin*2 {
+			m.textarea.SetWidth(m.width - conf.GetConfig().Cli.Tui.ContentMargin*2)
 		}
 		m.adjustInputHeight()
 		sidebarW := m.width / 4
@@ -325,7 +326,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	// ---- 记录到输入历史（去重） ----
 	if len(m.history) == 0 || m.history[len(m.history)-1] != input {
-		if len(m.history) >= m.config.Cli.Tui.MaxHistory {
+		if len(m.history) >= conf.GetConfig().Cli.Tui.MaxHistory {
 			m.history = m.history[1:]
 		}
 		m.history = append(m.history, input)
@@ -475,7 +476,7 @@ func (m *Model) findMatches(prefix string) []string {
 	}
 	lower := strings.ToLower(prefix)
 	var matches []string
-	for _, cmd := range m.config.Cli.Tui.CompletableCommands {
+	for _, cmd := range conf.GetConfig().Cli.Tui.CompletableCommands {
 		if strings.HasPrefix(strings.ToLower(cmd), lower) {
 			matches = append(matches, cmd)
 		}

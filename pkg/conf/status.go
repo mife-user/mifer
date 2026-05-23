@@ -1,26 +1,26 @@
 package conf
 
-import "fmt"
+import "mifer/pkg/errorer"
 
 // 检查配置
 func StatusConfig() error {
 	//jwt配置检查
 	if globalConfig.JWT.Secret == "" {
-		return fmt.Errorf("jwt密钥未配置")
+		return errorer.New(errorer.ErrJWTKeyNotConfigured)
 	}
 	//ai配置检查
 	defaultBackend, ok := globalConfig.Ai.Backends["default"]
 	if !ok || defaultBackend.Provider == "" {
-		return fmt.Errorf("ai默认后端未配置，请配置 ai.backends.default")
+		return errorer.New(errorer.ErrAIDefaultBackendNotConfigured)
 	}
 	if defaultBackend.BaseURL == "" && defaultBackend.Provider == "openai" {
-		return fmt.Errorf("ai默认后端 base_url 未配置")
+		return errorer.New(errorer.ErrAIBaseURLNotConfigured)
 	}
 	if defaultBackend.Model == "" {
-		return fmt.Errorf("ai默认后端模型未配置")
+		return errorer.New(errorer.ErrAIModelNotConfigured)
 	}
 	if defaultBackend.APIKey == "" {
-		return fmt.Errorf("ai默认后端 api_key 未配置")
+		return errorer.New(errorer.ErrAIApiKeyNotConfigured)
 	}
 	return nil
 }

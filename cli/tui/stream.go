@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"mifer/cli/client"
+	"mifer/pkg/conf"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -56,7 +57,7 @@ type streamDoneMsg struct {
 
 // handleStreamStatus 处理流式状态更新（agent切换、工具调用、token统计）
 func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
-	m.sidebar.update(msg, m.config.Cli.Tui.SidebarShowTiming, m.config.Cli.Tui.SidebarMaxLog)
+	m.sidebar.update(msg, conf.GetConfig().Cli.Tui.SidebarShowTiming, conf.GetConfig().Cli.Tui.SidebarMaxLog)
 	if m.streamCh != nil {
 		return m, listenStreamCmd(m.streamCh)
 	}

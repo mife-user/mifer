@@ -2,8 +2,8 @@ package memhandler
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
+	"mifer/pkg/errorer"
 	"net/http"
 )
 
@@ -22,27 +22,27 @@ type memoryListResp struct {
 func (h *MemHandler) Load(id string) (string, error) {
 	resp, err := h.http.Get(h.url + "/" + id)
 	if err != nil {
-		return "", fmt.Errorf("请求失败: %w", err)
+		return "", errorer.NewS(errorer.ErrRequestFailed, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("服务器返回状态码: %d, 响应: %s", resp.StatusCode, string(body))
+		return "", errorer.NewF(errorer.ErrServerStatusCodeDetail, resp.StatusCode, string(body))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("读取响应失败: %w", err)
+		return "", errorer.NewS(errorer.ErrReadResponseFailed, err)
 	}
 
 	var memResp memoryResp
 	if err := json.Unmarshal(respBody, &memResp); err != nil {
-		return "", fmt.Errorf("解析响应失败: %w", err)
+		return "", errorer.NewS(errorer.ErrParseResponseFailed, err)
 	}
 
 	if memResp.Error != "" {
-		return "", fmt.Errorf("服务器错误: %s", memResp.Error)
+		return "", errorer.NewF(errorer.ErrServerError, memResp.Error)
 	}
 
 	return memResp.Memory, nil
@@ -52,27 +52,27 @@ func (h *MemHandler) Load(id string) (string, error) {
 func (h *MemHandler) List() (current string, ids []string, err error) {
 	resp, err := h.http.Get(h.url)
 	if err != nil {
-		return "", nil, fmt.Errorf("请求失败: %w", err)
+		return "", nil, errorer.NewS(errorer.ErrRequestFailed, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", nil, fmt.Errorf("服务器返回状态码: %d, 响应: %s", resp.StatusCode, string(body))
+		return "", nil, errorer.NewF(errorer.ErrServerStatusCodeDetail, resp.StatusCode, string(body))
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", nil, fmt.Errorf("读取响应失败: %w", err)
+		return "", nil, errorer.NewS(errorer.ErrReadResponseFailed, err)
 	}
 
 	var listResp memoryListResp
 	if err := json.Unmarshal(respBody, &listResp); err != nil {
-		return "", nil, fmt.Errorf("解析响应失败: %w", err)
+		return "", nil, errorer.NewS(errorer.ErrParseResponseFailed, err)
 	}
 
 	if listResp.Error != "" {
-		return "", nil, fmt.Errorf("服务器错误: %s", listResp.Error)
+		return "", nil, errorer.NewF(errorer.ErrServerError, listResp.Error)
 	}
 
 	return listResp.Current, listResp.IDs, nil

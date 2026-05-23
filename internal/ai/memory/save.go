@@ -3,6 +3,7 @@ package memory
 import (
 	"encoding/json"
 	"fmt"
+	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,10 +15,10 @@ func (m *Memory) Save() error {
 	defer m.mu.Unlock()
 
 	if strings.Contains(m.Cfg.Id, "..") || strings.Contains(m.Cfg.Id, "/") || strings.Contains(m.Cfg.Id, "\\") {
-		return fmt.Errorf("id 包含非法字符: %s", m.Cfg.Id)
+		return errorer.NewF(errorer.ErrIDIllegalChars, m.Cfg.Id)
 	}
 	if err := os.MkdirAll(m.Cfg.MemPath, 0755); err != nil {
-		return fmt.Errorf("创建内存目录失败：%w", err)
+		return errorer.NewS(errorer.ErrCreateMemoryDirFailed, err)
 	}
 
 	newMsgs := m.Messages[m.savedCount:]
@@ -28,20 +29,20 @@ func (m *Memory) Save() error {
 	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("打开文件失败：%w", err)
+		return errorer.NewS(errorer.ErrOpenFileFailed, err)
 	}
 	defer f.Close()
 
 	for _, msg := range newMsgs {
 		line, err := json.Marshal(msg)
 		if err != nil {
-			return fmt.Errorf("序列化JSON失败：%w", err)
+			return errorer.NewS(errorer.ErrSerializeJSONFailed, err)
 		}
 		if _, err := f.Write(line); err != nil {
-			return fmt.Errorf("写入文件失败：%w", err)
+			return errorer.NewS(errorer.ErrWriteFileFailed, err)
 		}
 		if _, err := f.Write([]byte("\n")); err != nil {
-			return fmt.Errorf("写入换行失败：%w", err)
+			return errorer.NewS(errorer.ErrWriteNewlineFailed, err)
 		}
 	}
 	m.savedCount = len(m.Messages)

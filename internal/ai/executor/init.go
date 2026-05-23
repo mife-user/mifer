@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"mifer/internal/ai/agent"
-	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/adk"
@@ -15,9 +14,9 @@ type Executor struct {
 	Token  *TokenUsage // token 累计用量统计
 }
 
-func Init(c context.Context, config *conf.Config) (*Executor, error) {
+func Init(c context.Context) (*Executor, error) {
 
-	ag, err := agent.Init(c, config)
+	ag, err := agent.Init(c)
 	if err != nil {
 		logger.Error("初始化agent失败", logger.C(err))
 		return nil, err

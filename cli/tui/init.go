@@ -28,19 +28,18 @@ import (
 )
 
 // NewModel 创建 TUI 核心 Model，初始化所有子组件和依赖。
-func NewModel(client *client.Client, config *conf.Config) *Model {
-	lipStyles := lip.Init(config)
+func NewModel(client *client.Client) *Model {
+	lipStyles := lip.Init()
 	ta := lip.NewTextarea()
-	sp := lip.NewSpinner(lipStyles, config)
-	vp := lip.NewViewport(config)
+	sp := lip.NewSpinner(lipStyles)
+	vp := lip.NewViewport()
 	ml := lip.NewChoseList()
-	mvp := lip.NewViewport(config)
-	svp := lip.NewViewport(config)
+	mvp := lip.NewViewport()
+	svp := lip.NewViewport()
 
 	return &Model{
 		// 依赖注入
 		client: client,
-		config: config,
 		mark:   mark.Init(),
 		lip:    lipStyles,
 
@@ -52,7 +51,7 @@ func NewModel(client *client.Client, config *conf.Config) *Model {
 		thinking: false,
 
 		// 输入历史
-		history:      make([]string, 0, config.Cli.Tui.MaxHistory),
+		history:      make([]string, 0, conf.GetConfig().Cli.Tui.MaxHistory),
 		historyIdx:   -1,
 		pendingInput: "",
 

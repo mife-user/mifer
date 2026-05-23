@@ -7,17 +7,17 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 )
 
-func NewSpinner(lipStyles *Style, config *conf.Config) spinner.Model {
+func NewSpinner(lipStyles *Style) spinner.Model {
 	sp := spinner.New(
-		spinner.WithSpinner(pickSpinner(config)),
+		spinner.WithSpinner(pickSpinner()),
 		spinner.WithStyle(*lipStyles.Think),
 	)
 	return sp
 }
 
 // pickSpinner 根据配置返回 spinner.Spinner：自定义帧优先，其次预置类型名，最后回退 MiniDot。
-func pickSpinner(config *conf.Config) spinner.Spinner {
-	tui := config.Cli.Tui
+func pickSpinner() spinner.Spinner {
+	tui := conf.GetConfig().Cli.Tui
 	// 自定义帧优先
 	if len(tui.SpinnerFrames) > 0 {
 		fps := tui.SpinnerFPS

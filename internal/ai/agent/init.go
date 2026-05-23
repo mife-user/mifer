@@ -2,12 +2,11 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"mifer/internal/ai/llm"
+	"mifer/pkg/errorer"
 	"mifer/internal/ai/memory"
 	"mifer/internal/ai/prompt"
 	"mifer/internal/ai/rag"
-	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/adk"
@@ -19,9 +18,9 @@ type Humen struct {
 	Prompt *prompt.Prompty
 }
 
-func Init(c context.Context, config *conf.Config) (*Humen, error) {
+func Init(c context.Context) (*Humen, error) {
 	// 初始化LLM注册中心
-	reg, err := llm.InitRegistry(c, config)
+	reg, err := llm.InitRegistry(c)
 	if err != nil {
 		logger.Error("初始化LLM注册中心失败", logger.C(err))
 		return nil, err
@@ -51,7 +50,7 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 		return nil, err
 	}
 	// 初始化终端命令agent（sonnet — 均衡）
-	commanderAgent, err := newCommander(c, reg.Get("sonnet"), config)
+	commanderAgent, err := newCommander(c, reg.Get("sonnet"))
 	if err != nil {
 		logger.Error("init commander agent failed", logger.C(err))
 		return nil, err
@@ -81,15 +80,15 @@ func Init(c context.Context, config *conf.Config) (*Humen, error) {
 	id, ok := c.Value("id").(string)
 	if !ok {
 		logger.Error("id is not string")
-		return nil, fmt.Errorf("id is not string")
+		return nil, errorer.New(errorer.ErrIDNotString)
 	}
-	mem, err := memory.Init(config, id)
+	mem, err := memory.Init(id)
 	if err != nil {
 		logger.Error("init memory failed", logger.C(err))
 		return nil, err
 	}
 
-	ragSvc, err := rag.NewService(c, config)
+	ragSvc, err := rag.NewService(c)
 	if err != nil {
 		logger.Warn("RAG服务初始化失败，降级为无RAG模式", logger.C(err))
 		ragSvc = nil

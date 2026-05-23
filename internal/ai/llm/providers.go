@@ -2,7 +2,6 @@ package llm
 
 import (
 	"context"
-	"fmt"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -45,7 +44,7 @@ func initGeminiModel(ctx context.Context, cfg conf.BackendConfig) (model.BaseCha
 		APIKey: cfg.APIKey,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("创建 Gemini 客户端失败: %w", err)
+		return nil, errorer.NewS(errorer.ErrCreateGeminiClientFailed, err)
 	}
 	return gemini.NewChatModel(ctx, &gemini.Config{
 		Client: client,
@@ -75,7 +74,7 @@ var providerInitMap = map[string]func(context.Context, conf.BackendConfig) (mode
 func initBackend(ctx context.Context, key string, cfg conf.BackendConfig) (model.BaseChatModel, error) {
 	initFn, ok := providerInitMap[cfg.Provider]
 	if !ok {
-		return nil, fmt.Errorf("不支持的模型提供商: %s（后端: %s），支持: openai, claude, gemini, ollama", cfg.Provider, key)
+		return nil, errorer.NewF(errorer.ErrUnsupportedProvider, cfg.Provider, key)
 	}
 	logger.Info("初始化模型后端", logger.S("backend", key), logger.S("provider", cfg.Provider), logger.S("model", cfg.Model))
 	return initFn(ctx, cfg)

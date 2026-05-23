@@ -1,7 +1,7 @@
 package conf
 
 import (
-	"fmt"
+	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
 )
@@ -15,19 +15,19 @@ func newDefaultCfg(s string) error {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return fmt.Errorf("获取用户主目录失败：%w", err)
+			return errorer.NewS(errorer.ErrGetHomeDirFailed, err)
 		}
 		path = filepath.Join(home, "/mifer/config")
 		fileName = "prod.yaml"
 	}
 	// 创建默认配置文件（仅在文件不存在时创建，避免覆盖用户修改）
 	if err := os.MkdirAll(path, 0755); err != nil {
-		return fmt.Errorf("创建配置目录失败：%w", err)
+		return errorer.NewS(errorer.ErrCreateConfigDirFailed, err)
 	}
 	cfgPath := filepath.Join(path, fileName)
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		if err := os.WriteFile(cfgPath, []byte(defaultConfig), 0644); err != nil {
-			return fmt.Errorf("写入默认配置失败：%w", err)
+			return errorer.NewS(errorer.ErrWriteDefaultConfigFailed, err)
 		}
 	}
 	return nil

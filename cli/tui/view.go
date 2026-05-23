@@ -46,6 +46,8 @@ import (
 	"fmt"
 	"strings"
 
+	"mifer/pkg/conf"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -66,7 +68,7 @@ func (m *Model) View() string {
 		return "正在启动..."
 	}
 	if m.contentHeight < 1 {
-		return fmt.Sprintf("窗口太小 (当前 %d, 最少 %d)", m.height, m.config.Cli.Tui.MinHeight)
+		return fmt.Sprintf("窗口太小 (当前 %d, 最少 %d)", m.height, conf.GetConfig().Cli.Tui.MinHeight)
 	}
 
 	// 计算侧边栏宽度：终端宽度 1/4，限制在 [20, 40]
@@ -167,7 +169,7 @@ func (m *Model) renderSidebar(width int) string {
 	}
 
 	// Token 统计行（可配置）
-	if m.config.Cli.Tui.SidebarShowTokens && m.sidebar.Token != nil {
+	if conf.GetConfig().Cli.Tui.SidebarShowTokens && m.sidebar.Token != nil {
 		t := m.sidebar.Token
 		tokenLine := fmt.Sprintf("Token: ↑%d ↓%d Σ%d", t.PromptTokens, t.CompletionTokens, t.TotalTokens)
 		lines = append(lines, m.lip.SidebarCompleted.Render(tokenLine))
@@ -216,7 +218,7 @@ func (m *Model) renderCompletionList() string {
 	if !m.showingCompletions || len(m.completions) == 0 {
 		return ""
 	}
-	maxVis := m.config.Cli.Tui.CompletionMaxVisible
+	maxVis := conf.GetConfig().Cli.Tui.CompletionMaxVisible
 	if maxVis <= 0 {
 		maxVis = 5
 	}

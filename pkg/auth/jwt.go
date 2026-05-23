@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"errors"
+	"mifer/pkg/errorer"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -54,7 +54,7 @@ func ValidateToken(tokenString, secret string) (*Claims, error) {
 	}
 	// 验证token是否有效
 	if !token.Valid {
-		return nil, errors.New("token无效")
+		return nil, errorer.New(errorer.ErrTokenInvalid)
 	}
 
 	return claims, nil

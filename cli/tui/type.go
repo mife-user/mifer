@@ -24,7 +24,6 @@ import (
 	"mifer/cli/client"
 	"mifer/cli/render/lip"
 	"mifer/cli/render/mark"
-	"mifer/pkg/conf"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -104,7 +103,6 @@ type chatRespMsg struct {
 type Model struct {
 	// 依赖注入
 	client *client.Client // HTTP API 客户端（Chat / Memory / Excmem）
-	config *conf.Config   // 全局配置（样式、host、port）
 	mark   *mark.Mark     // glamour markdown 渲染器（dark + notty 降级）
 	lip    *lip.Style     // lipgloss 样式集合（前景色、分隔线等）
 

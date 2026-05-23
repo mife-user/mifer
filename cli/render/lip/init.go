@@ -15,7 +15,8 @@ import (
 //   - 内联文本不设 Background/Border，避免与 glamour markdown 的 ANSI 码冲突
 //   - 背景色在外层容器（View 的消息区域）统一应用
 //   - 配置值为空时使用硬编码降级颜色，确保终端兼容
-func Init(config *conf.Config) *Style {
+func Init() *Style {
+	config := conf.GetConfig()
 	// 辅助函数：配置为空时回退到硬编码默认色
 	getFg := func(cfg string, fallback string) lipgloss.Color {
 		if cfg != "" {

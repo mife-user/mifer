@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"mifer/internal/ai/tools"
-	"mifer/pkg/conf"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
@@ -11,7 +10,7 @@ import (
 )
 
 // newCommander 创建终端命令执行agent，负责安全执行shell命令
-func newCommander(c context.Context, chatModel model.BaseChatModel, cfg *conf.Config) (*adk.ChatModelAgent, error) {
+func newCommander(c context.Context, chatModel model.BaseChatModel) (*adk.ChatModelAgent, error) {
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
 		Name:        "MiCommander",
 		Description: "终端命令执行专家，在安全沙箱中执行shell命令并返回结果",
@@ -19,7 +18,7 @@ func newCommander(c context.Context, chatModel model.BaseChatModel, cfg *conf.Co
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: tools.CommandTools(cfg),
+				Tools: tools.CommandTools(),
 			},
 		},
 		MaxIterations: 0,

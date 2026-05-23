@@ -1,7 +1,7 @@
 package conf
 
 import (
-	"fmt"
+	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
 
@@ -26,12 +26,12 @@ func LoadConfig() (*Config, error) {
 		fileName = "dev"
 		cfgPath, err = os.Getwd()
 		if err != nil {
-			return nil, fmt.Errorf("获取当前工作目录失败：%w", err)
+			return nil, errorer.NewS(errorer.ErrGetWorkDirFailed, err)
 		}
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, fmt.Errorf("获取用户主目录失败：%w", err)
+			return nil, errorer.NewS(errorer.ErrGetHomeDirFailed, err)
 		}
 		path = filepath.Join(home, "/mifer/config")
 		cfgPath = filepath.Join(home, "/mifer")
@@ -43,7 +43,7 @@ func LoadConfig() (*Config, error) {
 	//创建默认配置文件
 	err = newDefaultCfg(env)
 	if err != nil {
-		return nil, fmt.Errorf("创建默认配置失败：%w", err)
+		return nil, errorer.NewS(errorer.ErrCreateDefaultConfigFailed, err)
 	}
 
 	//添加配置文件路径
@@ -55,18 +55,18 @@ func LoadConfig() (*Config, error) {
 
 	//读取主配置文件
 	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("加载主配置失败：%w", err)
+		return nil, errorer.NewS(errorer.ErrLoadMainConfigFailed, err)
 	}
 
 	//配置到结构体
 	if err := v.Unmarshal(&globalConfig); err != nil {
-		return nil, fmt.Errorf("解析配置失败：%w", err)
+		return nil, errorer.NewS(errorer.ErrParseConfigFailed, err)
 	}
 
 	//设置工作目录
 	wd, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("获取当前工作目录失败：%w", err)
+		return nil, errorer.NewS(errorer.ErrGetWorkDirFailed, err)
 	}
 	globalConfig.Path.Workdir = wd
 	return &globalConfig, nil

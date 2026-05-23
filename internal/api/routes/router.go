@@ -15,7 +15,6 @@ import (
 
 // Router 路由结构体
 type Router struct {
-	config       *conf.Config
 	agentHandler *agenthandler.AgentHandler
 }
 
@@ -25,10 +24,8 @@ func GetRouter() *Router {
 }
 
 // NewRouter 初始化路由
-func (r *Router) NewRouter(c context.Context, config *conf.Config) error {
-	r.config = config
-
-	exec, err := executor.Init(c, config)
+func (r *Router) NewRouter(c context.Context) error {
+	exec, err := executor.Init(c)
 	if err != nil {
 		return err
 	}
@@ -40,17 +37,17 @@ func (r *Router) NewRouter(c context.Context, config *conf.Config) error {
 
 // Setup 设置路由
 func (r *Router) Setup() *gin.Engine {
-	gin.SetMode(r.config.Gin.Mode)
+	gin.SetMode(conf.GetConfig().Gin.Mode)
 
-	fileName := filepath.Join(r.config.Path.CfgPath, "/logs/gin.log")
-	log, err := logger.NewRotatingFile(fileName, r.config.Log.MaxSize, r.config.Log.MaxBackups)
+	fileName := filepath.Join(conf.GetConfig().Path.CfgPath, "/logs/gin.log")
+	log, err := logger.NewRotatingFile(fileName, conf.GetConfig().Log.MaxSize, conf.GetConfig().Log.MaxBackups)
 	if err == nil {
 		gin.DefaultWriter = log
 		gin.DefaultErrorWriter = log
 	}
 
 	router := gin.Default()
-	router.Use(middlewares.CORSMiddleware(r.config))
+	router.Use(middlewares.CORSMiddleware())
 
 	api := router.Group("/api")
 	{

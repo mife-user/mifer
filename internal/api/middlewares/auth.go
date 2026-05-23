@@ -11,8 +11,9 @@ import (
 )
 
 // AuthMiddleware 认证中间件
-func AuthMiddleware(config *conf.Config) gin.HandlerFunc {
+func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		config := conf.GetConfig()
 		// 从Authorization头获取token
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -32,7 +33,7 @@ func AuthMiddleware(config *conf.Config) gin.HandlerFunc {
 		tokenString := parts[1]
 
 		// 验证token
-		claims, err := auth.ValidateToken(tokenString, config.JWT.Secret)
+			claims, err := auth.ValidateToken(tokenString, config.JWT.Secret)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token: " + err.Error()})
 			c.Abort()

@@ -2,78 +2,51 @@ package vectorstore
 
 import (
 	"context"
-	"fmt"
+	"mifer/pkg/conf"
+	"mifer/pkg/errorer"
 
-	"github.com/cloudwego/eino/components/embedding"
 	redisindexer "github.com/cloudwego/eino-ext/components/indexer/redis"
 	redisretriever "github.com/cloudwego/eino-ext/components/retriever/redis"
+	"github.com/cloudwego/eino/components/embedding"
 	redisv9 "github.com/redis/go-redis/v9"
 )
 
-// StoreConfig 向量存储配置
-type StoreConfig struct {
-	KeyPrefix string
-	IndexName string
-	TopK      int
-	Dim       int // 向量维度，默认 768（nomic-embed-text）
-}
-
 // NewIndexer 基于 Eino 官方 Redis Indexer 创建向量索引器
-func NewIndexer(ctx context.Context, client *redisv9.Client, emb embedding.Embedder, cfg *StoreConfig) (*redisindexer.Indexer, error) {
+func NewIndexer(ctx context.Context, client *redisv9.Client, emb embedding.Embedder) (*redisindexer.Indexer, error) {
+	keyPrefix := conf.GetConfig().Rag.KeyPrefix
+	if keyPrefix == "" {
+		keyPrefix = "mifer:docs:"
+	}
 	idx, err := redisindexer.NewIndexer(ctx, &redisindexer.IndexerConfig{
 		Client:    client,
-		KeyPrefix: cfg.KeyPrefix,
+		KeyPrefix: keyPrefix,
 		Embedding: emb,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("创建Redis Indexer失败: %w", err)
+		return nil, errorer.NewS(errorer.ErrCreateIndexFailed, err)
 	}
 	return idx, nil
 }
 
 // NewRetriever 基于 Eino 官方 Redis Retriever 创建向量检索器
-func NewRetriever(ctx context.Context, client *redisv9.Client, emb embedding.Embedder, cfg *StoreConfig) (*redisretriever.Retriever, error) {
+func NewRetriever(ctx context.Context, client *redisv9.Client, emb embedding.Embedder) (*redisretriever.Retriever, error) {
+	ragCfg := conf.GetConfig().Rag
+	indexName := ragCfg.IndexName
+	if indexName == "" {
+		indexName = "mifer_docs"
+	}
+	topK := ragCfg.TopK
+	if topK == 0 {
+		topK = 5
+	}
 	r, err := redisretriever.NewRetriever(ctx, &redisretriever.RetrieverConfig{
 		Client:    client,
-		Index:     cfg.IndexName,
-		TopK:      cfg.TopK,
+		Index:     indexName,
+		TopK:      topK,
 		Embedding: emb,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("创建Redis Retriever失败: %w", err)
+		return nil, errorer.NewS(errorer.ErrCreateRetrieverFailed, err)
 	}
 	return r, nil
-}
-
-// EnsureIndex 确保 Redis Search 向量索引存在，不存在则创建。
-// 索引基于 HASH 类型，PREFIX 匹配 KeyPrefix，包含 content(TEXT) 和 vector_content(VECTOR) 字段。
-func EnsureIndex(ctx context.Context, client *redisv9.Client, cfg *StoreConfig) error {
-	dim := cfg.Dim
-	if dim == 0 {
-		dim = 768 // nomic-embed-text 默认维度
-	}
-
-	// FT.CREATE <index> ON HASH PREFIX 1 <prefix> SCHEMA content TEXT vector_content VECTOR HNSW 6 DIM <dim> DISTANCE_METRIC COSINE
-	createCmd := fmt.Sprintf(
-		"FT.CREATE %s ON HASH PREFIX 1 %s SCHEMA content TEXT vector_content VECTOR HNSW 6 DIM %d DISTANCE_METRIC COSINE",
-		cfg.IndexName, cfg.KeyPrefix, dim,
-	)
-
-	err := client.Do(ctx, "FT.CREATE", cfg.IndexName,
-		"ON", "HASH",
-		"PREFIX", "1", cfg.KeyPrefix,
-		"SCHEMA",
-		"content", "TEXT",
-		"vector_content", "VECTOR", "HNSW", "6",
-		"DIM", dim,
-		"DISTANCE_METRIC", "COSINE",
-	).Err()
-	if err != nil {
-		// 索引已存在不算错误
-		if err.Error() == "Index already exists" {
-			return nil
-		}
-		return fmt.Errorf("创建Redis向量索引失败 [%s]: %w", createCmd, err)
-	}
-	return nil
 }

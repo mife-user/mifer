@@ -4,22 +4,9 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"path/filepath"
-	"sync"
 
 	"github.com/cloudwego/eino/schema"
 )
-
-type Memory struct {
-	mu         sync.Mutex
-	Messages   []*schema.Message
-	savedCount int // 已持久化到文件的消息数量
-	Cfg        MemCfg
-}
-
-type MemCfg struct {
-	MemPath string
-	Id      string
-}
 
 // GetCurrentID 返回当前记忆会话ID
 func (m *Memory) GetCurrentID() string {
@@ -47,7 +34,8 @@ func (m *Memory) SwitchSession(newID string) error {
 	return nil
 }
 
-func Init(config *conf.Config, id string) (*Memory, error) {
+func Init(id string) (*Memory, error) {
+	config := conf.GetConfig()
 	var memory Memory
 	memory.Cfg.Id = id
 	memory.Cfg.MemPath = filepath.Join(config.Path.CfgPath, "/memory", filepath.Base(config.Path.Workdir))

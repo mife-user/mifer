@@ -20,7 +20,8 @@ func defaultInt(val, def int) int {
 }
 
 // Init 初始化日志实例，按级别分文件，支持按大小切割，仅输出到文件
-func Init(config *conf.Config) error {
+func Init() error {
+	config := conf.GetConfig()
 	var logDir string
 
 	if config.Env == "dev" {

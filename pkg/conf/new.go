@@ -124,7 +124,7 @@ cli:
       foreground: "#555555"
   tui:
     max_history: 100
-    completable_commands: ["/help", "/exit", "/quit", "/viewmemory", "/excmem"]
+    completable_commands: ["/help", "/exit", "/quit", "/viewmemory", "/excmem", "/clear", "/prompt"]
     content_margin: 4
     min_height: 10
     spinner_type: "MiniDot"

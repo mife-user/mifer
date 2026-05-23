@@ -60,6 +60,13 @@ func (r *Router) Setup() *gin.Engine {
 			memory.GET("", r.agentHandler.ListMemories)
 			memory.GET("/:id", r.agentHandler.LoadMemory)
 			memory.POST("/exchange/:id", r.agentHandler.ExchangeMemory)
+			memory.POST("/clear", r.agentHandler.ClearMemory)
+		}
+		prompt := api.Group("/prompt")
+		{
+			prompt.GET("", r.agentHandler.GetPrompt)
+			prompt.POST("", r.agentHandler.SetPrompt)
+			prompt.POST("/reset", r.agentHandler.ResetPrompt)
 		}
 	}
 

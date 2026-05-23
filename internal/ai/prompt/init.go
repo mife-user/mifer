@@ -8,17 +8,6 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-
-// New 使用默认系统提示创建 Prompty
-func New(m *memory.Memory) *Prompty {
-	return NewWithRAG(m, nil)
-}
-
-// NewWithPrompt 使用自定义系统提示创建 Prompty
-func NewWithPrompt(m *memory.Memory, sysPrompt string) *Prompty {
-	return NewWithPromptAndRAG(m, sysPrompt, nil)
-}
-
 // NewWithRAG 使用默认系统提示 + RAG 服务创建 Prompty
 func NewWithRAG(m *memory.Memory, ragSvc *rag.Service) *Prompty {
 	return NewWithPromptAndRAG(m, defaultSystemPrompt, ragSvc)

@@ -81,7 +81,20 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 修改迭代次数为0，默认无限迭代，由ai控制迭代
+            - [x] 移除Redis相关依赖与配置，新增Milvus客户端初始化与配置项
+            - [x] 重构RAG服务的向量存储实现，从Redis迁移到Milvus
+            - [x] 更新错误码与日志信息，适配新的Milvus集成逻辑
+            - [x] 清理不再使用的代码文件与依赖包
+            - [x] 新增记忆清空API接口与相关逻辑，支持生成新会话ID并切换
+            - [x] 新增系统提示词增查改重置API，支持自定义提示词与重置默认值
+            - [x] 为TUI终端添加/clear、/prompt相关命令支持
+            - [x] 补全DTO、领域模型、服务层与CLI客户端代码
+            - [x] 移除Application结构体中的Config字段，改为通过conf.GetConfig()全局获取配置
+            - [x] 简化cli.New、logger.Init、res.Init等函数签名，移除传入的config参数
+            - [x] 重构RAG、Memory、Agent等模块的初始化逻辑，移除配置参数传递
+            - [x] 替换原生错误为自定义errorer包错误，统一错误处理
+            - [x] 拆分合并重复的代码文件，优化代码结构
+            - [x] 修复auth中间件中的缩进错误
           files: artifacts/**/*
           draft: false
           prerelease: false

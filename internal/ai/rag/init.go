@@ -18,31 +18,37 @@ func NewService(ctx context.Context) (*Service, error) {
 	// 初始化嵌入模型
 	emb, err := embedder.NewEmbedder(ctx)
 	if err != nil {
+		logger.Error("初始化嵌入模型失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitEmbedderFailed, err)
 	}
 	// 初始化文件加载器
 	fileLoader, err := loader.NewFileLoader(ctx)
 	if err != nil {
+		logger.Error("初始化文件加载器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitFileLoaderFailed, err)
 	}
 	// 初始化文本分块器
 	chunk, err := chunker.NewChunker(ctx)
 	if err != nil {
+		logger.Error("初始化文本分块器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitChunkerFailed, err)
 	}
 	// 初始化 Qdrant 客户端
 	qdrantClient, err := qdrant.Init(ctx)
 	if err != nil {
+		logger.Error("初始化Qdrant客户端失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitQdrantFailed, err)
 	}
 	// 初始化向量索引器（Qdrant 自动建 Collection）
 	idx, err := vectorstore.NewIndexer(ctx, qdrantClient, emb)
 	if err != nil {
+		logger.Error("初始化向量索引器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitIndexerFailed, err)
 	}
 	// 初始化向量检索器
 	ret, err := vectorstore.NewRetriever(ctx, qdrantClient, emb)
 	if err != nil {
+		logger.Error("初始化向量检索器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitRetrieverFailed, err)
 	}
 

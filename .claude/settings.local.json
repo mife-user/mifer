@@ -67,7 +67,8 @@
       "PowerShell(Get-ChildItem -Path \"D:\\\\vscode\\\\VsCodeWork\\\\pkg\\\\mod\\\\github.com\\\\cloudwego\\\\eino@v0.8.13\\\\components\\\\document\\\\parser\\\\\" -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer } | Select-Object FullName, Length)",
       "Bash(findstr /i \"eino\")",
       "PowerShell(Set-Content *)",
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "Read(//c/Users/asus/go/pkg/mod/github.com/**)"
     ]
   }
 }

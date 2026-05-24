@@ -3,10 +3,11 @@ package agent
 import (
 	"context"
 	"mifer/internal/ai/llm"
-	"mifer/pkg/errorer"
 	"mifer/internal/ai/memory"
 	"mifer/internal/ai/prompt"
 	"mifer/internal/ai/rag"
+	"mifer/internal/ai/tools"
+	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/adk"
@@ -25,6 +26,14 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("初始化LLM注册中心失败", logger.C(err))
 		return nil, err
 	}
+
+	// RAG 服务提前初始化，以便将知识库工具注入 MiSummarizer
+	ragSvc, err := rag.NewService(c)
+	if err != nil {
+		logger.Warn("RAG服务初始化失败，降级为无RAG模式", logger.C(err))
+		ragSvc = nil
+	}
+
 	// 初始化聊天agent（haiku — 快速响应）
 	chatAgent, err := newChatAgent(c, reg.Get("haiku"))
 	if err != nil {
@@ -37,8 +46,8 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("init editer agent failed", logger.C(err))
 		return nil, err
 	}
-	// 初始化文档摘要agent（sonnet — 均衡）
-	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"))
+	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具
+	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), tools.KnowledgeTools(ragSvc))
 	if err != nil {
 		logger.Error("init summarizer agent failed", logger.C(err))
 		return nil, err
@@ -65,7 +74,7 @@ func Init(c context.Context) (*Humen, error) {
 	agent, err := deep.New(c, &deep.Config{
 		Name:        "Mifer",
 		Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务",
-		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiTalker：日常对话交流\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读与摘要总结\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent\n2. 复杂任务可串联多个Agent协作完成\n3. 涉及安全操作时优先咨询MiAuditor\n4. 回复用户时使用中文，简洁清晰",
+		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiTalker：日常对话交流\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent\n2. 复杂任务可串联多个Agent协作完成\n3. 涉及安全操作时优先咨询MiAuditor\n4. 回复用户时使用中文，简洁清晰",
 		ChatModel:   reg.Get("default"),
 		ToolsConfig: adk.ToolsConfig{
 			EmitInternalEvents: true, // 转发子Agent内部事件到父级事件流，使TUI侧边栏可显示子Agent及工具调用
@@ -86,12 +95,6 @@ func Init(c context.Context) (*Humen, error) {
 	if err != nil {
 		logger.Error("init memory failed", logger.C(err))
 		return nil, err
-	}
-
-	ragSvc, err := rag.NewService(c)
-	if err != nil {
-		logger.Warn("RAG服务初始化失败，降级为无RAG模式", logger.C(err))
-		ragSvc = nil
 	}
 
 	prompty := prompt.NewWithRAG(mem, ragSvc)

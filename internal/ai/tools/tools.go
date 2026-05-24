@@ -1,10 +1,13 @@
 package tools
 
 import (
+	"mifer/internal/ai/rag"
 	"mifer/internal/ai/tools/commandexecutor"
 	"mifer/internal/ai/tools/filecreator"
 	"mifer/internal/ai/tools/filereader"
 	"mifer/internal/ai/tools/filewriter"
+	"mifer/internal/ai/tools/knowledgesearch"
+	"mifer/internal/ai/tools/knowledgestore"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/tool"
@@ -61,6 +64,30 @@ func AuditTools() []tool.BaseTool {
 		logger.Error("创建 file_reader 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fr)
+	}
+
+	return tools
+}
+
+// KnowledgeTools 返回知识库相关工具（检索 + 存储），ragSvc 为 nil 时返回空切片
+func KnowledgeTools(ragSvc *rag.Service) []tool.BaseTool {
+	var tools []tool.BaseTool
+	if ragSvc == nil {
+		return tools
+	}
+
+	ks, err := knowledgesearch.New(ragSvc)
+	if err != nil {
+		logger.Error("创建 knowledge_search 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, ks)
+	}
+
+	kst, err := knowledgestore.New(ragSvc)
+	if err != nil {
+		logger.Error("创建 knowledge_store 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, kst)
 	}
 
 	return tools

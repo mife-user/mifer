@@ -22,9 +22,10 @@ func Init(ctx context.Context) (*qdrant.Client, error) {
 	}
 
 	client, err := qdrant.NewClient(&qdrant.Config{
-		Host:   host,
-		Port:   port,
-		APIKey: ragCfg.QdrantAPIKey,
+		Host:                   host,
+		Port:                   port,
+		APIKey:                 ragCfg.QdrantAPIKey,
+		SkipCompatibilityCheck: true, // 跳过版本兼容性检查，避免启动时阻塞 60s
 	})
 	if err != nil {
 		return nil, errorer.NewS(errorer.ErrInitQdrantFailed, err)

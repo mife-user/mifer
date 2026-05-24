@@ -21,7 +21,7 @@ type KnowledgeSearchOutput struct {
 }
 
 // New 创建知识库检索工具，通过闭包注入 RAG 服务
-func New(ragSvc *rag.Service) (tool.InvokableTool, error) {
+func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
 	return utils.InferTool("knowledge_search", "检索知识库中的相关文档内容。当你不确定某个知识点或需要查找已有文档中的信息时，使用此工具搜索知识库。注意：知识库存放的是文档资料，不是代码——如需查看代码文件请使用 file_reader。", func(ctx context.Context, input KnowledgeSearchInput) (KnowledgeSearchOutput, error) {
 		docs, err := ragSvc.Retrieve(ctx, input.Query)
 		if err != nil {

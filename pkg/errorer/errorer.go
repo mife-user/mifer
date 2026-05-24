@@ -42,8 +42,11 @@ const (
 	// Chunker
 	ErrCreateRecursiveChunkerFailed = "创建递归分块器失败"
 
-	// Prompt
+	// RAG
 	ErrRAGRetrieveFailed = "RAG检索失败"
+	ErrRAGNotReady       = "知识库服务正在初始化，请稍后重试"
+
+	// Prompt
 
 	// Agent
 	ErrIDNotString = "id is not string"

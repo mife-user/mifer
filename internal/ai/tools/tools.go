@@ -70,7 +70,7 @@ func AuditTools() []tool.BaseTool {
 }
 
 // KnowledgeTools 返回知识库相关工具（检索 + 存储），ragSvc 为 nil 时返回空切片
-func KnowledgeTools(ragSvc *rag.Service) []tool.BaseTool {
+func KnowledgeTools(ragSvc rag.RAGService) []tool.BaseTool {
 	var tools []tool.BaseTool
 	if ragSvc == nil {
 		return tools

@@ -2,35 +2,28 @@ package prompt
 
 import (
 	"mifer/internal/ai/memory"
-	"mifer/internal/ai/rag"
 
 	"github.com/cloudwego/eino/components/prompt"
 	"github.com/cloudwego/eino/schema"
 )
 
-// NewWithRAG 使用默认系统提示 + RAG 服务创建 Prompty
-func NewWithRAG(m *memory.Memory, ragSvc *rag.Service) *Prompty {
-	return NewWithPromptAndRAG(m, defaultSystemPrompt, ragSvc)
-}
-
-// NewWithPromptAndRAG 使用自定义系统提示 + RAG 服务创建 Prompty
-func NewWithPromptAndRAG(m *memory.Memory, sysPrompt string, ragSvc *rag.Service) *Prompty {
+// New 使用默认系统提示创建 Prompty
+func New(m *memory.Memory) *Prompty {
 	return &Prompty{
 		Memory:       m,
-		SystemPrompt: sysPrompt,
+		SystemPrompt: defaultSystemPrompt,
 		Template:     newDefaultTemplate(),
-		RAGService:   ragSvc,
 	}
 }
 
 // newDefaultTemplate 构建默认 ChatTemplate：
 //
-//	System: {system_prompt} + RAG {context}
+//	System: {system_prompt}
 //	MessagesPlaceholder: {history}（对话历史动态插入）
 //	User: {query}
 func newDefaultTemplate() *prompt.DefaultChatTemplate {
 	return prompt.FromMessages(schema.FString,
-		schema.SystemMessage("{system_prompt}\n\n## 参考知识库\n{context}"),
+		schema.SystemMessage("{system_prompt}"),
 		schema.MessagesPlaceholder("history", false),
 		schema.UserMessage("{query}"),
 	)

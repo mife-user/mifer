@@ -27,12 +27,8 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 
-	// RAG 服务提前初始化，以便将知识库工具注入 MiSummarizer
-	ragSvc, err := rag.NewService(c)
-	if err != nil {
-		logger.Warn("RAG服务初始化失败，降级为无RAG模式", logger.C(err))
-		ragSvc = nil
-	}
+	// RAG 懒加载服务，无网络调用，即时返回，Qdrant 连接推迟到首次工具调用
+	ragSvc := rag.NewLazyService(c)
 
 	// 初始化聊天agent（haiku — 快速响应）
 	chatAgent, err := newChatAgent(c, reg.Get("haiku"))
@@ -97,6 +93,6 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 
-	prompty := prompt.NewWithRAG(mem, ragSvc)
+	prompty := prompt.New(mem)
 	return &Humen{Agent: agent, Prompt: prompty}, nil
 }

@@ -81,17 +81,16 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
+            - [x] RAG 知识库工具化：新增 knowledge_search（检索）和 knowledge_store（入库）工具，由 MiSummarizer 自主管理知识库
+            - [x] RAG 懒加载：Qdrant 连接推迟到首次工具调用，启动不再阻塞，不可用时返回友好提示支持重试
+            - [x] 移除 Chat Prompt 自动 RAG 检索：知识库完全交给 Agent 工具自主决策，Chat 层不再触碰 Qdrant
+            - [x] Qdrant 跳过版本兼容性检查（SkipCompatibilityCheck），消除 60s 启动超时
+            - [x] MiSummarizer 提示词更新：明确知识库用于文档资料，代码文件通过 file_reader 读取
             - [x] RAG 向量存储从 Redis 迁移到 Qdrant（单容器部署，默认持久化，零外部依赖）
-            - [x] 删除 Redis 配置相关代码（RedisConfig 结构体、redis 配置段、环境变量映射）
-            - [x] 重构 pkg/res/init.go 为参数化 Redis 客户端工厂（预留缓存功能）
-            - [x] 新增 pkg/qdrant/init.go Qdrant gRPC 客户端初始化
             - [x] 新增记忆清空 API 接口，支持生成新会话 ID 并切换
             - [x] 新增系统提示词增查改重置 API，支持自定义提示词与重置默认值
-            - [x] 为 TUI 终端添加 /clear、/prompt 相关命令支持
             - [x] 重构配置依赖，统一使用 conf.GetConfig() 全局获取配置
-            - [x] 简化 cli.New、logger.Init 等函数签名，移除传入的 config 参数
-            - [x] 替换原生错误为自定义 errorer 包错误，统一错误处理
-            - [x] 拆分合并重复代码文件，优化代码结构
+            - [x] 统一错误处理：ErrRAGNotReady 等错误码收归 pkg/errorer 管理
           files: artifacts/**/*
           draft: false
           prerelease: false

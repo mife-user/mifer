@@ -114,8 +114,8 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 3. 如需新工具，在 `internal/ai/tool/` 定义
 
 ### 新增 LLM Provider
-1. 在 `internal/ai/llm/providers.go` 添加 `init<Provider>Model` 函数
-2. 在 `providerInitMap` 注册新 provider 名称
+1. 在 `internal/ai/llm/providers.go` 定义新的 provider 结构体，实现 `Provider` 接口的 `Name()` 和 `InitModel()` 方法
+2. 在 `internal/ai/llm/type.go` 的 `NewRegistry()` 中调用 `r.RegisterProvider(&newProvider{})` 注册新提供商
 3. `go get` 对应的 eino-ext 包
 
 ### 新增 HTTP 接口

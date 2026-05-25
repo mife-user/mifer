@@ -6,8 +6,6 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
-
-	"github.com/cloudwego/eino/components/model"
 )
 
 // InitRegistry 根据配置初始化所有模型后端
@@ -22,16 +20,14 @@ func InitRegistry(ctx context.Context) (*Registry, error) {
 		return nil, errorer.New(errorer.ErrDefaultBackendConfig)
 	}
 
-	registry := &Registry{
-		models: make(map[string]model.BaseChatModel, len(backends)),
-	}
+	registry := NewRegistry()
 
 	for key, backendCfg := range backends {
 		if backendCfg.Provider == "" {
 			logger.Warn("后端缺少 provider，跳过", logger.S("backend", key))
 			continue
 		}
-		chatModel, err := initBackend(ctx, key, backendCfg)
+		chatModel, err := registry.initBackend(ctx, key, backendCfg)
 		if err != nil {
 			// default 后端初始化失败为致命错误
 			if key == "default" {

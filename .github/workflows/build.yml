@@ -81,16 +81,10 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] RAG 知识库工具化：新增 knowledge_search（检索）和 knowledge_store（入库）工具，由 MiSummarizer 自主管理知识库
-            - [x] RAG 懒加载：Qdrant 连接推迟到首次工具调用，启动不再阻塞，不可用时返回友好提示支持重试
-            - [x] 移除 Chat Prompt 自动 RAG 检索：知识库完全交给 Agent 工具自主决策，Chat 层不再触碰 Qdrant
-            - [x] Qdrant 跳过版本兼容性检查（SkipCompatibilityCheck），消除 60s 启动超时
-            - [x] MiSummarizer 提示词更新：明确知识库用于文档资料，代码文件通过 file_reader 读取
-            - [x] RAG 向量存储从 Redis 迁移到 Qdrant（单容器部署，默认持久化，零外部依赖）
-            - [x] 新增记忆清空 API 接口，支持生成新会话 ID 并切换
-            - [x] 新增系统提示词增查改重置 API，支持自定义提示词与重置默认值
-            - [x] 重构配置依赖，统一使用 conf.GetConfig() 全局获取配置
-            - [x] 统一错误处理：ErrRAGNotReady 等错误码收归 pkg/errorer 管理
+            - [x] 重构 LLM 提供商注册与初始化流程，支持多后端动态注册
+            - [x] 新增文件查看器（file_viewer）和图片生成器（image_generator）工具
+            - [x] 支持多模态处理：图片分析通过多模态模型（qwen-omni-turbo）实现
+            - [x] 修改多模态模型配置为通义千问 Omni Turbo
           files: artifacts/**/*
           draft: false
           prerelease: false

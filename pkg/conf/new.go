@@ -58,8 +58,9 @@ ai:
       model: "deepseek-v4-flash"
       api_key: ""
     multi_modal:
-      provider: "gemini"
-      model: "gemini-2.5-flash"
+      provider: "openai"
+      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      model: "qwen-omni-turbo"
       api_key: ""
     haiku:
       provider: "openai"

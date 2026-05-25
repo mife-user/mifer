@@ -26,6 +26,7 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("初始化LLM注册中心失败", logger.C(err))
 		return nil, err
 	}
+	mmModel := reg.Get("multi_modal")
 
 	// RAG 懒加载服务，无网络调用，即时返回，Qdrant 连接推迟到首次工具调用
 	ragSvc := rag.NewLazyService(c)
@@ -37,19 +38,19 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	// 初始化文件编辑agent（sonnet — 均衡）
-	editerAgent, err := newChatEditer(c, reg.Get("sonnet"))
+	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel)
 	if err != nil {
 		logger.Error("init editer agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具
-	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), tools.KnowledgeTools(ragSvc))
+	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc))
 	if err != nil {
 		logger.Error("init summarizer agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化计划编写agent（opus — 最强推理）
-	plannerAgent, err := newPlanner(c, reg.Get("opus"))
+	plannerAgent, err := newPlanner(c, reg.Get("opus"), mmModel)
 	if err != nil {
 		logger.Error("init planner agent failed", logger.C(err))
 		return nil, err
@@ -61,7 +62,7 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	// 初始化安全审计agent（opus — 最强推理）
-	auditorAgent, err := newAuditor(c, reg.Get("opus"))
+	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel)
 	if err != nil {
 		logger.Error("init auditor agent failed", logger.C(err))
 		return nil, err

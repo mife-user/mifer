@@ -17,7 +17,7 @@ func (h *AgentHandler) ExchangeMemory(c *gin.Context) {
 		return
 	}
 	req := &domain.MemoryReq{ID: id}
-	if err := h.AgentService.ExchangeMemory(c.Request.Context(), req); err != nil {
+	if err := h.getService().ExchangeMemory(c.Request.Context(), req); err != nil {
 		logger.Error("记忆交换失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

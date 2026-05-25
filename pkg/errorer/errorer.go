@@ -104,6 +104,11 @@ const (
 	ErrCreateGeminiClientFailed = "创建 Gemini 客户端失败"
 	ErrUnsupportedProvider      = "不支持的模型提供商: %s（后端: %s），支持: openai, claude, gemini, ollama"
 
+	// 配置重载
+	ErrConfigReloadFailed   = "配置重载失败"
+	ErrRebuildExecutorFailed = "重建执行器失败"
+	ErrReloadHandlerNotReady = "处理器尚未初始化，无法重载"
+
 	// 命令执行器
 	ErrWorkDirNotInProject = "工作目录必须在项目目录内: %s"
 )

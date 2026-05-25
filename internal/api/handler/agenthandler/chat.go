@@ -23,7 +23,7 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.WriteHeader(http.StatusOK)
 
-	err := h.AgentService.Chat(c.Request.Context(), &domain.TalkReq{
+	err := h.getService().Chat(c.Request.Context(), &domain.TalkReq{
 		Content: req.Content,
 	}, func(event, content string) error {
 		escaped := strings.ReplaceAll(content, "\n", "\\n")

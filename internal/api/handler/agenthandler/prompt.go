@@ -12,7 +12,7 @@ import (
 
 // GetPrompt 获取当前系统提示词
 func (h *AgentHandler) GetPrompt(c *gin.Context) {
-	resp, err := h.AgentService.GetPrompt(c.Request.Context())
+	resp, err := h.getService().GetPrompt(c.Request.Context())
 	if err != nil {
 		logger.Error("获取提示词失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -33,7 +33,7 @@ func (h *AgentHandler) SetPrompt(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.AgentService.SetPrompt(c.Request.Context(), &domain.PromptReq{
+	resp, err := h.getService().SetPrompt(c.Request.Context(), &domain.PromptReq{
 		Prompt: body.Prompt,
 	})
 	if err != nil {
@@ -46,7 +46,7 @@ func (h *AgentHandler) SetPrompt(c *gin.Context) {
 
 // ResetPrompt 重置为默认系统提示词
 func (h *AgentHandler) ResetPrompt(c *gin.Context) {
-	resp, err := h.AgentService.ResetPrompt(c.Request.Context())
+	resp, err := h.getService().ResetPrompt(c.Request.Context())
 	if err != nil {
 		logger.Error("重置提示词失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

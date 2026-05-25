@@ -12,7 +12,7 @@ import (
 func (h *AgentHandler) LoadMemory(c *gin.Context) {
 	id := c.Param("id")
 	req := &domain.MemoryReq{ID: id}
-	resp, err := h.AgentService.LoadMemory(c.Request.Context(), req)
+	resp, err := h.getService().LoadMemory(c.Request.Context(), req)
 	if err != nil {
 		logger.Error("加载记忆失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

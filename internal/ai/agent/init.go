@@ -15,8 +15,9 @@ import (
 )
 
 type Humen struct {
-	Agent  adk.Agent
-	Prompt *prompt.Prompty
+	Agent    adk.Agent
+	Prompt   *prompt.Prompty
+	Registry *llm.Registry
 }
 
 func Init(c context.Context) (*Humen, error) {
@@ -77,7 +78,7 @@ func Init(c context.Context) (*Humen, error) {
 			EmitInternalEvents: true, // 转发子Agent内部事件到父级事件流，使TUI侧边栏可显示子Agent及工具调用
 		},
 		SubAgents:    []adk.Agent{chatAgent, editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
-		MaxIteration: 2,
+		MaxIteration: 0,
 	})
 	if err != nil {
 		logger.Error("init agent failed", logger.C(err))
@@ -95,5 +96,5 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, Prompt: prompty}, nil
+	return &Humen{Agent: agent, Prompt: prompty, Registry: reg}, nil
 }

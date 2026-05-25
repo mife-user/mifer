@@ -16,6 +16,7 @@ import (
 // Router 路由结构体
 type Router struct {
 	agentHandler *agenthandler.AgentHandler
+	appCtx       context.Context
 }
 
 // GetRouter 获取路由实例
@@ -31,6 +32,7 @@ func (r *Router) NewRouter(c context.Context) error {
 	}
 	service := agentservice.NewAgentService(exec)
 	r.agentHandler = agenthandler.NewAgentHandler(service)
+	r.appCtx = c
 
 	return nil
 }
@@ -67,6 +69,11 @@ func (r *Router) Setup() *gin.Engine {
 			prompt.GET("", r.agentHandler.GetPrompt)
 			prompt.POST("", r.agentHandler.SetPrompt)
 			prompt.POST("/reset", r.agentHandler.ResetPrompt)
+		}
+		// Admin 管理接口
+		admin := api.Group("/admin")
+		{
+			admin.POST("/reload", r.ReloadHandler)
 		}
 	}
 

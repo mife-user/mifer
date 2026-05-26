@@ -68,7 +68,13 @@
       "Bash(findstr /i \"eino\")",
       "PowerShell(Set-Content *)",
       "PowerShell(Get-Content *)",
-      "Read(//c/Users/asus/go/pkg/mod/github.com/**)"
+      "Read(//c/Users/asus/go/pkg/mod/github.com/**)",
+      "Bash(ls -d \"$\\(go env GOPATH\\)/pkg/mod/github.com/charmbracelet/bubbles@v1.0.0/viewport/\")",
+      "Bash(ls -d \"$\\(go env GOMODCACHE\\)/github.com/charmbracelet/bubbles@v1.0.0/viewport/\")",
+      "Read(//d/vscode/VsCodeWork/pkg/mod/github.com/charmbracelet/**)",
+      "Read(//d/vscode/VsCodeWork/pkg/mod/charm.land/**)",
+      "Bash(ls -la \"D:\\\\\\\\vscode\\\\\\\\VsCodeWork\\\\\\\\pkg\\\\\\\\mod\\\\\\\\charm.land\\\\\\\\bubbles\\\\\\\\\")",
+      "Bash(ls *)"
     ]
   }
 }

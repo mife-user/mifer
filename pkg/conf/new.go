@@ -129,4 +129,6 @@ cli:
     sidebar_show_tokens: true
     sidebar_show_timing: true
     completion_max_visible: 5
+    mouse_wheel_delta: 3
+    horizontal_scroll_step: 4
 `

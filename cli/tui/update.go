@@ -68,6 +68,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.memoryViewport, cmd = m.memoryViewport.Update(msg)
 			return m, cmd
 		}
+		// Alt+滚轮 / 水平滚轮 → 水平滚动
+		if msg.Button == tea.MouseButtonWheelLeft || msg.Button == tea.MouseButtonWheelRight ||
+			(msg.Alt && msg.Button == tea.MouseButtonWheelUp) ||
+			(msg.Alt && msg.Button == tea.MouseButtonWheelDown) {
+			switch msg.Button {
+			case tea.MouseButtonWheelLeft, tea.MouseButtonWheelUp:
+				m.viewport.ScrollLeft(conf.GetConfig().Cli.Tui.HorizontalScrollStep)
+			case tea.MouseButtonWheelRight, tea.MouseButtonWheelDown:
+				m.viewport.ScrollRight(conf.GetConfig().Cli.Tui.HorizontalScrollStep)
+			}
+			return m, nil
+		}
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd

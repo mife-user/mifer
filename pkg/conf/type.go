@@ -49,7 +49,9 @@ type TuiConfig struct {
 	SidebarMaxLog       int      `mapstructure:"sidebar_max_log"`     // 状态日志最大行数，默认 100
 	SidebarShowTokens   bool     `mapstructure:"sidebar_show_tokens"` // 是否显示token统计，默认 true
 	SidebarShowTiming   bool     `mapstructure:"sidebar_show_timing"` // 是否显示时间戳，默认 true
-		CompletionMaxVisible int  `mapstructure:"completion_max_visible"` // 补全列表最大可见行数，默认 5
+	CompletionMaxVisible  int  `mapstructure:"completion_max_visible"`  // 补全列表最大可见行数，默认 5
+	MouseWheelDelta       int  `mapstructure:"mouse_wheel_delta"`       // 垂直滚轮每次滚动行数，默认 3
+	HorizontalScrollStep  int  `mapstructure:"horizontal_scroll_step"`  // 水平滚动每次列数，默认 4
 }
 
 type Colorlip struct {

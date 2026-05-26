@@ -9,7 +9,8 @@ import (
 
 func NewViewport() viewport.Model {
 	vp := viewport.New(0, 0)
-	vp.MouseWheelDelta = 1 // 滚轮每次滚动 1 行
+	vp.MouseWheelDelta = conf.GetConfig().Cli.Tui.MouseWheelDelta
+	vp.SetHorizontalStep(conf.GetConfig().Cli.Tui.HorizontalScrollStep)
 	// 视口样式：沿用原来外层容器的背景色、内边距、圆角边框
 	bgColor := conf.GetConfig().Cli.Lip.Base.Background
 	if bgColor == "" {

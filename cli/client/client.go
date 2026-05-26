@@ -8,6 +8,7 @@ import (
 	"mifer/cli/client/excmemhandler"
 	"mifer/cli/client/memhandler"
 	"mifer/cli/client/prompthandler"
+	"mifer/cli/client/reloadhandler"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 	APIExcmemPath = "/api/memory/exchange"
 	APIClearPath  = "/api/memory/clear"
 	APIPromptPath = "/api/prompt"
+	APIReloadPath = "/api/admin/reload"
 )
 
 // Client HTTP API客户端，按服务聚合各Handler
@@ -25,6 +27,7 @@ type Client struct {
 	Excmem *excmemhandler.ExcmemHandler
 	Clear  *clearhandler.ClearHandler
 	Prompt *prompthandler.PromptHandler
+	Reload *reloadhandler.ReloadHandler
 }
 
 // New 创建API客户端实例
@@ -36,5 +39,6 @@ func New(baseURL string) *Client {
 		Excmem: excmemhandler.New(httpClient, baseURL+APIExcmemPath),
 		Clear:  clearhandler.New(httpClient, baseURL+APIClearPath),
 		Prompt: prompthandler.New(httpClient, baseURL+APIPromptPath),
+		Reload: reloadhandler.New(httpClient, baseURL+APIReloadPath),
 	}
 }

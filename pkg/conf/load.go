@@ -101,9 +101,18 @@ func applyEnvOverrides(v *viper.Viper) {
 	}
 	// 后端模型配置 — 支持 MIFER_AI_<BACKEND>_<FIELD> 格式
 	for _, backend := range []string{"DEFAULT", "MULTI", "HAIKU", "SONNET", "OPUS"} {
-		envVar := "MIFER_AI_" + backend + "_" + "APIKEY"
-		if val := os.Getenv(envVar); val != "" {
-			v.Set("ai.backends."+backend+"."+"api_key", val)
+		envPrefix := "MIFER_AI_" + backend + "_"
+		if val := os.Getenv(envPrefix + "APIKEY"); val != "" {
+			v.Set("ai.backends."+backend+".api_key", val)
+		}
+		if val := os.Getenv(envPrefix + "BASE_URL"); val != "" {
+			v.Set("ai.backends."+backend+".base_url", val)
+		}
+		if val := os.Getenv(envPrefix + "PROVIDER"); val != "" {
+			v.Set("ai.backends."+backend+".provider", val)
+		}
+		if val := os.Getenv(envPrefix + "MODEL"); val != "" {
+			v.Set("ai.backends."+backend+".model", val)
 		}
 	}
 }

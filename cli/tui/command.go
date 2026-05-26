@@ -47,3 +47,14 @@ func promptResetCmd(client *client.Client) tea.Cmd {
 		return systemMsg{content: "已重置为默认系统提示词"}
 	}
 }
+
+// reloadCmd 异步请求服务端重载配置
+func reloadCmd(client *client.Client) tea.Cmd {
+	return func() tea.Msg {
+		result, err := client.Reload.Reload()
+		if err != nil {
+			return systemMsg{err: err}
+		}
+		return systemMsg{content: result}
+	}
+}

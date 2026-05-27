@@ -2,18 +2,56 @@ package prompt
 
 import (
 	"mifer/internal/ai/memory"
+	"mifer/pkg/conf"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/cloudwego/eino/components/prompt"
 	"github.com/cloudwego/eino/schema"
 )
 
-// New 使用默认系统提示创建 Prompty
+// New 使用默认系统提示创建 Prompty，自动加载 MIFER.md 文件拼接系统提示词
 func New(m *memory.Memory) *Prompty {
-	return &Prompty{
-		Memory:       m,
-		SystemPrompt: defaultSystemPrompt,
-		Template:     newDefaultTemplate(),
+	p := &Prompty{
+		Memory:   m,
+		Template: newDefaultTemplate(),
 	}
+	p.buildSystemPrompt()
+	return p
+}
+
+// buildSystemPrompt 从 MIFER.md 文件构建系统提示词
+// 顺序：用户级（CfgPath/MIFER.md）→ 项目级（workdir/.mifer/MIFER.md）→ 默认系统提示词
+func (p *Prompty) buildSystemPrompt() {
+	cfg := conf.GetConfig()
+	var parts []string
+
+	// 用户级 MIFER.md
+	if content, ok := readMiferFile(filepath.Join(cfg.Path.CfgPath, "MIFER.md")); ok {
+		parts = append(parts, content)
+	}
+	// 项目级 MIFER.md
+	if content, ok := readMiferFile(filepath.Join(cfg.Path.Workdir, ".mifer", "MIFER.md")); ok {
+		parts = append(parts, content)
+	}
+	// 默认系统提示词
+	parts = append(parts, defaultSystemPrompt)
+
+	p.SystemPrompt = strings.Join(parts, "\n")
+}
+
+// readMiferFile 读取并 trim 指定路径的 MIFER.md 文件
+func readMiferFile(path string) (string, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	content := strings.TrimSpace(string(data))
+	if content == "" {
+		return "", false
+	}
+	return content, true
 }
 
 // newDefaultTemplate 构建默认 ChatTemplate：

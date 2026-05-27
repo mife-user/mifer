@@ -92,11 +92,19 @@ func (s *LazyService) ensureReady(ctx context.Context) error {
 }
 
 // Retrieve 检索相关文档（首次调用时触发懒初始化）
-func (s *LazyService) Retrieve(ctx context.Context, query string) ([]*schema.Document, error) {
+// func (s *LazyService) Retrieve(ctx context.Context, query string) ([]*schema.Document, error) {
+// 	if err := s.ensureReady(ctx); err != nil {
+// 		return nil, err
+// 	}
+// 	return s.svc.Retrieve(ctx, query)
+// }
+
+// RetrieveWithContext 检索相关文档并附带上下文分块（首次调用时触发懒初始化）
+func (s *LazyService) RetrieveWithContext(ctx context.Context, query string, contextSize int) ([]*schema.Document, error) {
 	if err := s.ensureReady(ctx); err != nil {
 		return nil, err
 	}
-	return s.svc.Retrieve(ctx, query)
+	return s.svc.RetrieveWithContext(ctx, query, contextSize)
 }
 
 // FormatDocs 将检索结果格式化为上下文字符串，委托给底层 Service

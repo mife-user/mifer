@@ -30,8 +30,36 @@ func newDefaultCfg(s string) error {
 			return errorer.NewS(errorer.ErrWriteDefaultConfigFailed, err)
 		}
 	}
+
+	// 创建 .mifer/ 目录及默认 allowlist.yaml（位于工作目录下）
+	wd, err := os.Getwd()
+	if err != nil {
+		return errorer.NewS(errorer.ErrGetWorkDirFailed, err)
+	}
+	miferDir := filepath.Join(wd, ".mifer")
+	if err := os.MkdirAll(miferDir, 0755); err != nil {
+		return errorer.NewS(errorer.ErrCreateConfigDirFailed, err)
+	}
+	allowlistPath := filepath.Join(miferDir, "allowlist.yaml")
+	if _, err := os.Stat(allowlistPath); os.IsNotExist(err) {
+		if err := os.WriteFile(allowlistPath, []byte(defaultAllowList), 0644); err != nil {
+			return errorer.NewS(errorer.ErrWriteDefaultConfigFailed, err)
+		}
+	}
+
 	return nil
 }
+
+const defaultAllowList = `# 命令执行白名单
+# 格式：允许的命令列表，为空时不启用白名单检查
+# 支持 * 通配符前缀匹配，如 "git*" 匹配所有 git 开头的命令
+allow_list:
+# 示例：
+#   - "ls"
+#   - "cat"
+#   - "git*"
+#   - "python*"
+`
 
 const defaultConfig = `
 env: dev

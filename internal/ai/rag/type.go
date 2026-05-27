@@ -14,7 +14,8 @@ import (
 
 // RAGService 定义 RAG 服务接口，Service 和 LazyService 均实现此接口
 type RAGService interface {
-	Retrieve(ctx context.Context, query string) ([]*schema.Document, error)
+	// Retrieve(ctx context.Context, query string) ([]*schema.Document, error)
+	RetrieveWithContext(ctx context.Context, query string, contextSize int) ([]*schema.Document, error)
 	FormatDocs(docs []*schema.Document) string
 	Ingest(ctx context.Context, paths []string) error
 }

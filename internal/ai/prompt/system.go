@@ -10,7 +10,7 @@ func (p *Prompty) SetSystemPrompt(prompt string) {
 	p.SystemPrompt = prompt
 }
 
-// ResetSystemPrompt 重置为默认系统提示词
+// ResetSystemPrompt 从 MIFER.md 文件重新构建系统提示词
 func (p *Prompty) ResetSystemPrompt() {
-	p.SystemPrompt = defaultSystemPrompt
+	p.buildSystemPrompt()
 }

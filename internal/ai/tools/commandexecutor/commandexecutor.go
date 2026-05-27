@@ -117,10 +117,14 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 	}
 
 	// 2. 白名单检查（若配置了白名单）
-	if len(cfg.Ai.AllowList) > 0 {
-		if !isAllowed(input.Command, cfg.Ai.AllowList) {
+	allowList, err := conf.LoadAllowList(cfg.Path.Workdir)
+	if err != nil {
+		logger.Warn("加载白名单失败", logger.C(err))
+	}
+	if len(allowList) > 0 {
+		if !isAllowed(input.Command, allowList) {
 			return CommandExecutorOutput{
-				Error: "命令不在白名单中，已拒绝执行。允许的命令: " + strings.Join(cfg.Ai.AllowList, ", "),
+				Error: "命令不在白名单中，已拒绝执行。允许的命令: " + strings.Join(allowList, ", "),
 			}, nil
 		}
 	}

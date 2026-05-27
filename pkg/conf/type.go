@@ -82,8 +82,7 @@ type BackendConfig struct {
 
 // ai配置结构体
 type AiConfig struct {
-	Backends  map[string]BackendConfig `mapstructure:"backends"`
-	AllowList []string                 `mapstructure:"allow_list"` // 命令执行白名单，非空时仅允许白名单内的命令
+	Backends map[string]BackendConfig `mapstructure:"backends"`
 }
 
 // gin配置结构体

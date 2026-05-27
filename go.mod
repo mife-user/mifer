@@ -19,6 +19,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.12
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/uuid v1.6.0
 	github.com/qdrant/go-client v1.15.2
 	github.com/redis/go-redis/v9 v9.10.0
 	github.com/spf13/viper v1.21.0
@@ -85,7 +86,6 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/goph/emperror v0.17.2 // indirect

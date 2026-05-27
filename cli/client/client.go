@@ -5,6 +5,7 @@ import (
 
 	"mifer/cli/client/chathandler"
 	"mifer/cli/client/clearhandler"
+	"mifer/cli/client/confirmhandler"
 	"mifer/cli/client/excmemhandler"
 	"mifer/cli/client/memhandler"
 	"mifer/cli/client/prompthandler"
@@ -13,36 +14,39 @@ import (
 )
 
 const (
-	APIChatPath   = "/api/ai/chat"
-	APIMemoryPath = "/api/memory"
-	APIExcmemPath = "/api/memory/exchange"
-	APIClearPath  = "/api/memory/clear"
-	APIPromptPath = "/api/prompt"
-	APIRebackPath = "/api/memory/reback"
-	APIReloadPath = "/api/admin/reload"
+	APIChatPath        = "/api/ai/chat"
+	APIMemoryPath      = "/api/memory"
+	APIExcmemPath      = "/api/memory/exchange"
+	APIClearPath       = "/api/memory/clear"
+	APIPromptPath      = "/api/prompt"
+	APIRebackPath      = "/api/memory/reback"
+	APIReloadPath      = "/api/admin/reload"
+	APIConfirmPath     = "/api/tool/confirm"
 )
 
 // Client HTTP API客户端，按服务聚合各Handler
 type Client struct {
-	Chat   *chathandler.ChatHandler
-	Memory *memhandler.MemHandler
-	Excmem *excmemhandler.ExcmemHandler
-	Clear  *clearhandler.ClearHandler
-	Reback *rebackhandler.RebackHandler
-	Prompt *prompthandler.PromptHandler
-	Reload *reloadhandler.ReloadHandler
+	Chat    *chathandler.ChatHandler
+	Memory  *memhandler.MemHandler
+	Excmem  *excmemhandler.ExcmemHandler
+	Clear   *clearhandler.ClearHandler
+	Reback  *rebackhandler.RebackHandler
+	Prompt  *prompthandler.PromptHandler
+	Reload  *reloadhandler.ReloadHandler
+	Confirm *confirmhandler.ConfirmHandler
 }
 
 // New 创建API客户端实例
 func New(baseURL string) *Client {
 	httpClient := http.DefaultClient
 	return &Client{
-		Chat:   chathandler.New(httpClient, baseURL+APIChatPath),
-		Memory: memhandler.New(httpClient, baseURL+APIMemoryPath),
-		Excmem: excmemhandler.New(httpClient, baseURL+APIExcmemPath),
-		Clear:  clearhandler.New(httpClient, baseURL+APIClearPath),
-		Reback: rebackhandler.New(httpClient, baseURL+APIRebackPath),
-		Prompt: prompthandler.New(httpClient, baseURL+APIPromptPath),
-		Reload: reloadhandler.New(httpClient, baseURL+APIReloadPath),
+		Chat:    chathandler.New(httpClient, baseURL+APIChatPath),
+		Memory:  memhandler.New(httpClient, baseURL+APIMemoryPath),
+		Excmem:  excmemhandler.New(httpClient, baseURL+APIExcmemPath),
+		Clear:   clearhandler.New(httpClient, baseURL+APIClearPath),
+		Reback:  rebackhandler.New(httpClient, baseURL+APIRebackPath),
+		Prompt:  prompthandler.New(httpClient, baseURL+APIPromptPath),
+		Reload:  reloadhandler.New(httpClient, baseURL+APIReloadPath),
+		Confirm: confirmhandler.New(httpClient, baseURL+APIConfirmPath),
 	}
 }

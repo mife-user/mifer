@@ -52,6 +52,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.memoryList.SetSize(sidebarW-4, 8)
 		m.rebackList.SetSize(sidebarW-4, 8)
+		m.confirmList.SetSize(sidebarW-4, 10)
 		m.memoryViewport.Width = m.width - 4
 		m.memoryViewport.Height = m.height - 2
 		_, _ = m.textarea.Update(msg)
@@ -59,6 +60,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_, _ = m.sidebarVP.Update(msg)
 		_, _ = m.memoryList.Update(msg)
 		_, _ = m.rebackList.Update(msg)
+		_, _ = m.confirmList.Update(msg)
 		return m, nil
 
 	// ======================================================================
@@ -116,6 +118,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "down", "k", "j", "home", "end", "pgup", "pgdown":
 				var cmd tea.Cmd
 				m.memoryList, cmd = m.memoryList.Update(msg)
+				return m, cmd
+			default:
+				return m, nil
+			}
+		}
+
+		// ---- 工具确认模式：拦截按键，委托给 confirmList 或处理选择 ----
+		if m.confirmingTool {
+			switch msg.String() {
+			case "enter":
+				return m.handleConfirmSelect()
+			case "esc":
+				// ESC 等同于选择"拒绝"（列表第一项是"接受"，第二项是"拒绝"需要手动构造）
+				m.confirmingTool = false
+				return m, confirmCmd(m.client, m.confirmCallID, "refuse")
+			case "up", "down", "k", "j":
+				var cmd tea.Cmd
+				m.confirmList, cmd = m.confirmList.Update(msg)
 				return m, cmd
 			default:
 				return m, nil
@@ -295,7 +315,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleRebackList(msg)
 
 	// ======================================================================
-	// 10. 回退执行完成
+	// 10. 工具确认请求
+	// ======================================================================
+	case toolConfirmMsg:
+		return m.handleToolConfirm(msg)
+
+	// ======================================================================
+	// 11. 回退执行完成
 	// ======================================================================
 	case rebackDoneMsg:
 		return m.handleRebackDone(msg)

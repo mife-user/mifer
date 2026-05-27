@@ -153,6 +153,7 @@ cli:
     spinner_type: "MiniDot"
     spinner_frames: []
     spinner_fps: 0
+    allow_tools: ["file_reader", "knowledge_search"]
     sidebar_max_log: 100
     sidebar_show_tokens: true
     sidebar_show_timing: true

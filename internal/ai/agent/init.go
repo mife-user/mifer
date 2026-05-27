@@ -20,7 +20,7 @@ type Humen struct {
 	Registry *llm.Registry
 }
 
-func Init(c context.Context) (*Humen, error) {
+func Init(c context.Context, bus *tools.ConfirmBus) (*Humen, error) {
 	// 初始化LLM注册中心
 	reg, err := llm.InitRegistry(c)
 	if err != nil {
@@ -39,31 +39,31 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	// 初始化文件编辑agent（sonnet — 均衡）
-	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel)
+	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel, bus)
 	if err != nil {
 		logger.Error("init editer agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具
-	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc))
+	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc), bus)
 	if err != nil {
 		logger.Error("init summarizer agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化计划编写agent（opus — 最强推理）
-	plannerAgent, err := newPlanner(c, reg.Get("opus"), mmModel)
+	plannerAgent, err := newPlanner(c, reg.Get("opus"), mmModel, bus)
 	if err != nil {
 		logger.Error("init planner agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化终端命令agent（sonnet — 均衡）
-	commanderAgent, err := newCommander(c, reg.Get("sonnet"))
+	commanderAgent, err := newCommander(c, reg.Get("sonnet"), bus)
 	if err != nil {
 		logger.Error("init commander agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化安全审计agent（opus — 最强推理）
-	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel)
+	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel, bus)
 	if err != nil {
 		logger.Error("init auditor agent failed", logger.C(err))
 		return nil, err

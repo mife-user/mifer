@@ -15,6 +15,12 @@ import (
 )
 
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
+	// 设置确认总线的 SSE 回调，供工具中间件发送 tool_confirm 事件
+	if e.ConfirmBus != nil {
+		e.ConfirmBus.SetSSECallback(callback)
+		defer e.ConfirmBus.SetSSECallback(nil)
+	}
+
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
 
 	msgs, err := e.Humen.Prompt.Build(c, req.Content)

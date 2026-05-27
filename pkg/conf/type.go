@@ -46,6 +46,7 @@ type TuiConfig struct {
 	SpinnerType         string   `mapstructure:"spinner_type"`   // 预置类型名，或为空使用自定义帧
 	SpinnerFrames       []string `mapstructure:"spinner_frames"` // 自定义动画帧序列，如 [".", "..", "..."]，非空时覆盖 spinner_type
 	SpinnerFPS          int      `mapstructure:"spinner_fps"`    // 自定义帧率（帧/秒），默认 10
+	AllowTools           []string `mapstructure:"allow_tools"`           // 工具调用持久白名单，列表中的工具无需确认直接执行
 	SidebarMaxLog       int      `mapstructure:"sidebar_max_log"`     // 状态日志最大行数，默认 100
 	SidebarShowTokens   bool     `mapstructure:"sidebar_show_tokens"` // 是否显示token统计，默认 true
 	SidebarShowTiming   bool     `mapstructure:"sidebar_show_timing"` // 是否显示时间戳，默认 true

@@ -4,6 +4,7 @@ import (
 	"context"
 	"mifer/internal/ai/executor"
 	"mifer/internal/api/handler/agenthandler"
+	"mifer/internal/api/handler/toolhandler"
 	"mifer/internal/api/middlewares"
 	"mifer/internal/service/agentservice"
 	"mifer/pkg/conf"
@@ -15,8 +16,9 @@ import (
 
 // Router 路由结构体
 type Router struct {
-	agentHandler *agenthandler.AgentHandler
-	appCtx       context.Context
+	agentHandler  *agenthandler.AgentHandler
+	toolHandler   *toolhandler.ConfirmHandler
+	appCtx        context.Context
 }
 
 // GetRouter 获取路由实例
@@ -32,6 +34,7 @@ func (r *Router) NewRouter(c context.Context) error {
 	}
 	service := agentservice.NewAgentService(exec)
 	r.agentHandler = agenthandler.NewAgentHandler(service)
+	r.toolHandler = toolhandler.NewConfirmHandler(exec.ConfirmBus)
 	r.appCtx = c
 
 	return nil
@@ -71,6 +74,10 @@ func (r *Router) Setup() *gin.Engine {
 			prompt.GET("", r.agentHandler.GetPrompt)
 			prompt.POST("", r.agentHandler.SetPrompt)
 			prompt.POST("/reset", r.agentHandler.ResetPrompt)
+		}
+		tool := api.Group("/tool")
+		{
+			tool.POST("/confirm", r.toolHandler.Confirm)
 		}
 		// Admin 管理接口
 		admin := api.Group("/admin")

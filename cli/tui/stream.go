@@ -152,6 +152,12 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 						usage.ReasoningTokens, _ = strconv.Atoi(parts[4])
 						ch <- streamStatusMsg{event: "token", tokenUsage: usage}
 					}
+				case "tool_confirm":
+					// 格式: callID\x00toolName\x00args
+					parts := strings.SplitN(chunk, "\x00", 3)
+					if len(parts) == 3 {
+						ch <- toolConfirmMsg{callID: parts[0], name: parts[1], args: parts[2]}
+					}
 				case "thinking":
 					// 跳过 thinking 事件
 				case "response":

@@ -154,6 +154,13 @@ type Model struct {
 	// 回退选择模式
 	selectingReback bool       // 是否正在显示回退选择列表
 	rebackList      list.Model // bubbles/list 回退选择组件
+
+	// 工具确认模式
+	confirmingTool  bool       // 是否正在显示工具确认对话框
+	confirmCallID   string     // 当前待确认的 call ID
+	confirmToolName string     // 工具名
+	confirmToolArgs string     // 工具参数（JSON）
+	confirmList     list.Model // bubbles/list 确认选项选择组件
 }
 
 // ============================================================================

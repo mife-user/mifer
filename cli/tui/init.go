@@ -35,6 +35,7 @@ func NewModel(client *client.Client) *Model {
 	vp := lip.NewViewport()
 	ml := lip.NewChoseList()
 	rl := lip.NewChoseList()
+	cl := lip.NewChoseList()
 	mvp := lip.NewViewport()
 	svp := lip.NewViewport()
 
@@ -69,6 +70,10 @@ func NewModel(client *client.Client) *Model {
 		// 回退选择
 		selectingReback: false,
 		rebackList:      rl,
+
+		// 工具确认
+		confirmingTool: false,
+		confirmList:    cl,
 
 		// 全屏记忆查看
 		showingMemoryView: false,

@@ -52,7 +52,8 @@ const (
 	ErrIDNotString = "id is not string"
 
 	// Memory
-	ErrIDIllegalChars       = "id 包含非法字符: %s"
+	ErrIDIllegalChars      = "id 包含非法字符: %s"
+	ErrIndexOutOfRange     = "%s"
 	ErrCreateMemoryDirFailed = "创建内存目录失败"
 	ErrOpenFileFailed        = "打开文件失败"
 	ErrSerializeJSONFailed   = "序列化JSON失败"

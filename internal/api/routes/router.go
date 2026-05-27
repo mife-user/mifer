@@ -62,6 +62,8 @@ func (r *Router) Setup() *gin.Engine {
 			memory.GET("", r.agentHandler.ListMemories)
 			memory.GET("/:id", r.agentHandler.LoadMemory)
 			memory.POST("/exchange/:id", r.agentHandler.ExchangeMemory)
+			memory.GET("/reback", r.agentHandler.ListRebackEntries)
+			memory.POST("/reback/:index", r.agentHandler.Reback)
 			memory.POST("/clear", r.agentHandler.ClearMemory)
 		}
 		prompt := api.Group("/prompt")

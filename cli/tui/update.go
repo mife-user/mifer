@@ -51,12 +51,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sidebarVP.Width = 10
 		}
 		m.memoryList.SetSize(sidebarW-4, 8)
+		m.rebackList.SetSize(sidebarW-4, 8)
 		m.memoryViewport.Width = m.width - 4
 		m.memoryViewport.Height = m.height - 2
 		_, _ = m.textarea.Update(msg)
 		_, _ = m.viewport.Update(msg)
 		_, _ = m.sidebarVP.Update(msg)
 		_, _ = m.memoryList.Update(msg)
+		_, _ = m.rebackList.Update(msg)
 		return m, nil
 
 	// ======================================================================
@@ -114,6 +116,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "down", "k", "j", "home", "end", "pgup", "pgdown":
 				var cmd tea.Cmd
 				m.memoryList, cmd = m.memoryList.Update(msg)
+				return m, cmd
+			default:
+				return m, nil
+			}
+		}
+
+		// ---- 回退选择模式：拦截按键，委托给 rebackList 或处理选择 ----
+		if m.selectingReback {
+			switch msg.String() {
+			case "enter":
+				return m.handleRebackSelect()
+			case "esc":
+				m.selectingReback = false
+				return m, nil
+			case "up", "down", "k", "j", "home", "end", "pgup", "pgdown":
+				var cmd tea.Cmd
+				m.rebackList, cmd = m.rebackList.Update(msg)
 				return m, cmd
 			default:
 				return m, nil
@@ -270,7 +289,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleMemoryView(msg)
 
 	// ======================================================================
-	// 9. 旋转动画帧推进
+	// 9. 回退列表结果
+	// ======================================================================
+	case rebackListMsg:
+		return m.handleRebackList(msg)
+
+	// ======================================================================
+	// 10. 回退执行完成
+	// ======================================================================
+	case rebackDoneMsg:
+		return m.handleRebackDone(msg)
+
+	// ======================================================================
+	// 11. 旋转动画帧推进
 	// ======================================================================
 	case spinner.TickMsg:
 		if m.thinking {
@@ -355,7 +386,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	case input == "/help":
 		m.messages = append(m.messages, message{
 			role:    "system",
-			content: "命令: ↑↓ 历史输入 | Ctrl+N 换行 | /viewmemory 查看记忆 | /excmem <id> 切换会话 | /clear 新建会话 | /prompt 查看/设置提示词 | /reload 重载配置 | /exit 退出 | /help 帮助",
+			content: "命令: ↑↓ 历史输入 | Ctrl+N 换行 | /viewmemory 查看记忆 | /excmem <id> 切换会话 | /reback 回退对话 | /clear 新建会话 | /prompt 查看/设置提示词 | /reload 重载配置 | /exit 退出 | /help 帮助",
 		})
 		m.needsAutoScroll = true
 		return m, nil
@@ -383,6 +414,9 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	case strings.HasPrefix(input, "/excmem"):
 		id := strings.TrimSpace(strings.TrimPrefix(input, "/excmem"))
 		return m, listMemoriesCmd(m.client, "/excmem", id)
+
+	case input == "/reback":
+		return m, listRebackEntriesCmd(m.client)
 
 	default:
 		// ---- 用户聊天消息 ----

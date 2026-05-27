@@ -34,6 +34,7 @@ func NewModel(client *client.Client) *Model {
 	sp := lip.NewSpinner(lipStyles)
 	vp := lip.NewViewport()
 	ml := lip.NewChoseList()
+	rl := lip.NewChoseList()
 	mvp := lip.NewViewport()
 	svp := lip.NewViewport()
 
@@ -64,6 +65,10 @@ func NewModel(client *client.Client) *Model {
 		// 记忆选择
 		selectingMem: false,
 		memoryList:   ml,
+
+		// 回退选择
+		selectingReback: false,
+		rebackList:      rl,
 
 		// 全屏记忆查看
 		showingMemoryView: false,

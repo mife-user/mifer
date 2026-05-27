@@ -8,6 +8,7 @@ import (
 	"mifer/cli/client/excmemhandler"
 	"mifer/cli/client/memhandler"
 	"mifer/cli/client/prompthandler"
+	"mifer/cli/client/rebackhandler"
 	"mifer/cli/client/reloadhandler"
 )
 
@@ -17,6 +18,7 @@ const (
 	APIExcmemPath = "/api/memory/exchange"
 	APIClearPath  = "/api/memory/clear"
 	APIPromptPath = "/api/prompt"
+	APIRebackPath = "/api/memory/reback"
 	APIReloadPath = "/api/admin/reload"
 )
 
@@ -26,6 +28,7 @@ type Client struct {
 	Memory *memhandler.MemHandler
 	Excmem *excmemhandler.ExcmemHandler
 	Clear  *clearhandler.ClearHandler
+	Reback *rebackhandler.RebackHandler
 	Prompt *prompthandler.PromptHandler
 	Reload *reloadhandler.ReloadHandler
 }
@@ -38,6 +41,7 @@ func New(baseURL string) *Client {
 		Memory: memhandler.New(httpClient, baseURL+APIMemoryPath),
 		Excmem: excmemhandler.New(httpClient, baseURL+APIExcmemPath),
 		Clear:  clearhandler.New(httpClient, baseURL+APIClearPath),
+		Reback: rebackhandler.New(httpClient, baseURL+APIRebackPath),
 		Prompt: prompthandler.New(httpClient, baseURL+APIPromptPath),
 		Reload: reloadhandler.New(httpClient, baseURL+APIReloadPath),
 	}

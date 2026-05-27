@@ -204,6 +204,11 @@ func (m *Model) renderSidebar(width int) string {
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.memoryList.SetWidth(width - 4)
 		lines = append(lines, m.memoryList.View())
+	} else if m.selectingReback {
+		lines = append(lines, m.lip.SidebarActive.Render(" 选择回退"))
+		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
+		m.rebackList.SetWidth(width - 4)
+		lines = append(lines, m.rebackList.View())
 	} else {
 		lines = append(lines, m.lip.SidebarPlaceholder.Render("(按 Tab 补全命令)"))
 	}

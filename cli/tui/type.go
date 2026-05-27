@@ -150,6 +150,10 @@ type Model struct {
 	showingMemoryView bool           // 是否处于全屏记忆查看模式
 	memoryViewContent string         // 记忆内容（原始文本）
 	memoryViewport    viewport.Model // 独立的 viewport 用于全屏记忆查看
+
+	// 回退选择模式
+	selectingReback bool       // 是否正在显示回退选择列表
+	rebackList      list.Model // bubbles/list 回退选择组件
 }
 
 // ============================================================================

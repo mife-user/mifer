@@ -8,6 +8,8 @@ type AgentService interface {
 	ExchangeMemory(ctx context.Context, req *MemoryReq) error
 	ListMemories(ctx context.Context) (*MemoryListResp, error)
 	ClearMemory(ctx context.Context) (*ClearMemoryResp, error)
+	ListRebackEntries(ctx context.Context) (*RebackListResp, error)
+	Reback(ctx context.Context, req *RebackReq) (*RebackResp, error)
 	GetPrompt(ctx context.Context) (*PromptResp, error)
 	SetPrompt(ctx context.Context, req *PromptReq) (*PromptResp, error)
 	ResetPrompt(ctx context.Context) (*PromptResp, error)
@@ -19,6 +21,8 @@ type Agent interface {
 	ExchangeMemory(ctx context.Context, req *MemoryReq) error
 	ListMemories(ctx context.Context) (*MemoryListResp, error)
 	ClearMemory(ctx context.Context) (*ClearMemoryResp, error)
+	ListRebackEntries(ctx context.Context) (*RebackListResp, error)
+	Reback(ctx context.Context, req *RebackReq) (*RebackResp, error)
 	GetPrompt(ctx context.Context) (*PromptResp, error)
 	SetPrompt(ctx context.Context, req *PromptReq) (*PromptResp, error)
 	ResetPrompt(ctx context.Context) (*PromptResp, error)

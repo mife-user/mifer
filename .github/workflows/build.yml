@@ -80,11 +80,10 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
-            # 更新：
-            - [x] 重构 LLM 提供商注册与初始化流程，支持多后端动态注册
-            - [x] 新增文件查看器（file_viewer）和图片生成器（image_generator）工具
-            - [x] 支持多模态处理：图片分析通过多模态模型（qwen-omni-turbo）实现
-            - [x] 修改多模态模型配置为通义千问 Omni Turbo
+            - [x] 工具调用确认机制（accept/refuse/allow），对话回退功能
+            - [x] 可配置滚动与水平滚动支持，/reload 配置热重载
+            - [x] 多模态图片分析（qwen-omni-turbo），文件查看与图片生成工具
+            - [x] 重构 LLM 提供商注册流程，优化配置、RAG 与并发处理
           files: artifacts/**/*
           draft: false
           prerelease: false

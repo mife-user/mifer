@@ -80,6 +80,7 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
+            - [x] 计划模式（plan mode），支持多步骤计划确认与补充意见反馈
             - [x] 工具调用确认机制（accept/refuse/allow），对话回退功能
             - [x] 可配置滚动与水平滚动支持，/reload 配置热重载
             - [x] 多模态图片分析（qwen-omni-turbo），文件查看与图片生成工具

@@ -4,6 +4,7 @@ import (
 	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/spf13/viper"
 )
@@ -113,6 +114,12 @@ func applyEnvOverrides(v *viper.Viper) {
 		}
 		if val := os.Getenv(envPrefix + "MODEL"); val != "" {
 			v.Set("ai.backends."+backend+".model", val)
+		}
+	}
+	// TUI 确认超时（需转 int）
+	if val := os.Getenv("MIFER_TUI_CONFIRM_TIMEOUT"); val != "" {
+		if n, err := strconv.Atoi(val); err == nil {
+			v.Set("cli.tui.confirm_timeout", n)
 		}
 	}
 }

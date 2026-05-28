@@ -156,11 +156,24 @@ type Model struct {
 	rebackList      list.Model // bubbles/list 回退选择组件
 
 	// 工具确认模式
-	confirmingTool  bool       // 是否正在显示工具确认对话框
-	confirmCallID   string     // 当前待确认的 call ID
-	confirmToolName string     // 工具名
-	confirmToolArgs string     // 工具参数（JSON）
-	confirmList     list.Model // bubbles/list 确认选项选择组件
+	confirmingTool  bool              // 是否正在显示工具确认对话框
+	confirmCallID   string            // 当前待确认的 call ID
+	confirmToolName string            // 工具名
+	confirmToolArgs string            // 工具参数（JSON）
+	confirmQueue    []toolConfirmMsg  // 并发工具确认队列（当前确认完成后的待处理项）
+	confirmList     list.Model        // bubbles/list 确认选项选择组件
+
+	// 工具批量确认模式
+	confirmingBatch   bool               // 是否正在批量确认（防抖期间或展示期间）
+	confirmBatchItems []batchConfirmItem // 缓冲的待确认项
+
+	// 计划确认模式
+	confirmingPlan    bool       // 是否正在显示计划确认
+	planConfirmCallID string     // 计划确认 callID
+	planList          list.Model // bubbles/list 计划确认选择组件
+	planSupplement    bool       // 是否正在输入补充意见
+	planConfirmAction string     // 当前计划确认动作
+	pendingPlanInput  string     // 进入补充模式前的 textarea 内容
 }
 
 // ============================================================================
@@ -180,3 +193,30 @@ type message struct {
 	content  string // 原始文本内容
 	rendered string // assistant 消息预渲染的 glamour ANSI 输出（其他角色为空）
 }
+
+// ============================================================================
+// 批量确认类型
+// ============================================================================
+
+// batchConfirmItem 单个批量确认项的运行时状态
+type batchConfirmItem struct {
+	callID   string // 确认调用唯一标识
+	toolName string // 工具名
+	args     string // 工具参数（JSON）
+	action   string // 当前选择的动作："accept" | "refuse" | "allow"
+}
+
+// batchTimerMsg 批量确认防抖定时器到期，触发展示批量确认列表
+type batchTimerMsg struct{}
+
+// batchConfirmOption 批量确认列表项，实现 bubbles/list.Item 接口
+type batchConfirmOption struct {
+	label    string // 显示文本（含 [接受]/[拒绝]/[允许] 前缀）
+	action   string // 当前选择的动作
+	batchIdx int    // 在 confirmBatchItems 中的索引
+}
+
+func (o batchConfirmOption) Title() string       { return o.label }
+func (o batchConfirmOption) Description() string { return "" }
+func (o batchConfirmOption) FilterValue() string { return o.label }
+

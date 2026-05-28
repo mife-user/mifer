@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"mifer/internal/ai/tools"
 
 	"github.com/cloudwego/eino/compose"
@@ -17,8 +18,8 @@ func makeConfirmMiddleware(bus *tools.ConfirmBus) compose.InvokableToolMiddlewar
 	}
 	return func(next compose.InvokableToolEndpoint) compose.InvokableToolEndpoint {
 		return func(ctx context.Context, input *compose.ToolInput) (*compose.ToolOutput, error) {
-			if err := bus.Confirm(input.Name, input.Arguments); err != nil {
-				return nil, err
+			if err := bus.Confirm(ctx, input.Name, input.Arguments); err != nil {
+				return &compose.ToolOutput{Result: fmt.Sprintf(`{"error":"%s"}`, err.Error())}, nil
 			}
 			return next(ctx, input)
 		}

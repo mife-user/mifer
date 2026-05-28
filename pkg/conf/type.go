@@ -47,6 +47,10 @@ type TuiConfig struct {
 	SpinnerFrames       []string `mapstructure:"spinner_frames"` // 自定义动画帧序列，如 [".", "..", "..."]，非空时覆盖 spinner_type
 	SpinnerFPS          int      `mapstructure:"spinner_fps"`    // 自定义帧率（帧/秒），默认 10
 	AllowTools           []string `mapstructure:"allow_tools"`           // 工具调用持久白名单，列表中的工具无需确认直接执行
+	ConfirmTimeout      int            `mapstructure:"confirm_timeout"`      // 工具确认超时（秒），0 表示无超时
+	AllowToolRules      []AllowToolRule `mapstructure:"allow_tool_rules"`    // 工具参数级别白名单规则
+	ConfirmPayloadMaxLen int      `mapstructure:"confirm_payload_max_len"`  // 工具确认 SSE 数据行中 argsJSON 截断阈值（字符数），默认 2048
+	SSEScannerBufferSize int      `mapstructure:"sse_scanner_buffer_size"`  // SSE 扫描器缓冲区大小（字节），默认 1048576（1MB）
 	SidebarMaxLog       int      `mapstructure:"sidebar_max_log"`     // 状态日志最大行数，默认 100
 	SidebarShowTokens   bool     `mapstructure:"sidebar_show_tokens"` // 是否显示token统计，默认 true
 	SidebarShowTiming   bool     `mapstructure:"sidebar_show_timing"` // 是否显示时间戳，默认 true
@@ -102,6 +106,12 @@ type CorsConfig struct {
 // JWT配置结构体
 type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
+}
+
+// AllowToolRule 工具参数级别白名单规则
+type AllowToolRule struct {
+	Tool        string            `mapstructure:"tool"`         // 工具名称
+	ArgsPattern map[string]string `mapstructure:"args_pattern"` // 参数字段 → 正则表达式
 }
 
 // RAG配置结构体

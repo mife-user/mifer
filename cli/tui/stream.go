@@ -158,6 +158,12 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 					if len(parts) == 3 {
 						ch <- toolConfirmMsg{callID: parts[0], name: parts[1], args: parts[2]}
 					}
+				case "plan_confirm":
+					// 格式: callID\x00planContent
+					parts := strings.SplitN(chunk, "\x00", 2)
+					if len(parts) == 2 {
+						ch <- planConfirmMsg{callID: parts[0], content: parts[1]}
+					}
 				case "thinking":
 					// 跳过 thinking 事件
 				case "response":
@@ -168,6 +174,53 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 			ch <- streamDoneMsg{err: err}
 		}()
 		return nil // nil msg 被 Bubble Tea 忽略
+	}
+}
+
+// startPlanSSECmd 以计划模式启动 SSE 流式请求
+func startPlanSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		go func() {
+			defer close(ch)
+			ctx := context.Background()
+			err := client.Chat.SendPlan(ctx, content, func(event, chunk string) error {
+				switch event {
+				case "agent_start", "agent_end", "tool_start", "tool_end":
+					ch <- streamStatusMsg{event: event, name: chunk}
+				case "tool_error":
+					if name, errMsg, ok := strings.Cut(chunk, "\x00"); ok {
+						ch <- streamStatusMsg{event: "tool_error", name: name, errMsg: errMsg}
+					}
+				case "token":
+					parts := strings.Split(chunk, "\x00")
+					if len(parts) == 5 {
+						usage := &TokenUsageData{}
+						usage.PromptTokens, _ = strconv.Atoi(parts[0])
+						usage.CompletionTokens, _ = strconv.Atoi(parts[1])
+						usage.TotalTokens, _ = strconv.Atoi(parts[2])
+						usage.CachedTokens, _ = strconv.Atoi(parts[3])
+						usage.ReasoningTokens, _ = strconv.Atoi(parts[4])
+						ch <- streamStatusMsg{event: "token", tokenUsage: usage}
+					}
+				case "tool_confirm":
+					parts := strings.SplitN(chunk, "\x00", 3)
+					if len(parts) == 3 {
+						ch <- toolConfirmMsg{callID: parts[0], name: parts[1], args: parts[2]}
+					}
+				case "plan_confirm":
+					parts := strings.SplitN(chunk, "\x00", 2)
+					if len(parts) == 2 {
+						ch <- planConfirmMsg{callID: parts[0], content: parts[1]}
+					}
+				case "thinking":
+				case "response":
+					ch <- streamContentMsg{content: chunk}
+				}
+				return nil
+			})
+			ch <- streamDoneMsg{err: err}
+		}()
+		return nil
 	}
 }
 

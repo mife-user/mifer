@@ -1,7 +1,8 @@
 package domain
 
 type TalkReq struct {
-	Content string
+	Content  string
+	PlanMode bool // 计划模式：跳过 DeepAgent，直接走 plan graph
 }
 
 type MemoryReq struct {

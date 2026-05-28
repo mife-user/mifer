@@ -23,7 +23,8 @@ import (
 type CommandExecutorInput struct {
 	Command     string `json:"command" jsonschema:"required,description=要执行的shell命令"`
 	WorkingDir  string `json:"working_dir" jsonschema:"description=命令执行的工作目录，默认为项目工作目录"`
-	TimeoutSecs int    `json:"timeout_seconds" jsonschema:"description=命令超时时间（秒），默认30秒，最大120秒"`
+	TimeoutSecs int    `json:"timeout_seconds" jsonschema:"description=命令超时时间（秒），默认30秒，最大120秒，detach模式下忽略"`
+	Detach      bool   `json:"detach" jsonschema:"description=后台执行，不等待进程退出，立即返回PID"`
 }
 
 // CommandExecutorOutput 命令执行工具输出结果
@@ -32,6 +33,7 @@ type CommandExecutorOutput struct {
 	Stdout     string `json:"stdout"`
 	Stderr     string `json:"stderr"`
 	ExitCode   int    `json:"exit_code"`
+	PID        int    `json:"pid,omitempty"`
 	Command    string `json:"command"`
 	WorkingDir string `json:"working_dir"`
 	Truncated  bool   `json:"truncated"`
@@ -44,7 +46,6 @@ const (
 	maxOutputSize  = 100 * 1024 // 100KB
 )
 
-// 危险命令正则模式
 var dangerousPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`rm\s+-rf`),
 	regexp.MustCompile(`rm\s+-r\s+-f`),
@@ -56,7 +57,7 @@ var dangerousPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`wget.*\|\s*(ba)?sh`),
 	regexp.MustCompile(`>[^>]*\/etc\/`),
 	regexp.MustCompile(`chown\s`),
-	regexp.MustCompile(`:\(\)\s*\{`), // fork bomb
+	regexp.MustCompile(`:\(\)\s*\{`),
 	regexp.MustCompile(`kill\s+-9`),
 	regexp.MustCompile(`>\/dev\/sd`),
 	regexp.MustCompile(`>\/dev\/hd`),
@@ -64,13 +65,10 @@ var dangerousPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`>\/dev\/xvd`),
 }
 
-// 交互式/TTY命令检测
 var interactivePattern = regexp.MustCompile(`(?i)^\s*(ssh|vim|vi|nano|top|htop|less|more|su|login|passwd|mysql|psql|telnet)\s`)
 
-// 系统电源命令检测
 var systemPowerPattern = regexp.MustCompile(`(?i)^\s*(reboot|shutdown|halt|poweroff|init\s+[06])\s*`)
 
-// limitWriter 限制写入大小的Writer
 type limitWriter struct {
 	buf       bytes.Buffer
 	maxSize   int
@@ -106,17 +104,17 @@ func New() (tool.InvokableTool, error) {
 	execute := func(ctx context.Context, input CommandExecutorInput) (CommandExecutorOutput, error) {
 		return executeCommand(ctx, input)
 	}
-	return utils.InferTool("command_executor", "安全执行shell命令，包含危险命令检测、工作目录限制、超时控制和输出大小限制。", execute)
+	return utils.InferTool("command_executor", "安全执行shell命令，包含危险命令检测、工作目录限制、超时控制、后台执行和输出大小限制。", execute)
 }
 
 func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExecutorOutput, error) {
 	cfg := conf.GetConfig()
-	// 1. 校验命令非空
+
 	if strings.TrimSpace(input.Command) == "" {
 		return CommandExecutorOutput{Error: "命令不能为空"}, nil
 	}
 
-	// 2. 白名单检查（若配置了白名单）
+	// 白名单检查
 	allowList, err := conf.LoadAllowList(cfg.Path.Workdir)
 	if err != nil {
 		logger.Warn("加载白名单失败", logger.C(err))
@@ -129,7 +127,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 		}
 	}
 
-	// 3. 危险命令检测
+	// 危险命令检测
 	for _, pattern := range dangerousPatterns {
 		if pattern.MatchString(input.Command) {
 			logger.Warn("拦截危险命令", logger.S("command", input.Command), logger.S("pattern", pattern.String()))
@@ -139,7 +137,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 		}
 	}
 
-	// 4. 系统电源命令检测
+	// 系统电源命令检测
 	if systemPowerPattern.MatchString(input.Command) {
 		logger.Warn("拦截系统电源命令", logger.S("command", input.Command))
 		return CommandExecutorOutput{
@@ -147,14 +145,14 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 		}, nil
 	}
 
-	// 5. 交互式命令检测
+	// 交互式命令检测
 	if interactivePattern.MatchString(input.Command) {
 		return CommandExecutorOutput{
 			Error: "禁止执行需要交互终端的命令，已拒绝执行",
 		}, nil
 	}
 
-	// 6. 工作目录沙箱
+	// 工作目录沙箱
 	workDir := input.WorkingDir
 	if workDir == "" {
 		workDir = cfg.Path.Workdir
@@ -164,7 +162,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 		return CommandExecutorOutput{Error: "工作目录校验失败: " + err.Error()}, nil
 	}
 
-	// 7. 超时处理
+	// 超时处理
 	timeoutSecs := input.TimeoutSecs
 	if timeoutSecs <= 0 {
 		timeoutSecs = defaultTimeout
@@ -175,29 +173,57 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 	execCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSecs)*time.Second)
 	defer cancel()
 
-	// 8. 构建命令
+	// 构建命令
 	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(execCtx, "cmd", "/C", input.Command)
+	if input.Detach {
+		// 后台模式：不使用 CommandContext，进程脱离当前生命周期
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/C", input.Command)
+		} else {
+			cmd = exec.Command("bash", "-c", input.Command)
+		}
 	} else {
-		cmd = exec.CommandContext(execCtx, "bash", "-c", input.Command)
+		if runtime.GOOS == "windows" {
+			cmd = exec.CommandContext(execCtx, "cmd", "/C", input.Command)
+		} else {
+			cmd = exec.CommandContext(execCtx, "bash", "-c", input.Command)
+		}
 	}
 	cmd.Dir = absWorkDir
 
-	// 9. 捕获输出（带大小限制）
+	// Detach 模式：启动后立即返回 PID
+	if input.Detach {
+		if err := cmd.Start(); err != nil {
+			return CommandExecutorOutput{
+				Command:    input.Command,
+				WorkingDir: absWorkDir,
+				Error:      "后台启动失败: " + err.Error(),
+			}, nil
+		}
+		logger.Info("后台进程已启动",
+			logger.S("command", input.Command),
+			logger.I("pid", cmd.Process.Pid))
+		return CommandExecutorOutput{
+			Success:    true,
+			PID:        cmd.Process.Pid,
+			Command:    input.Command,
+			WorkingDir: absWorkDir,
+		}, nil
+	}
+
+	// 捕获输出（带大小限制）
 	stdoutWriter := &limitWriter{maxSize: maxOutputSize}
 	stderrWriter := &limitWriter{maxSize: maxOutputSize}
 	cmd.Stdout = stdoutWriter
 	cmd.Stderr = stderrWriter
 
-	// 10. 执行命令
+	// 执行命令
 	err = cmd.Run()
 	exitCode := 0
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		} else {
-			// context超时或其他错误
 			if execCtx.Err() == context.DeadlineExceeded {
 				return CommandExecutorOutput{
 					Command:    input.Command,
@@ -230,7 +256,6 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 	}, nil
 }
 
-// resolveSandboxDir 解析工作目录并校验是否在沙箱内
 func resolveSandboxDir(workDir, projectDir string) (string, error) {
 	abs, err := filepath.Abs(filepath.Clean(workDir))
 	if err != nil {
@@ -240,14 +265,12 @@ func resolveSandboxDir(workDir, projectDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// 规范化路径分隔符比较
 	if !strings.HasPrefix(strings.ToLower(filepath.ToSlash(abs)), strings.ToLower(filepath.ToSlash(absProject))) {
 		return "", errorer.NewF(errorer.ErrWorkDirNotInProject, absProject)
 	}
 	return abs, nil
 }
 
-// isAllowed 检查命令是否在白名单中（支持 * 通配符前缀匹配）
 func isAllowed(command string, allowList []string) bool {
 	trimmed := strings.TrimSpace(command)
 	for _, allowed := range allowList {

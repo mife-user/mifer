@@ -69,7 +69,7 @@ func (m *Model) View() string {
 		m.needsAutoScroll = false
 	}
 
-	sidebarContent := m.renderSidebar(sidebarWidth)
+	sidebarContent := m.renderSidebar(sidebarWidth, m.contentHeight)
 	sidebar := m.lip.SidebarContainer.
 		Width(sidebarWidth).
 		MaxHeight(m.contentHeight).
@@ -83,7 +83,7 @@ func (m *Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, topRow, inputBox)
 }
 
-func (m *Model) renderSidebar(width int) string {
+func (m *Model) renderSidebar(width, maxHeight int) string {
 	var lines []string
 
 	title := m.lip.SidebarActive.Render(" 状态")
@@ -114,6 +114,12 @@ func (m *Model) renderSidebar(width int) string {
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 	}
 
+	bottom := 5
+	if !m.confirmingTool && !m.confirmingPlan && !m.selectingMem && !m.selectingReback {
+		bottom = 2
+	}
+	m.sidebarVP.Height = max(2, min(8, maxHeight-len(lines)-bottom))
+
 	logContent := strings.Join(m.sidebar.Log, "\n")
 	m.sidebarVP.SetContent(logContent)
 	if m.thinking && len(m.sidebar.Log) > 0 {
@@ -124,21 +130,28 @@ func (m *Model) renderSidebar(width int) string {
 		lines = append(lines, logView)
 	}
 
-	// 底部：工具确认选择 / 记忆选择 / 回退选择 / 占位
-	// 确认的工具名和参数以 system 消息形式显示在主 viewport 中，此处仅显示选择列表
 	lines = append(lines, "")
-	if m.confirmingTool {
-		lines = append(lines, m.lip.SidebarActive.Render(" 工具确认"))
+	if m.confirmingPlan || m.planSupplement {
+		lines = append(lines, m.lip.SidebarActive.Render(" 计划确认(↑↓/Enter)"))
+		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
+		m.planList.SetWidth(width - 4)
+		lines = append(lines, m.planList.View())
+		if m.planSupplement {
+			lines = append(lines, m.lip.SidebarActive.Render(" 输入补充意见..."))
+		}
+	} else if m.confirmingTool {
+		lines = append(lines, m.lip.SidebarActive.Render(" 工具确认(↑↓/Enter)"))
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.confirmList.SetWidth(width - 4)
+		m.confirmList.SetHeight(3)
 		lines = append(lines, m.confirmList.View())
 	} else if m.selectingMem {
-		lines = append(lines, m.lip.SidebarActive.Render(" 选择记忆"))
+		lines = append(lines, m.lip.SidebarActive.Render(" 选择记忆(↑↓/Enter)"))
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.memoryList.SetWidth(width - 4)
 		lines = append(lines, m.memoryList.View())
 	} else if m.selectingReback {
-		lines = append(lines, m.lip.SidebarActive.Render(" 选择回退"))
+		lines = append(lines, m.lip.SidebarActive.Render(" 选择回退(↑↓/Enter)"))
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.rebackList.SetWidth(width - 4)
 		lines = append(lines, m.rebackList.View())

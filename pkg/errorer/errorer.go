@@ -67,6 +67,7 @@ const (
 	ErrCreateRequestFailed    = "创建请求失败"
 	ErrRequestFailed          = "请求失败"
 	ErrReadResponseFailed     = "读取响应失败"
+	ErrSSEScannerFailed       = "SSE扫描器错误"
 	ErrParseResponseFailed    = "解析响应失败"
 	ErrServerStatusCode       = "服务器返回状态码: %d"
 	ErrServerStatusCodeDetail = "服务器返回状态码: %d, 响应: %s"

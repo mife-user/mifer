@@ -68,6 +68,26 @@ No Makefile or build scripts — just standard Go tooling. Go 1.25.4, Eino v0.7.
 - **Uber Zap** — 结构化日志
 - **Viper** — 配置管理
 
+## 关键规则
+
+### SSE 监听链不可断裂
+
+TUI 的 SSE 流通过 `listenStreamCmd(m.streamCh)` 维持。在以下场景中，**所有返回路径都必须携带 `listenStreamCmd`**，否则服务端 SSE 事件会在 channel 中堆积（容量 32），TCP 背压导致 `short write` 断开：
+
+1. `handleToolConfirm` / `handlePlanConfirm` — 进入确认模式时
+2. `handleConfirmSelect` / `handlePlanConfirmSelect` — 提交确认/计划决定时
+3. `handlePlanSupplementSubmit` — 提交补充意见时
+4. `update.go` 中 `confirmingTool` / `confirmingPlan` / `planSupplement` 拦截块的**所有分支**（enter/esc/↑↓/default）
+
+正确模式：
+```go
+return m, tea.Batch(confirmCmd(...), listenStreamCmd(m.streamCh))  // 提交 + 保持监听
+return m, tea.Batch(cmd, listenStreamCmd(m.streamCh))              // 导航 + 保持监听
+return m, listenStreamCmd(m.streamCh)                              // 仅保持监听
+```
+
+可使用 `cli/tui/update.go` 中的 `streamCmd()` 辅助方法替代 `listenStreamCmd(m.streamCh)`。
+
 ## 代码约定
 
 - 所有注释和日志消息使用中文

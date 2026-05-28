@@ -18,7 +18,15 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	// 设置确认总线的 SSE 回调，供工具中间件发送 tool_confirm 事件
 	if e.ConfirmBus != nil {
 		e.ConfirmBus.SetSSECallback(callback)
-		defer e.ConfirmBus.SetSSECallback(nil)
+		defer func() {
+			e.ConfirmBus.SetSSECallback(nil)
+			e.ConfirmBus.CancelAll("聊天结束")
+		}()
+	}
+
+	// 计划模式：跳过 DeepAgent，直接走 plan graph
+	if req.PlanMode && e.PlanGraph != nil {
+		return e.runPlanMode(c, req, callback)
 	}
 
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
@@ -218,4 +226,136 @@ func extractToolError(content string) string {
 		return ""
 	}
 	return result.Error
+}
+
+// runPlanMode 执行计划 Graph 并将结果交给 DeepAgent 执行
+func (e *Executor) runPlanMode(c context.Context, req *domain.TalkReq, callback func(event, data string) error) error {
+	e.Humen.Prompt.Memory.AppendUser(req.Content)
+
+	// 设置 plan graph 的 SSE 回调
+	if e.PlanGraph != nil {
+		e.PlanGraph.setSSECallback(callback)
+	}
+
+	planContent, err := e.PlanGraph.graph.Invoke(c, req.Content)
+	if err != nil {
+		logger.Error("计划 Graph 执行失败", logger.C(err))
+		if err := callback("response", "计划执行失败: "+err.Error()); err != nil {
+			return err
+		}
+		return err
+	}
+
+	// 计划确认后交给 DeepAgent 执行
+	execMsg := fmt.Sprintf("请按照以下计划逐步执行，每步完成后汇报结果：\n\n%s", planContent)
+	e.Humen.Prompt.Memory.AppendAssistant(planContent)
+
+	msgs, err := e.Humen.Prompt.Build(c, execMsg)
+	if err != nil {
+		return err
+	}
+	iter := e.Runner.Run(c, msgs)
+
+	lastMsg := &strings.Builder{}
+	e.Token.reset()
+	var currentAgent string
+
+	for {
+		event, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if event.Err != nil {
+			logger.Error("AI事件错误", logger.C(event.Err))
+			return event.Err
+		}
+
+		if event.AgentName != "" && event.AgentName != currentAgent {
+			if currentAgent != "" {
+				if err := callback("agent_end", currentAgent); err != nil {
+					return err
+				}
+			}
+			currentAgent = event.AgentName
+			if err := callback("agent_start", currentAgent); err != nil {
+				return err
+			}
+		}
+
+		if event.Output == nil || event.Output.MessageOutput == nil {
+			continue
+		}
+
+		msgOutput := event.Output.MessageOutput
+
+		if !msgOutput.IsStreaming && msgOutput.Role == schema.Assistant &&
+			msgOutput.Message != nil && len(msgOutput.Message.ToolCalls) > 0 {
+			for _, tc := range msgOutput.Message.ToolCalls {
+				if err := callback("tool_start", tc.Function.Name); err != nil {
+					return err
+				}
+			}
+		}
+
+		if !msgOutput.IsStreaming && msgOutput.Role == schema.Tool && msgOutput.ToolName != "" {
+			logger.Info("工具执行结果", logger.S("toolName", msgOutput.ToolName))
+			if err := callback("tool_end", msgOutput.ToolName); err != nil {
+				return err
+			}
+			if errMsg := extractToolError(msgOutput.Message.Content); errMsg != "" {
+				if err := callback("tool_error", msgOutput.ToolName+"\x00"+errMsg); err != nil {
+					return err
+				}
+			}
+		}
+
+		if msgOutput.IsStreaming {
+			for {
+				chunk, err := msgOutput.MessageStream.Recv()
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				if err != nil {
+					return err
+				}
+				if chunk.ReasoningContent != "" {
+					if err := callback("thinking", chunk.ReasoningContent); err != nil {
+						return err
+					}
+					lastMsg.WriteString(chunk.Content)
+					continue
+				}
+				lastMsg.WriteString(chunk.Content)
+				if err := callback("response", chunk.Content); err != nil {
+					return err
+				}
+			}
+		} else {
+			message := msgOutput.Message
+			if message == nil {
+				continue
+			}
+			if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 {
+				lastMsg.WriteString(message.Content)
+				if err := callback("response", message.Content); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if currentAgent != "" {
+		if err := callback("agent_end", currentAgent); err != nil {
+			return err
+		}
+	}
+
+	if lastMsg.String() == "" {
+		return errorer.New(errorer.ErrCallBackNull)
+	}
+	e.Humen.Prompt.Memory.AppendAssistant(lastMsg.String())
+	if err := e.Humen.Prompt.Memory.Save(); err != nil {
+		return err
+	}
+	return nil
 }

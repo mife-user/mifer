@@ -147,13 +147,17 @@ cli:
       foreground: "#555555"
   tui:
     max_history: 100
-    completable_commands: ["/help", "/exit", "/quit", "/viewmemory", "/excmem", "/reback", "/clear", "/prompt", "/reload"]
+    completable_commands: ["/help", "/exit", "/quit", "/viewmemory", "/excmem", "/reback", "/clear", "/prompt", "/reload", "/plan"]
     content_margin: 4
     min_height: 10
     spinner_type: "MiniDot"
     spinner_frames: []
     spinner_fps: 0
     allow_tools: ["file_reader", "knowledge_search"]
+    confirm_timeout: 60
+    allow_tool_rules: []
+    confirm_payload_max_len: 2048
+    sse_scanner_buffer_size: 1048576
     sidebar_max_log: 100
     sidebar_show_tokens: true
     sidebar_show_timing: true

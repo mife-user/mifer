@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/model"
 )
@@ -44,6 +45,7 @@ func (r *Registry) Get(name string) model.BaseChatModel {
 	if m, ok := r.models[name]; ok {
 		return m
 	}
+	logger.Warn("模型后端未注册，降级到default", logger.S("requested", name))
 	return r.models["default"]
 }
 

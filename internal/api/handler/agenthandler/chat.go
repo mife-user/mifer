@@ -24,7 +24,8 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 
 	err := h.getService().Chat(c.Request.Context(), &domain.TalkReq{
-		Content: req.Content,
+		Content:  req.Content,
+		PlanMode: req.PlanMode,
 	}, func(event, content string) error {
 		escaped := strings.ReplaceAll(content, "\n", "\\n")
 		_, err := fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event, escaped)
@@ -35,9 +36,8 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		return nil
 	})
 	if err != nil {
-		logger.Error("chat失败", logger.C(err))
-		fmt.Fprintf(c.Writer, "event: response\ndata: [ERROR] %s\n\n", err.Error())
-		c.Writer.Flush()
+		// 客户端断开或写入失败，不再尝试向已断开的连接写入
+		logger.Warn("SSE写入失败，连接可能已断开", logger.C(err))
 		return
 	}
 

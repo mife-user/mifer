@@ -123,6 +123,52 @@ Eino ADK 自带内存记忆，但它绑定于进程生命周期，重启即丢�
 
 当前是自主任务执行 Agent。0 轮迭代，由模型自主控制迭代次数，避免无限反思循环和出现迭代次数超出而错误。
 
+### 4. 为什么设计 serve / chat / default 三种启动模式？
+
+Mifer 的核心是一个 HTTP 服务，但通过 `main()` 的参数分发实现了三种启动形态：
+
+```
+go run ./cmd/main          → 同时启动服务 + CLI（default）
+go run ./cmd/main serve    → 仅启动 HTTP 服务（生产部署）
+go run ./cmd/main chat     → 仅启动 CLI 客户端（连接已有服务）
+```
+
+架构上，CLI 和服务端之间通过 HTTP + SSE 通信，CLI 本身不直接依赖 `internal/` 的任何模块。这意味着：
+
+- **同一套 HTTP API** 同时服务于 CLI 和未来的 Web UI，不需要两套接口
+- **CLI 可独立连接到远程服务**：`chat` 模式下 CLI 仅作为 HTTP 客户端，不加载 LLM 模型、不初始化记忆——所有 AI 能力由远端服务提供
+- **default 模式自动编排**：启动服务后 sleep 1s 等待就绪，再启动 CLI，两个组件通过 channel 同步退出，`Ctrl+C` 同时关闭两者
+
+### 5. RAG 为什么用懒加载 + 工具闭包，而非全局注入？
+
+RAG 的 Qdrant 连接需要网络，如果 Agent 初始化时强行连接，不仅拖慢启动速度，还会在没有 Qdrant 的环境中直接报错导致整个 Agent 不可用。Mifer 的方案是将 RAG 的能力通过闭包注入工具，让 AI 在对话中自主调用：
+
+**懒加载层** (`LazyService`)：
+```
+Init() → NewLazyService()   // 仅创建 embedder / loader / chunker，无网络调用，即时返回
+         ↓
+首次工具调用 → ensureReady()  // 此时才连接 Qdrant，创建 indexer / retriever
+         ↓                 // MuTex 保护，失败后下次调用可重试
+         组装为完整 Service
+```
+
+**工具闭包注入** (`tools.KnowledgeTools(ragSvc)`)：
+```go
+func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
+    return utils.InferTool("knowledge_search", "检索知识库...", func(ctx, input) {
+        docs, _ := ragSvc.RetrieveWithContext(ctx, query, ctxSize) // 闭包捕获 ragSvc
+        return KnowledgeSearchOutput{Results: ragSvc.FormatDocs(docs)}
+    })
+}
+```
+
+这个设计的要点：
+
+1. **RAG 不是框架强制的依赖**，而是 AI 可选的工具——Agent 初始化时 `KnowledgeTools(ragSvc)` 为 nil 时静默返回空工具列表，不影响其他 Agent 正常工作
+2. **懒初始化零等待**：启动时 `NewLazyService()` 不触碰网络，启动速度不受 Qdrant 影响；用户不触发知识库功能就永远不连接
+3. **失败可恢复**：`ensureReady()` 用 `sync.Mutex` 而非 `sync.Once`，上次连接失败后下次调用可重试，不像 Once 那样失败即永久不可用
+4. **AI 自主决策**：工具通过闭包持有 RAG 接口，LLM 在对话中判断何时检索知识库、何时存文档——不需要开发者预设规则
+
 ---
 
 ## 架构

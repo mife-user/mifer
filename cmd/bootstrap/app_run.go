@@ -2,6 +2,10 @@ package bootstrap
 
 import (
 	"context"
+
+	aicallback "mifer/internal/ai/callback"
+	"github.com/cloudwego/eino/callbacks"
+
 	"fmt"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
@@ -13,6 +17,9 @@ import (
 func NewApplication(ctx context.Context) (*Application, error) {
 	var err error
 	app := &Application{}
+
+	// 注册全局 Tool 回调处理器，捕获所有 Tool 组件的 OnStart/OnEnd/OnError
+	callbacks.AppendGlobalHandlers(aicallback.ToolCallbackHandler)
 
 	if err = app.loadConfig(); err != nil {
 		return nil, errorer.NewS(errorer.ErrLoadConfigFailed, err)

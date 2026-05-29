@@ -2,31 +2,36 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
+	"strings"
+
+	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/domain"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
-	"strings"
 
 	"github.com/cloudwego/eino/schema"
 )
 
+// Chat 执行一次对话，通过 callback 将事件实时传递到上层。
+// tool_start / tool_end / tool_error 已由 aicallback.ToolCallbackHandler 统一拦截，
+// 此处仅处理对话内容（response、thinking）、Agent 切换和 token 统计。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
+
+	// 将 executor 回调注入 context，供 Eino callback handler 捕获 Tool 调用
+	ctx := aicallback.WithExecutorCallback(c, callback)
 
 	msgs, err := e.Humen.Prompt.Build(c, req.Content)
 	if err != nil {
 		return err
 	}
-	iter := e.Runner.Run(c, msgs)
+	iter := e.Runner.Run(ctx, msgs)
 
 	lastMsg := &strings.Builder{}
 	eventCount := 0
-	var currentAgent string // 跟踪当前执行的Agent，用于检测切换
-	// Token 累计统计
+	var currentAgent string
 	e.Token.reset()
 	for {
 		event, ok := iter.Next()
@@ -39,7 +44,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			return event.Err
 		}
 
-		// 检测Agent切换：AgentName变化时发射agent_start/agent_end
+		// 检测 Agent 切换
 		if event.AgentName != "" && event.AgentName != currentAgent {
 			if currentAgent != "" {
 				if err := callback("agent_end", currentAgent); err != nil {
@@ -57,31 +62,6 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		}
 
 		msgOutput := event.Output.MessageOutput
-
-		// 检测工具调用请求：Assistant消息中包含ToolCalls（仅非流式完整消息）
-		if !msgOutput.IsStreaming && msgOutput.Role == schema.Assistant &&
-			msgOutput.Message != nil && len(msgOutput.Message.ToolCalls) > 0 {
-			for _, tc := range msgOutput.Message.ToolCalls {
-				logger.Debug("工具调用检测", logger.S("toolName", tc.Function.Name), logger.I("argsLen", len(tc.Function.Arguments)), logger.S("args", tc.Function.Arguments))
-				if err := callback("tool_start", tc.Function.Name+"\x00"+tc.Function.Arguments); err != nil {
-					return err
-				}
-			}
-		}
-
-		// 检测工具执行结果
-		if !msgOutput.IsStreaming && msgOutput.Role == schema.Tool && msgOutput.ToolName != "" {
-			logger.Info("工具执行结果", logger.S("toolName", msgOutput.ToolName))
-			if err := callback("tool_end", msgOutput.ToolName); err != nil {
-				return err
-			}
-			if errMsg := extractToolError(msgOutput.Message.Content); errMsg != "" {
-				payload := msgOutput.ToolName + "\x00" + errMsg
-				if err := callback("tool_error", payload); err != nil {
-					return err
-				}
-			}
-		}
 
 		if msgOutput.IsStreaming {
 			for {
@@ -130,7 +110,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			if message == nil {
 				continue
 			}
-			// 仅纯文本Assistant消息（无ToolCalls）才发射response
+			// 仅纯文本 Assistant 消息（无 ToolCalls）才发射 response
 			if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 {
 				lastMsg.WriteString(message.Content)
 				if err := callback("response", message.Content); err != nil {
@@ -146,7 +126,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		}
 	}
 
-	// 发送最后一个agent的结束事件
+	// 发送最后一个 agent 的结束事件
 	if currentAgent != "" {
 		if err := callback("agent_end", currentAgent); err != nil {
 			return err
@@ -163,54 +143,4 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		return err
 	}
 	return nil
-}
-
-// TokenUsage token 累计用量统计
-type TokenUsage struct {
-	Prompt     int // 输入 token
-	Completion int // 输出 token
-	Total      int // 合计 token
-	Cached     int // 缓存命中 token
-	Reasoning  int // 推理 token
-}
-
-// accumulate 从 schema.Message 中累加 token 用量，返回是否有新数据
-func (t *TokenUsage) accumulate(msg *schema.Message) bool {
-	if msg == nil || msg.ResponseMeta == nil || msg.ResponseMeta.Usage == nil {
-		return false
-	}
-	usage := msg.ResponseMeta.Usage
-	t.Prompt += usage.PromptTokens
-	t.Completion += usage.CompletionTokens
-	t.Total += usage.TotalTokens
-	t.Cached += usage.PromptTokenDetails.CachedTokens
-	t.Reasoning += usage.CompletionTokensDetails.ReasoningTokens
-	return true
-}
-
-// send 发送 token 事件到回调
-func (t *TokenUsage) send(callback func(event, content string) error) error {
-	payload := fmt.Sprintf("%d\x00%d\x00%d\x00%d\x00%d",
-		t.Prompt, t.Completion, t.Total, t.Cached, t.Reasoning)
-	return callback("token", payload)
-}
-
-// reset 重置所有计数为零
-func (t *TokenUsage) reset() {
-	t.Prompt = 0
-	t.Completion = 0
-	t.Total = 0
-	t.Cached = 0
-	t.Reasoning = 0
-}
-
-// extractToolError 从工具返回的JSON结果中提取错误消息
-func extractToolError(content string) string {
-	var result struct {
-		Error string `json:"error"`
-	}
-	if err := json.Unmarshal([]byte(content), &result); err != nil {
-		return ""
-	}
-	return result.Error
 }

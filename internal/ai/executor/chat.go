@@ -62,7 +62,8 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		if !msgOutput.IsStreaming && msgOutput.Role == schema.Assistant &&
 			msgOutput.Message != nil && len(msgOutput.Message.ToolCalls) > 0 {
 			for _, tc := range msgOutput.Message.ToolCalls {
-				if err := callback("tool_start", tc.Function.Name); err != nil {
+				logger.Debug("工具调用检测", logger.S("toolName", tc.Function.Name), logger.I("argsLen", len(tc.Function.Arguments)), logger.S("args", tc.Function.Arguments))
+				if err := callback("tool_start", tc.Function.Name+"\x00"+tc.Function.Arguments); err != nil {
 					return err
 				}
 			}

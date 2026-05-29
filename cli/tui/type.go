@@ -138,8 +138,9 @@ type Model struct {
 	sidebarVP viewport.Model // 状态日志滚动视口
 
 	// 流式传输
-	streamCh chan tea.Msg     // 流式消息通道（非nil时表示正在流式传输中）
-	accBuf   *strings.Builder // 累积AI响应内容的缓冲区
+	streamCh          chan tea.Msg     // 流式消息通道（非nil时表示正在流式传输中）
+	accBuf            *strings.Builder // 累积AI响应内容的缓冲区
+	agentContentStart int              // accBuf 中当前 agent 内容的起始字节偏移
 
 	// 记忆选择模式
 	selectingMem  bool       // 是否正在显示记忆选择列表

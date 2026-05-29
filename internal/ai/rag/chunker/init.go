@@ -55,7 +55,7 @@ func (d *dedupSplitter) Transform(ctx context.Context, docs []*schema.Document, 
 	seen := make(map[string]bool, len(chunks))
 	result := make([]*schema.Document, 0, len(chunks))
 
-	// 为每个源文档独立编号
+	// 为每个源文档独立编号，避免重复分块
 	for sourceDoc, positions := range docGroups {
 		docIdx := 0
 		for _, pos := range positions {
@@ -71,6 +71,7 @@ func (d *dedupSplitter) Transform(ctx context.Context, docs []*schema.Document, 
 			if ch.MetaData == nil {
 				ch.MetaData = make(map[string]any)
 			}
+			// 元数据化 chunk_index 和 source_document
 			ch.MetaData["source_document"] = sourceDoc
 			ch.MetaData["chunk_index"] = docIdx
 			ch.MetaData["chunk_hash"] = hashStr

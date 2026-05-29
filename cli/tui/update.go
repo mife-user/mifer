@@ -395,7 +395,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		return m, clearCmd(m.client)
 
 	case input == "/reload":
-			return m, reloadCmd(m.client)
+		return m, reloadCmd(m.client)
 
 	case input == "/prompt":
 		return m, promptGetCmd(m.client)
@@ -435,7 +435,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 			startSSECmd(m.client, input, m.streamCh),
 			listenStreamCmd(m.streamCh),
 			spCmd,
-		)
+		) // 启动流式传输并监听消息
 	}
 }
 

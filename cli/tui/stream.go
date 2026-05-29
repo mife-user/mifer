@@ -15,11 +15,11 @@ package tui
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"strings"
 
 	"mifer/cli/client"
-	"mifer/pkg/conf"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -37,7 +37,7 @@ type TokenUsageData struct {
 type streamStatusMsg struct {
 	event      string          // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error" | "token"
 	name       string          // agent名称或工具名称
-	errMsg     string          // tool_error 时携带的错误消息
+	errMsg     string          // tool_error 时携带的错误消息 或 tool_start 时的工具参数 JSON
 	tokenUsage *TokenUsageData // token 事件时的数据（nil 表示非 token 事件）
 }
 
@@ -55,9 +55,75 @@ type streamDoneMsg struct {
 // Update() 中的流式消息处理器
 // ============================================================================
 
-// handleStreamStatus 处理流式状态更新（agent切换、工具调用、token统计）
+// handleStreamStatus 处理流式状态更新
+// 同时更新侧边栏和对话框：agent/tool 开始结束时在对话框中显示相应信息，
+// agent 结束时立即提取并渲染该 agent 的增量内容
 func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
-	m.sidebar.update(msg, conf.GetConfig().Cli.Tui.SidebarShowTiming, conf.GetConfig().Cli.Tui.SidebarMaxLog)
+	m.sidebar.update(msg)
+
+	switch msg.event {
+	case "agent_start":
+		m.messages = append(m.messages, message{
+			role:    "system",
+			content: msg.name + " 开始工作",
+		})
+		m.agentContentStart = m.accBuf.Len()
+		m.needsAutoScroll = true
+
+	case "agent_end":
+		content := strings.TrimSpace(m.accBuf.String()[m.agentContentStart:])
+		m.agentContentStart = m.accBuf.Len()
+		if content != "" {
+			rendered, err := m.mark.Render(content)
+			if err != nil {
+				m.messages = append(m.messages, message{
+					role:    "assistant",
+					content: content,
+				})
+			} else {
+				m.messages = append(m.messages, message{
+					role:     "assistant",
+					content:  content,
+					rendered: rendered,
+				})
+			}
+			m.needsAutoScroll = true
+		}
+
+	case "tool_start":
+		argsStr := formatToolArgs(msg.errMsg) // tool_start 时 errMsg 字段携带工具参数 JSON
+		if argsStr != "" {
+			m.messages = append(m.messages, message{
+				role:    "system",
+				content: "调用工具: " + msg.name + "(" + argsStr + ")",
+			})
+		} else {
+			m.messages = append(m.messages, message{
+				role:    "system",
+				content: "调用工具: " + msg.name,
+			})
+		}
+		m.needsAutoScroll = true
+
+	case "tool_end":
+		suffix := ""
+		if msg.errMsg != "" {
+			suffix = " [错误]"
+		}
+		m.messages = append(m.messages, message{
+			role:    "system",
+			content: "  " + msg.name + " 完成" + suffix,
+		})
+		m.needsAutoScroll = true
+
+	case "tool_error":
+		m.messages = append(m.messages, message{
+			role:    "system",
+			content: "  " + msg.name + " 错误: " + msg.errMsg,
+		})
+		m.needsAutoScroll = true
+	}
+
 	if m.streamCh != nil {
 		return m, listenStreamCmd(m.streamCh)
 	}
@@ -75,7 +141,8 @@ func (m *Model) handleStreamContent(msg streamContentMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleStreamDone 流式传输完成 → 渲染 markdown 并追加 assistant 消息
+// handleStreamDone 流式传输完成
+// 大部分内容已在 agent_end 时增量渲染，此处仅处理最后残留的尾部内容
 func (m *Model) handleStreamDone(msg streamDoneMsg) (tea.Model, tea.Cmd) {
 	m.thinking = false
 	m.streamCh = nil
@@ -86,28 +153,56 @@ func (m *Model) handleStreamDone(msg streamDoneMsg) (tea.Model, tea.Cmd) {
 		m.sidebar = SidebarState{}
 		return m, nil
 	}
-	content := strings.TrimSpace(m.accBuf.String())
+
+	// 处理 agent_end 之后可能残留的尾部内容
+	if m.accBuf != nil && m.accBuf.Len() > m.agentContentStart {
+		content := strings.TrimSpace(m.accBuf.String()[m.agentContentStart:])
+		if content != "" {
+			rendered, err := m.mark.Render(content)
+			if err != nil {
+				m.messages = append(m.messages, message{
+					role:    "assistant",
+					content: content,
+				})
+			} else {
+				m.messages = append(m.messages, message{
+					role:     "assistant",
+					content:  content,
+					rendered: rendered,
+				})
+			}
+		}
+	}
+
 	m.accBuf = nil
-	if content == "" {
-		m.err = "AI 返回了空内容"
-		return m, nil
-	}
-	rendered, err := m.mark.Render(content)
-	if err != nil {
-		m.messages = append(m.messages, message{
-			role:    "assistant",
-			content: content,
-		})
-		m.err = "Markdown 渲染失败，显示原始内容"
-		return m, nil
-	}
-	m.messages = append(m.messages, message{
-		role:     "assistant",
-		content:  content,
-		rendered: rendered,
-	})
 	m.needsAutoScroll = true
 	return m, nil
+}
+
+// formatToolArgs 格式化工具参数 JSON，美化并截断
+func formatToolArgs(rawJSON string) string {
+	if rawJSON == "" {
+		return ""
+	}
+	// 尝试解析并紧凑/美化
+	var parsed any
+	if err := json.Unmarshal([]byte(rawJSON), &parsed); err != nil {
+		// 非 JSON 或无法解析，直接截断
+		if len(rawJSON) > 120 {
+			return rawJSON[:120] + "..."
+		}
+		return rawJSON
+	}
+	// 紧凑输出（单行），再截断
+	compact, err := json.Marshal(parsed)
+	if err != nil {
+		return rawJSON
+	}
+	s := string(compact)
+	if len(s) > 150 {
+		return s[:150] + "..."
+	}
+	return s
 }
 
 // ============================================================================
@@ -135,8 +230,11 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.C
 			ctx := context.Background()
 			err := client.Chat.Send(ctx, content, func(event, chunk string) error {
 				switch event {
-				case "agent_start", "agent_end", "tool_start", "tool_end":
+				case "agent_start", "agent_end", "tool_end":
 					ch <- streamStatusMsg{event: event, name: chunk}
+				case "tool_start":
+					name, args, _ := strings.Cut(chunk, "\x00")
+					ch <- streamStatusMsg{event: "tool_start", name: name, errMsg: args}
 				case "tool_error":
 					if name, errMsg, ok := strings.Cut(chunk, "\x00"); ok {
 						ch <- streamStatusMsg{event: "tool_error", name: name, errMsg: errMsg}

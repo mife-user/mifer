@@ -81,10 +81,17 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 重构 LLM 提供商注册与初始化流程，支持多后端动态注册
-            - [x] 新增文件查看器（file_viewer）和图片生成器（image_generator）工具
-            - [x] 支持多模态处理：图片分析通过多模态模型（qwen-omni-turbo）实现
-            - [x] 修改多模态模型配置为通义千问 Omni Turbo
+            - [x] 优化 task.Do 上下文处理逻辑，简化代码结构
+            - [x] 新增 SSE 心跳机制与并发写入保护，修复客户端断开处理
+            - [x] 为 AI 调用添加自动重试机制与可重试错误判断
+            - [x] 重构应用关闭逻辑，提取通用 shutdown 方法并延长超时时间
+            - [x] 调整 HTTP 服务器超时配置，适配 SSE 长连接
+            - [x] 新增全局 Tool 回调处理器，统一使用 Eino 全局回调替代手动处理工具事件
+            - [x] 移动 TokenUsage 到独立文件，移除冗余工具事件处理代码
+            - [x] 重构 TUI 流式交互与侧边栏逻辑，拆分状态更新与 UI 渲染
+            - [x] 新增工具参数解析与美化展示，传递完整工具调用数据
+            - [x] 优化 TUI 聊天界面分隔符渲染
+            - [x] 新增 AGENTS.md 项目辅助文档
           files: artifacts/**/*
           draft: false
           prerelease: false

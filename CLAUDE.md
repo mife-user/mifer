@@ -65,11 +65,12 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
   - **MiCommander** (sonnet) — 终端命令执行（受白名单约束）
   - **MiAuditor** (opus) — 代码与配置安全审计
   - **Mifer** (default, Orchestrator) — `deep.New` 编排器，MaxIteration=0（由模型自主控制迭代次数），`EmitInternalEvents: true` 转发子 Agent 事件到 TUI 侧边栏
-- **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 执行 agent 迭代，处理流式/非流式消息，自动追加记忆并保存。包含 `TokenUsage` 累计统计。
+- **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 执行 agent 迭代，处理流式/非流式消息，自动追加记忆并保存。`tokens.go` 独立管理 TokenUsage 累计统计。
+- **`internal/ai/callback/`** — 全局 Tool 回调处理器。统一处理工具调用事件（开始/结束/错误），替代 executor 内手动处理工具事件的逻辑。
 - **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。支持 openai/claude/gemini/ollama 四种 provider，按名称索引（default/haiku/sonnet/opus/multi_modal），缺失后端自动 fallback 到 default。
 - **`internal/ai/prompt/`** — 系统提示词管理。`build.go` 构建完整提示词（系统提示词 + 记忆上下文），支持运行时通过 API 动态修改。
 - **`internal/ai/memory/`** — JSONL 文件持久化对话历史。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。支持列表、加载、切换、清除、回退操作。
-- **`internal/ai/tool/`** — 工具定义（Function Calling）。包含：`knowledgesearch`（知识库检索）、`knowledgestore`（文档入库）、`filereader`/`fileviewer`/`filecreator`/`filewriter`（文件操作）、`commandexecutor`（命令执行）、`imagegenerator`（图片生成）。工具通过闭包注入依赖（如 RAG 服务）。
+- **`internal/ai/tools/`** — 工具定义（Function Calling）。包含：`knowledgesearch`（知识库检索）、`knowledgestore`（文档入库）、`filereader`/`fileviewer`/`filecreator`/`filewriter`（文件操作）、`commandexecutor`（命令执行）、`imagegenerator`（图片生成）。工具通过闭包注入依赖（如 RAG 服务）。
 - **`internal/ai/rag/`** — RAG 检索增强。`LazyService` 懒加载模式：`Init()` 仅创建 embedder/loader/chunker（无网络调用），首次工具调用时才通过 `ensureReady()` 连接 Qdrant（Mutex 保护，失败可重试）。子目录：`chunker/`（文档切分）、`embedder/`（Ollama 嵌入）、`loader/`（文件加载，支持 PDF/Word/Text/Markdown）、`vectorstore/`（Qdrant 向量存储封装）。
 - **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。
 - **`cli/`** — CLI 客户端（Bubble Tea TUI）。通过 HTTP + SSE 调用服务端，核心组件：
@@ -104,7 +105,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 ### 新增 Agent
 1. 在 `internal/ai/agent/` 创建子 Agent 定义（参考 `chatagent.go`、`planner.go` 等），接收 `model.BaseChatModel` 及可选的 `model.ToolCallingChatModel` 参数
 2. 在 Orchestrator（`agent/init.go`）的 `deep.New` 配置中注册新子 Agent，通过 `registry.Get("<backend>")` 分配模型
-3. 如需新工具，在 `internal/ai/tool/` 定义
+3. 如需新工具，在 `internal/ai/tools/` 定义
 
 ### 新增 LLM Provider
 1. 在 `internal/ai/llm/providers.go` 定义新的 provider 结构体，实现 `Provider` 接口的 `Name()` 和 `InitModel()` 方法

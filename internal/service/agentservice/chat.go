@@ -2,6 +2,7 @@ package agentservice
 
 import (
 	"context"
+	"errors"
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
 	"mifer/pkg/task"
@@ -14,6 +15,10 @@ func (s *AgentService) Chat(ctx context.Context, req *domain.TalkReq, callback f
 		return err
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			logger.Warn("chat canceled（客户端断开）", logger.C(err))
+			return nil
+		}
 		logger.Error("chat failed", logger.C(err))
 		return err
 	}

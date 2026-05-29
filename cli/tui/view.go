@@ -88,20 +88,22 @@ func (m *Model) View() string {
 		switch msg.role {
 		case "user":
 			msgLines = append(msgLines, m.lip.User.Render("You: "+msg.content))
+			msgLines = append(msgLines, m.lip.SeparatorText)
 
 		case "assistant":
+			msgLines = append(msgLines, m.lip.SeparatorText)
 			if msg.rendered != "" {
 				msgLines = append(msgLines, strings.Split(msg.rendered, "\n")...)
 			} else {
 				msgLines = append(msgLines, msg.content)
 			}
+			msgLines = append(msgLines, m.lip.SeparatorText)
 
 		case "system":
 			for _, line := range strings.Split(msg.content, "\n") {
 				msgLines = append(msgLines, m.lip.Sys.Render(line))
 			}
 		}
-		msgLines = append(msgLines, m.lip.SeparatorText)
 	}
 
 	// ======================================================================

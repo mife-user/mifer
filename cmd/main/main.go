@@ -79,11 +79,7 @@ func runServer(app *bootstrap.Application) {
 	case <-quit:
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := app.Shutdown(ctx); err != nil {
-		log.Printf("应用关闭失败: %v", err)
-	}
+	shutdown(app)
 }
 
 func runDefault(app *bootstrap.Application) {
@@ -107,15 +103,19 @@ func runDefault(app *bootstrap.Application) {
 	case <-quit:
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := app.Shutdown(ctx); err != nil {
-		log.Printf("应用关闭失败: %v", err)
-	}
+	shutdown(app)
 }
 
 func runCLI(app *bootstrap.Application) {
 	if err := app.Clier.Run(); err != nil {
 		log.Fatal("TUI 运行失败: ", err)
+	}
+}
+
+func shutdown(app *bootstrap.Application) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := app.Shutdown(ctx); err != nil {
+		log.Printf("应用关闭失败: %v", err)
 	}
 }

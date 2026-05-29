@@ -2,24 +2,18 @@ package bootstrap
 
 import (
 	"context"
-
-	aicallback "mifer/internal/ai/callback"
-	"github.com/cloudwego/eino/callbacks"
-
 	"fmt"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"net/http"
+	"time"
 )
 
 // NewApplication 创建应用实例
 func NewApplication(ctx context.Context) (*Application, error) {
 	var err error
 	app := &Application{}
-
-	// 注册全局 Tool 回调处理器，捕获所有 Tool 组件的 OnStart/OnEnd/OnError
-	callbacks.AppendGlobalHandlers(aicallback.ToolCallbackHandler)
 
 	if err = app.loadConfig(); err != nil {
 		return nil, errorer.NewS(errorer.ErrLoadConfigFailed, err)
@@ -53,12 +47,15 @@ func (a *Application) Run() error {
 	for conf.GetConfig().Gin.Port <= 18000 {
 		a.printStartupInfo()
 		a.server = &http.Server{
-			Addr:    fmt.Sprintf(":%d", conf.GetConfig().Gin.Port),
-			Handler: a.Engine,
+			Addr:         fmt.Sprintf(":%d", conf.GetConfig().Gin.Port),
+			Handler:      a.Engine,
+			ReadTimeout:  5 * time.Minute,
+			WriteTimeout: 0, // SSE 长连接不设写入超时
 		}
 		logger.Info("HTTP 服务器启动", logger.I("port", conf.GetConfig().Gin.Port))
 		err = a.server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
+			logger.Error("端口绑定失败，切换端口重试", logger.I("port", conf.GetConfig().Gin.Port), logger.C(err))
 			conf.GetConfig().Gin.Port += 10
 			continue
 		}

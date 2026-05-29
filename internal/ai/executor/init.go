@@ -2,10 +2,13 @@ package executor
 
 import (
 	"context"
+
+	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/agent"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/adk"
+	"github.com/cloudwego/eino/callbacks"
 )
 
 type Executor struct {
@@ -15,6 +18,8 @@ type Executor struct {
 }
 
 func Init(c context.Context) (*Executor, error) {
+	// 注册全局 Tool 回调处理器，捕获所有 Tool 组件的 OnStart/OnEnd/OnError
+	callbacks.AppendGlobalHandlers(aicallback.ToolCallbackHandler)
 
 	ag, err := agent.Init(c)
 	if err != nil {

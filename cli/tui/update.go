@@ -5,6 +5,7 @@ package tui
 // ============================================================================
 
 import (
+	"context"
 	"mifer/pkg/conf"
 	"strings"
 
@@ -141,11 +142,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 
-		// ---- 退出：Ctrl+C 或 Esc（补全列表显示时仅关闭列表） ----
+		// ---- 退出/中断：Ctrl+C 或 Esc ----
 		case "ctrl+c", "esc":
+			// 补全列表显示时仅关闭列表
 			if m.showingCompletions {
 				m.showingCompletions = false
 				m.resetCompletion()
+				return m, nil
+			}
+			// 流式传输进行中：取消流而非退出
+			if m.thinking && m.cancel != nil {
+				m.cancel()
+				m.cancel = nil
+				m.messages = append(m.messages, message{
+					role:    "system",
+					content: "STOP",
+				})
+				m.needsAutoScroll = true
 				return m, nil
 			}
 			return m, tea.Quit
@@ -429,10 +442,12 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		m.accBuf = &strings.Builder{}
 		m.streamCh = make(chan tea.Msg, 32)
 		m.sidebar = SidebarState{}
+		ctx, cancel := context.WithCancel(context.Background())
+		m.cancel = cancel
 		var spCmd tea.Cmd
 		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 		return m, tea.Batch(
-			startSSECmd(m.client, input, m.streamCh),
+			startSSECmd(m.client, input, m.streamCh, ctx),
 			listenStreamCmd(m.streamCh),
 			spCmd,
 		) // 启动流式传输并监听消息

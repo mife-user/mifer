@@ -16,6 +16,7 @@ package tui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -139,6 +140,12 @@ func (m *Model) handleStreamDone(msg streamDoneMsg) (tea.Model, tea.Cmd) {
 	m.streamCh = nil
 
 	if msg.err != nil {
+		// 用户主动取消（Ctrl+C / Esc），静默清理不显示错误
+		if errors.Is(msg.err, context.Canceled) {
+			m.accBuf = nil
+			m.sidebar = SidebarState{}
+			return m, nil
+		}
 		m.err = "错误: " + msg.err.Error()
 		m.accBuf = nil
 		m.sidebar = SidebarState{}
@@ -211,11 +218,10 @@ func formatToolArgs(rawJSON string) string {
 //	thinking → 跳过
 //
 // goroutine 退出前关闭 channel，触发 listenStreamCmd 返回 nil 停止递归。
-func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg) tea.Cmd {
+func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		go func() {
 			defer close(ch)
-			ctx := context.Background()
 			err := client.Chat.Send(ctx, content, func(event, chunk string) error {
 				switch event {
 				case "agent_start", "agent_end":

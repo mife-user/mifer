@@ -55,6 +55,58 @@
 
 `tokens.go` 独立管理 TokenUsage 累计统计，与 executor 主逻辑解耦。支持按会话累计、按模型分类，为成本核算提供基础数据。
 
+### MCP 协议支持：外挂式工具生态
+
+基于 [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) 实现外挂式工具扩展——第三方工具通过 stdio 协议接入，AI 在对话中自动发现和调用，无需修改 Mifer 核心代码。
+
+**架构**：`MCP Manager` 管理所有 Server 连接的生命周期（启动/热重载/关闭）→ `MCPToolAdapter` 将 MCP Tool 的 JSON Schema 自动转换为 Eino `tool.InvokableTool` → `GetToolsForAgent(agentName)` 按 Agent 名路由工具。
+
+**关键设计**：
+- **工具适配层** — Schema 通过 JSON 桥接自动转换，无需手工映射；工具名以 `{serverName}_{toolName}` 命名空间隔离
+- **Agent 级分配** — 每个 MCP Server 配置 `agents` 字段指定工具分配给哪些子 Agent，空或 `["*"]` 表示全部可用
+- **热重载** — `Reload()` 对比新旧配置增量更新（新增/删除/配置变更），不停机
+- **失败隔离** — 单个 Server 连接失败不阻塞其他 Server 和 Agent 启动，标记 Status=error 后可重试
+- **状态可观测** — `GET /api/mcp/status` 返回所有 Server 的连接状态与工具数量，CLI `/mcp` 命令实时查看
+- **进程隔离** — MCP Server 以 stdio 子进程运行，工具调用结果通过适配层过滤，错误不暴露给终端用户
+
+### Skills 技能系统：声明式自定义技能
+
+Skills 允许用户通过 **YAML frontmatter + Markdown 指令** 声明式定义技能，支持 `inline`（内联）和 `fork`（分叉）双模式执行。
+
+**技能示例**：
+```markdown
+---
+name: my-skill
+description: 我的自定义技能
+context: fork
+agent: MiEditer
+---
+
+# 技能指令
+当此技能被调用时，请按以下步骤操作...
+```
+
+**关键设计**：
+- **inline 模式** — 技能内容直接注入当前对话上下文，LLM 在同一 Agent 中遵循指令执行
+- **fork 模式** — 通过 `AgentHub` 查找目标 Agent，创建子 Agent 独立执行技能指令；目标 Agent 不存在时自动降级为 inline
+- **AgentHub 依赖反转** — 技能系统通过 `AgentHub` 接口查找 Agent，不直接依赖 `internal/ai/agent`，Agent 注册由 Orchestrator 启动时完成
+- **文件系统即数据库** — 技能以 `目录名/SKILL.md` 形式存储，零配置、零依赖。首次启动自动创建 `hello-world` 示例技能
+- **LLM 自主选择** — `skill` 工具的描述中动态注入所有可用技能列表，LLM 根据用户意图自主判断是否调用、调用哪个
+
+### Plan 管理：AI 自主的计划系统
+
+Plan 功能的设计哲学是**"由 AI 决定，而非框架强制"**——不使用 Graph/Workflow 的强制编排，让 LLM 自主调度计划。
+
+**关键设计**：
+- **无 Graph 强制** — `MiPlanner` Agent 配备 `PlannerTools()`（仅限文件创建和写入，工作目录锁定在 `.mifer/plans/`），AI 直接编写 Markdown 计划文件，不预设状态机、不限制格式
+- **面向 AI 能力演进** — 随着 LLM 推理能力增强，许多需要工程化 Graph 编排的场景可以由 AI 自主完成。**用 AI 的判断替代代码的分支逻辑**，减少工程化复杂度
+- **工作目录隔离** — 文件操作限制在 `.mifer/plans/` 下，安全边界在工具层保证
+- **CLI 集成** — `/plan` 命令查看计划文件列表，回车加载并展示计划内容
+
+### SSE 流取消
+
+TUI 模式下支持 `Ctrl+C` 中断正在生成的 SSE 流——取消后对话记录保留已生成的部分内容，不会丢失上下文。
+
 ---
 
 ## 快速开始
@@ -310,8 +362,8 @@ mifer/
 
 ## 后续方向
 
-- MCP 协议支持（Client / Server），接入第三方工具生态
-- Skills 技能系统，支持 YAML 声明式自定义技能
-- RAG 检索增强，本地代码库语义索引
+- MCP Server 模式——让 Mifer 自身作为 MCP Server 对外暴露能力
+- RAG 语义索引增强——本地代码库级语义检索
 - Web UI 管理面板
 - Docker 一键部署
+- 会话分支与多路线对话探索

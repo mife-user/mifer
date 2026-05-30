@@ -54,6 +54,19 @@ type PlanListResp struct {
 	Files []string // .mifer/plans/ 目录下的文件名列表
 }
 
+// MCPServerStatus MCP Server 状态
+type MCPServerStatus struct {
+	Name      string `json:"name"`
+	Status    string `json:"status"`     // connected / disabled / error / disconnected
+	ToolCount int    `json:"tool_count"` // 已加载的工具数量
+	Error     string `json:"error,omitempty"`
+}
+
+// MCPStatusResp MCP 状态响应
+type MCPStatusResp struct {
+	Servers []MCPServerStatus `json:"servers"`
+}
+
 // PlanLoadResp 计划文件内容响应
 type PlanLoadResp struct {
 	Name    string // 文件名

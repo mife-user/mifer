@@ -12,6 +12,7 @@ type Config struct {
 	Path PathConfig `mapstructure:"path"`
 	Cli  CliConfig  `mapstructure:"cli"`
 	Rag  RAGConfig  `mapstructure:"rag"`
+	Mcp  MCPConfig  `mapstructure:"mcp"`
 }
 
 // cli配置结构体
@@ -38,9 +39,15 @@ type LipConfig struct {
 	SidebarPlaceholder Colorlip `mapstructure:"sidebar_placeholder"`
 }
 
+// CompletableCommand 可补全命令定义
+type CompletableCommand struct {
+	Command     string `mapstructure:"command"`     // 命令名，如 "/help"
+	Description string `mapstructure:"description"` // 说明，如 "显示帮助信息"
+}
+
 type TuiConfig struct {
-	MaxHistory          int      `mapstructure:"max_history"`
-	CompletableCommands []string `mapstructure:"completable_commands"`
+	MaxHistory          int                  `mapstructure:"max_history"`
+	CompletableCommands []CompletableCommand `mapstructure:"completable_commands"`
 	ContentMargin       int      `mapstructure:"content_margin"`
 	MinHeight           int      `mapstructure:"min_height"`
 	SpinnerType         string   `mapstructure:"spinner_type"`   // 预置类型名，或为空使用自定义帧
@@ -101,6 +108,21 @@ type CorsConfig struct {
 // JWT配置结构体
 type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
+}
+
+// MCP配置结构体
+type MCPConfig struct {
+	Servers []MCPServerConfig `mapstructure:"servers"`
+}
+
+// MCPServerConfig 单个 MCP Server 的连接配置
+type MCPServerConfig struct {
+	Name    string   `mapstructure:"name"`    // 唯一标识，如 "filesystem"
+	Command string   `mapstructure:"command"` // 启动命令，如 "npx"
+	Args    []string `mapstructure:"args"`    // 参数，如 ["-y", "@anthropic/mcp-server-filesystem", "/path"]
+	Env     []string `mapstructure:"env"`     // 环境变量（可选），如 ["GITHUB_TOKEN=xxx"]
+	Agents  []string `mapstructure:"agents"`  // 分配给哪些 Agent，空或 ["*"] 表示全部
+	Enabled bool     `mapstructure:"enabled"` // 是否启用，默认 true
 }
 
 // RAG配置结构体

@@ -261,7 +261,12 @@ func (m *Model) renderCompletionList() string {
 		if i == m.completionIdx {
 			prefix = "> "
 		}
-		line := prefix + m.completions[i]
+		cmdName := m.completions[i]
+		line := prefix + cmdName
+		// 如果有描述，追加在命令后面
+		if desc, ok := m.completionDescs[cmdName]; ok && desc != "" {
+			line += "  —  " + desc
+		}
 		if i == m.completionIdx {
 			lines = append(lines, m.lip.SidebarActive.Render(line))
 		} else {

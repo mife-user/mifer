@@ -78,6 +78,8 @@ rag:
   qdrant_port: 6334
   qdrant_collection: "mifer_docs"
   qdrant_api_key: ""
+mcp:
+  servers: []
 ai:
   backends:
     default:
@@ -147,7 +149,29 @@ cli:
       foreground: "#555555"
   tui:
     max_history: 100
-    completable_commands: ["/help", "/exit", "/quit", "/viewmemory", "/excmem", "/reback", "/clear", "/prompt", "/reload", "/plan"]
+    completable_commands:
+      - command: "/help"
+        description: "显示帮助信息"
+      - command: "/exit"
+        description: "退出程序"
+      - command: "/quit"
+        description: "退出程序"
+      - command: "/viewmemory"
+        description: "查看/切换对话记忆"
+      - command: "/excmem"
+        description: "切换到指定记忆"
+      - command: "/reback"
+        description: "回退对话到历史轮次"
+      - command: "/clear"
+        description: "创建并切换到新会话"
+      - command: "/prompt"
+        description: "查看/修改系统提示词"
+      - command: "/reload"
+        description: "热重载配置与模型"
+      - command: "/plan"
+        description: "列出/编写项目计划"
+      - command: "/mcp"
+        description: "显示MCP Server状态"
     content_margin: 4
     min_height: 10
     spinner_type: "MiniDot"

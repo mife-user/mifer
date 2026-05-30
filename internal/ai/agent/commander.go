@@ -1,4 +1,4 @@
-﻿package agent
+package agent
 
 import (
 	"context"
@@ -6,11 +6,14 @@ import (
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 )
 
 // newCommander 创建终端命令执行agent，负责安全执行shell命令
-func newCommander(c context.Context, chatModel model.BaseChatModel) (*adk.ChatModelAgent, error) {
+func newCommander(c context.Context, chatModel model.BaseChatModel, extraTools []tool.BaseTool) (*adk.ChatModelAgent, error) {
+	allTools := append(tools.CommandTools(), extraTools...)
+
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
 		Name:        "MiCommander",
 		Description: "终端命令执行专家，在安全沙箱中执行shell命令并返回结果",
@@ -18,7 +21,7 @@ func newCommander(c context.Context, chatModel model.BaseChatModel) (*adk.ChatMo
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: tools.CommandTools(),
+				Tools: allTools,
 			},
 		},
 		MaxIterations: 0,

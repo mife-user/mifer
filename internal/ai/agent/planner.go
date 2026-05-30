@@ -6,11 +6,14 @@ import (
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 )
 
 // newPlanner 创建计划写作agent，负责生成结构化计划文档，文件操作仅限 .mifer/plans/ 目录
-func newPlanner(c context.Context, chatModel model.BaseChatModel) (*adk.ChatModelAgent, error) {
+func newPlanner(c context.Context, chatModel model.BaseChatModel, extraTools []tool.BaseTool) (*adk.ChatModelAgent, error) {
+	allTools := append(tools.PlannerTools(), extraTools...)
+
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
 		Name:        "MiPlanner",
 		Description: "项目计划专家，根据需求编写结构化、可执行的计划文档",
@@ -18,7 +21,7 @@ func newPlanner(c context.Context, chatModel model.BaseChatModel) (*adk.ChatMode
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: tools.PlannerTools(),
+				Tools: allTools,
 			},
 		},
 		MaxIterations: 0,

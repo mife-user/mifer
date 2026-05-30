@@ -482,6 +482,15 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	case input == "/reback":
 		return m, listRebackEntriesCmd(m.client)
 
+	case input == "/mcp":
+		// /mcp — 显示 MCP Server 状态
+		m.messages = append(m.messages, message{
+			role:    "user",
+			content: input,
+		})
+		m.needsAutoScroll = true
+		return m, mcpStatusCmd(m.client)
+
 	case strings.HasPrefix(input, "/plan"):
 		args := strings.TrimSpace(strings.TrimPrefix(input, "/plan"))
 		if args != "" {
@@ -624,7 +633,7 @@ func (m *Model) cycleCompletion() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// findMatches 返回以 prefix 开头的可补全命令列表（大小写不敏感）
+// findMatches 返回以 prefix 开头的可补全命令列表（大小写不敏感），同时填充描述映射
 func (m *Model) findMatches(prefix string) []string {
 	if prefix == "" {
 		return nil
@@ -632,8 +641,12 @@ func (m *Model) findMatches(prefix string) []string {
 	lower := strings.ToLower(prefix)
 	var matches []string
 	for _, cmd := range conf.GetConfig().Cli.Tui.CompletableCommands {
-		if strings.HasPrefix(strings.ToLower(cmd), lower) {
-			matches = append(matches, cmd)
+		if strings.HasPrefix(strings.ToLower(cmd.Command), lower) {
+			matches = append(matches, cmd.Command)
+			if m.completionDescs == nil {
+				m.completionDescs = make(map[string]string)
+			}
+			m.completionDescs[cmd.Command] = cmd.Description
 		}
 	}
 	return matches
@@ -642,6 +655,7 @@ func (m *Model) findMatches(prefix string) []string {
 // resetCompletion 清除补全状态
 func (m *Model) resetCompletion() {
 	m.completions = nil
+	m.completionDescs = nil
 	m.completionIdx = -1
 	m.completionBase = ""
 }

@@ -6,6 +6,7 @@ import (
 	"mifer/cli/client/chathandler"
 	"mifer/cli/client/clearhandler"
 	"mifer/cli/client/excmemhandler"
+	"mifer/cli/client/mcphandler"
 	"mifer/cli/client/memhandler"
 	"mifer/cli/client/planhandler"
 	"mifer/cli/client/prompthandler"
@@ -22,6 +23,7 @@ const (
 	APIRebackPath = "/api/memory/reback"
 	APIReloadPath = "/api/admin/reload"
 	APIPlanPath   = "/api/plan"
+	APIMCPPath    = "/api/mcp"
 )
 
 // Client HTTP API客户端，按服务聚合各Handler
@@ -34,6 +36,7 @@ type Client struct {
 	Prompt *prompthandler.PromptHandler
 	Reload *reloadhandler.ReloadHandler
 	Plan   *planhandler.PlanHandler
+	MCP    *mcphandler.MCPHandler
 }
 
 // New 创建API客户端实例
@@ -48,5 +51,6 @@ func New(baseURL string) *Client {
 		Prompt: prompthandler.New(httpClient, baseURL+APIPromptPath),
 		Reload: reloadhandler.New(httpClient, baseURL+APIReloadPath),
 		Plan:   planhandler.New(httpClient, baseURL+APIPlanPath),
+		MCP:    mcphandler.New(httpClient, baseURL+APIMCPPath+"/status"),
 	}
 }

@@ -1,4 +1,4 @@
-﻿package agent
+package agent
 
 import (
 	"context"
@@ -6,11 +6,14 @@ import (
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 )
 
 // newAuditor 创建安全审计agent，负责代码/文件安全审查
-func newAuditor(c context.Context, chatModel model.BaseChatModel, mmModel model.BaseChatModel) (*adk.ChatModelAgent, error) {
+func newAuditor(c context.Context, chatModel model.BaseChatModel, mmModel model.BaseChatModel, extraTools []tool.BaseTool) (*adk.ChatModelAgent, error) {
+	allTools := append(tools.AuditTools(mmModel), extraTools...)
+
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
 		Name:        "MiAuditor",
 		Description: "安全审计专家，审查代码和配置文件中的安全隐患",
@@ -18,7 +21,7 @@ func newAuditor(c context.Context, chatModel model.BaseChatModel, mmModel model.
 		Model:         chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: tools.AuditTools(mmModel),
+				Tools: allTools,
 			},
 		},
 		MaxIterations: 0,

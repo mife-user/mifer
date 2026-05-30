@@ -6,11 +6,14 @@ import (
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 )
 
 // newChatEditer 创建文件编辑agent，负责文件读写、创建、查看和图片生成操作
-func newChatEditer(c context.Context, chatModel model.BaseChatModel, mmModel model.BaseChatModel) (*adk.ChatModelAgent, error) {
+func newChatEditer(c context.Context, chatModel model.BaseChatModel, mmModel model.BaseChatModel, extraTools []tool.BaseTool) (*adk.ChatModelAgent, error) {
+	allTools := append(tools.FileTools(mmModel), extraTools...)
+
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
 		Name:        "MiEditer",
 		Description: "文件编辑专家，安全处理本地文件的读取、写入、创建、查看和图片生成操作",
@@ -18,7 +21,7 @@ func newChatEditer(c context.Context, chatModel model.BaseChatModel, mmModel mod
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: tools.FileTools(mmModel),
+				Tools: allTools,
 			},
 		},
 		MaxIterations: 0,

@@ -82,6 +82,10 @@ func (r *Router) Setup() *gin.Engine {
 			plan.GET("", r.agentHandler.ListPlans)
 			plan.GET("/:name", r.agentHandler.LoadPlan)
 		}
+		mcp := api.Group("/mcp")
+		{
+			mcp.GET("/status", r.agentHandler.MCPStatus)
+		}
 	}
 
 	return router

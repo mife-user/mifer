@@ -126,10 +126,11 @@ type Model struct {
 	pendingInput string         // 进入历史导航前暂存的 textarea 内容（用于恢复）
 
 	// Tab 补全
-	completions         []string // 当前匹配到的命令列表
-	completionIdx       int      // 当前补全循环索引（-1 = 未激活）
-	completionBase      string   // 触发补全时的原始输入前缀
-	showingCompletions  bool     // 是否显示补全列表（输入 / 开头且有匹配）（用于检测用户是否修改了输入）
+	completions         []string          // 当前匹配到的命令列表
+	completionDescs     map[string]string // 命令 → 描述映射（用于补全列表渲染）
+	completionIdx       int               // 当前补全循环索引（-1 = 未激活）
+	completionBase      string            // 触发补全时的原始输入前缀
+	showingCompletions  bool              // 是否显示补全列表（输入 / 开头且有匹配）
 
 	// 缓存：由 WindowSizeMsg 计算，避免 View 中重复计算
 	contentHeight int // 消息区域可用行数

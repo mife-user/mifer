@@ -15,6 +15,7 @@ type AgentService interface {
 	ResetPrompt(ctx context.Context) (*PromptResp, error)
 	ListPlans(ctx context.Context) (*PlanListResp, error)
 	LoadPlan(ctx context.Context, name string) (*PlanLoadResp, error)
+	MCPStatus(ctx context.Context) (*MCPStatusResp, error)
 }
 
 type Agent interface {
@@ -30,4 +31,5 @@ type Agent interface {
 	ResetPrompt(ctx context.Context) (*PromptResp, error)
 	ListPlans(ctx context.Context) (*PlanListResp, error)
 	LoadPlan(ctx context.Context, name string) (*PlanLoadResp, error)
+	MCPStatus(ctx context.Context) (*MCPStatusResp, error)
 }

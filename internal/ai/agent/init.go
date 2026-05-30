@@ -7,17 +7,21 @@ import (
 	"mifer/internal/ai/prompt"
 	"mifer/internal/ai/rag"
 	"mifer/internal/ai/tools"
+	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
+	"mifer/pkg/mcp"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
+	"github.com/cloudwego/eino/components/tool"
 )
 
 type Humen struct {
-	Agent    adk.Agent
-	Prompt   *prompt.Prompty
-	Registry *llm.Registry
+	Agent      adk.Agent
+	Prompt     *prompt.Prompty
+	Registry   *llm.Registry
+	MCPManager *mcp.Manager
 }
 
 func Init(c context.Context) (*Humen, error) {
@@ -32,32 +36,35 @@ func Init(c context.Context) (*Humen, error) {
 	// RAG 懒加载服务，无网络调用，即时返回，Qdrant 连接推迟到首次工具调用
 	ragSvc := rag.NewLazyService(c)
 
+	// 初始化 MCP 连接管理器，启动配置中已启用的 Server
+	mcpManager := mcp.NewManager(conf.GetConfig().Mcp.Servers)
+
 	// 初始化文件编辑agent（sonnet — 均衡）
-	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel)
+	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer")))
 	if err != nil {
 		logger.Error("init editer agent failed", logger.C(err))
 		return nil, err
 	}
-	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具
-	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc))
+	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具 + MCP 工具
+	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer")))
 	if err != nil {
 		logger.Error("init summarizer agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化计划编写agent（opus — 最强推理），PlannerTools 内部读取 Workdir 配置
-	plannerAgent, err := newPlanner(c, reg.Get("opus"))
+	plannerAgent, err := newPlanner(c, reg.Get("opus"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiPlanner")))
 	if err != nil {
 		logger.Error("init planner agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化终端命令agent（sonnet — 均衡）
-	commanderAgent, err := newCommander(c, reg.Get("sonnet"))
+	commanderAgent, err := newCommander(c, reg.Get("sonnet"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiCommander")))
 	if err != nil {
 		logger.Error("init commander agent failed", logger.C(err))
 		return nil, err
 	}
 	// 初始化安全审计agent（opus — 最强推理）
-	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel)
+	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiAuditor")))
 	if err != nil {
 		logger.Error("init auditor agent failed", logger.C(err))
 		return nil, err
@@ -90,5 +97,14 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, Prompt: prompty, Registry: reg}, nil
+	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager}, nil
+}
+
+// mcpToBaseTools 将 []tool.InvokableTool 转为 []tool.BaseTool
+func mcpToBaseTools(invokable []tool.InvokableTool) []tool.BaseTool {
+	var result []tool.BaseTool
+	for _, t := range invokable {
+		result = append(result, t)
+	}
+	return result
 }

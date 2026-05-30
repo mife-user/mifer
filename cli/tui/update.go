@@ -491,6 +491,15 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		m.needsAutoScroll = true
 		return m, mcpStatusCmd(m.client)
 
+	case input == "/skill":
+		// /skill — 显示已加载的技能列表
+		m.messages = append(m.messages, message{
+			role:    "user",
+			content: input,
+		})
+		m.needsAutoScroll = true
+		return m, skillListCmd(m.client)
+
 	case strings.HasPrefix(input, "/plan"):
 		args := strings.TrimSpace(strings.TrimPrefix(input, "/plan"))
 		if args != "" {

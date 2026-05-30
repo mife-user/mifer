@@ -86,6 +86,10 @@ func (r *Router) Setup() *gin.Engine {
 		{
 			mcp.GET("/status", r.agentHandler.MCPStatus)
 		}
+		skill := api.Group("/skill")
+		{
+			skill.GET("/list", r.agentHandler.ListSkills)
+		}
 	}
 
 	return router

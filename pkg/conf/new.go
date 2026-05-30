@@ -82,10 +82,13 @@ mcp:
   servers:
     # 内置 MCP 演示工具：echo / get_time / calculator / random_number
     - name: "demo"
-      command: "./test/mcp-demo.exe"
+      command: "./mcp-demo.exe"
       args: []
       agents: ["MiEditer"]
       enabled: true
+skill:
+  path: ""
+  enabled: true
 ai:
   backends:
     default:
@@ -178,6 +181,8 @@ cli:
         description: "列出/编写项目计划"
       - command: "/mcp"
         description: "显示MCP Server状态"
+      - command: "/skill"
+        description: "显示已加载的技能列表"
     content_margin: 4
     min_height: 10
     spinner_type: "MiniDot"

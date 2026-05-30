@@ -48,6 +48,17 @@ func promptResetCmd(client *client.Client) tea.Cmd {
 	}
 }
 
+// skillListCmd 异步获取技能列表
+func skillListCmd(client *client.Client) tea.Cmd {
+	return func() tea.Msg {
+		result, err := client.Skill.List()
+		if err != nil {
+			return systemMsg{err: err}
+		}
+		return systemMsg{content: result}
+	}
+}
+
 // mcpStatusCmd 异步获取 MCP Server 状态
 func mcpStatusCmd(client *client.Client) tea.Cmd {
 	return func() tea.Msg {

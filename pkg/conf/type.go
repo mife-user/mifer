@@ -12,7 +12,8 @@ type Config struct {
 	Path PathConfig `mapstructure:"path"`
 	Cli  CliConfig  `mapstructure:"cli"`
 	Rag  RAGConfig  `mapstructure:"rag"`
-	Mcp  MCPConfig  `mapstructure:"mcp"`
+	Mcp   MCPConfig   `mapstructure:"mcp"`
+	Skill SkillConfig `mapstructure:"skill"`
 }
 
 // cli配置结构体
@@ -46,19 +47,19 @@ type CompletableCommand struct {
 }
 
 type TuiConfig struct {
-	MaxHistory          int                  `mapstructure:"max_history"`
-	CompletableCommands []CompletableCommand `mapstructure:"completable_commands"`
-	ContentMargin       int      `mapstructure:"content_margin"`
-	MinHeight           int      `mapstructure:"min_height"`
-	SpinnerType         string   `mapstructure:"spinner_type"`   // 预置类型名，或为空使用自定义帧
-	SpinnerFrames       []string `mapstructure:"spinner_frames"` // 自定义动画帧序列，如 [".", "..", "..."]，非空时覆盖 spinner_type
-	SpinnerFPS          int      `mapstructure:"spinner_fps"`    // 自定义帧率（帧/秒），默认 10
-	SidebarMaxLog       int      `mapstructure:"sidebar_max_log"`     // 状态日志最大行数，默认 100
-	SidebarShowTokens   bool     `mapstructure:"sidebar_show_tokens"` // 是否显示token统计，默认 true
-	SidebarShowTiming   bool     `mapstructure:"sidebar_show_timing"` // 是否显示时间戳，默认 true
-	CompletionMaxVisible  int  `mapstructure:"completion_max_visible"`  // 补全列表最大可见行数，默认 5
-	MouseWheelDelta       int  `mapstructure:"mouse_wheel_delta"`       // 垂直滚轮每次滚动行数，默认 3
-	HorizontalScrollStep  int  `mapstructure:"horizontal_scroll_step"`  // 水平滚动每次列数，默认 4
+	MaxHistory           int                  `mapstructure:"max_history"`
+	CompletableCommands  []CompletableCommand `mapstructure:"completable_commands"`
+	ContentMargin        int                  `mapstructure:"content_margin"`
+	MinHeight            int                  `mapstructure:"min_height"`
+	SpinnerType          string               `mapstructure:"spinner_type"`           // 预置类型名，或为空使用自定义帧
+	SpinnerFrames        []string             `mapstructure:"spinner_frames"`         // 自定义动画帧序列，如 [".", "..", "..."]，非空时覆盖 spinner_type
+	SpinnerFPS           int                  `mapstructure:"spinner_fps"`            // 自定义帧率（帧/秒），默认 10
+	SidebarMaxLog        int                  `mapstructure:"sidebar_max_log"`        // 状态日志最大行数，默认 100
+	SidebarShowTokens    bool                 `mapstructure:"sidebar_show_tokens"`    // 是否显示token统计，默认 true
+	SidebarShowTiming    bool                 `mapstructure:"sidebar_show_timing"`    // 是否显示时间戳，默认 true
+	CompletionMaxVisible int                  `mapstructure:"completion_max_visible"` // 补全列表最大可见行数，默认 5
+	MouseWheelDelta      int                  `mapstructure:"mouse_wheel_delta"`      // 垂直滚轮每次滚动行数，默认 3
+	HorizontalScrollStep int                  `mapstructure:"horizontal_scroll_step"` // 水平滚动每次列数，默认 4
 }
 
 type Colorlip struct {
@@ -125,14 +126,20 @@ type MCPServerConfig struct {
 	Enabled bool     `mapstructure:"enabled"` // 是否启用，默认 true
 }
 
+// Skill配置结构体
+type SkillConfig struct {
+	Path    string `mapstructure:"path"`    // 技能目录路径，为空时自动选择默认路径
+	Enabled bool   `mapstructure:"enabled"` // 是否启用，默认 true
+}
+
 // RAG配置结构体
 type RAGConfig struct {
-	ChunkSize        int    `mapstructure:"chunk_size"`         // 分块大小（字符数），默认 500
-	ChunkOverlap     int    `mapstructure:"chunk_overlap"`      // 重叠字符数，默认 50
-	TopK             int    `mapstructure:"top_k"`              // 检索返回数量，默认 5
-	Dim              int    `mapstructure:"dim"`                // 向量维度，默认 768（nomic-embed-text）
-	QdrantHost       string `mapstructure:"qdrant_host"`        // Qdrant 服务地址，默认 "localhost"
-	QdrantPort       int    `mapstructure:"qdrant_port"`        // Qdrant gRPC 端口，默认 6334
-	QdrantCollection string `mapstructure:"qdrant_collection"`  // Qdrant 集合名，默认 "mifer_docs"
-	QdrantAPIKey     string `mapstructure:"qdrant_api_key"`     // Qdrant API Key（可选）
+	ChunkSize        int    `mapstructure:"chunk_size"`        // 分块大小（字符数），默认 500
+	ChunkOverlap     int    `mapstructure:"chunk_overlap"`     // 重叠字符数，默认 50
+	TopK             int    `mapstructure:"top_k"`             // 检索返回数量，默认 5
+	Dim              int    `mapstructure:"dim"`               // 向量维度，默认 768（nomic-embed-text）
+	QdrantHost       string `mapstructure:"qdrant_host"`       // Qdrant 服务地址，默认 "localhost"
+	QdrantPort       int    `mapstructure:"qdrant_port"`       // Qdrant gRPC 端口，默认 6334
+	QdrantCollection string `mapstructure:"qdrant_collection"` // Qdrant 集合名，默认 "mifer_docs"
+	QdrantAPIKey     string `mapstructure:"qdrant_api_key"`    // Qdrant API Key（可选）
 }

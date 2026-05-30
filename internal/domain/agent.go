@@ -62,6 +62,19 @@ type MCPServerStatus struct {
 	Error     string `json:"error,omitempty"`
 }
 
+// SkillInfo 技能简要信息
+type SkillInfo struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Context     string `json:"context"`
+	Agent       string `json:"agent"`
+}
+
+// SkillListResp 技能列表响应
+type SkillListResp struct {
+	Skills []SkillInfo `json:"skills"`
+}
+
 // MCPStatusResp MCP 状态响应
 type MCPStatusResp struct {
 	Servers []MCPServerStatus `json:"servers"`

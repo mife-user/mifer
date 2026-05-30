@@ -13,6 +13,8 @@ type AgentService interface {
 	GetPrompt(ctx context.Context) (*PromptResp, error)
 	SetPrompt(ctx context.Context, req *PromptReq) (*PromptResp, error)
 	ResetPrompt(ctx context.Context) (*PromptResp, error)
+	ListPlans(ctx context.Context) (*PlanListResp, error)
+	LoadPlan(ctx context.Context, name string) (*PlanLoadResp, error)
 }
 
 type Agent interface {
@@ -26,4 +28,6 @@ type Agent interface {
 	GetPrompt(ctx context.Context) (*PromptResp, error)
 	SetPrompt(ctx context.Context, req *PromptReq) (*PromptResp, error)
 	ResetPrompt(ctx context.Context) (*PromptResp, error)
+	ListPlans(ctx context.Context) (*PlanListResp, error)
+	LoadPlan(ctx context.Context, name string) (*PlanLoadResp, error)
 }

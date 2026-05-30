@@ -61,6 +61,13 @@ func (m *Model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Top, title, sep, m.memoryViewport.View())
 	}
 
+	// 全屏计划查看模式
+	if m.showingPlanView {
+		title := m.lip.SidebarActive.Render(" 计划查看 — Esc 返回")
+		sep := m.lip.SidebarSeparator.Render(strings.Repeat("─", m.width-4))
+		return lipgloss.JoinVertical(lipgloss.Top, title, sep, m.planViewport.View())
+	}
+
 	// ======================================================================
 	// 第 ② 步：门控检查
 	// ======================================================================
@@ -211,6 +218,11 @@ func (m *Model) renderSidebar(width int) string {
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.rebackList.SetWidth(width - 4)
 		lines = append(lines, m.rebackList.View())
+	} else if m.selectingPlan {
+		lines = append(lines, m.lip.SidebarActive.Render(" 选择计划"))
+		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
+		m.planList.SetWidth(width - 4)
+		lines = append(lines, m.planList.View())
 	} else {
 		lines = append(lines, m.lip.SidebarPlaceholder.Render("(按 Tab 补全命令)"))
 	}

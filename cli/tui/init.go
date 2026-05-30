@@ -35,7 +35,9 @@ func NewModel(client *client.Client) *Model {
 	vp := lip.NewViewport()
 	ml := lip.NewChoseList()
 	rl := lip.NewChoseList()
+	pl := lip.NewChoseList()
 	mvp := lip.NewViewport()
+	pvp := lip.NewViewport()
 	svp := lip.NewViewport()
 
 	return &Model{
@@ -73,6 +75,14 @@ func NewModel(client *client.Client) *Model {
 		// 全屏记忆查看
 		showingMemoryView: false,
 		memoryViewport:    mvp,
+
+		// 计划选择
+		selectingPlan: false,
+		planList:      pl,
+
+		// 全屏计划查看
+		showingPlanView: false,
+		planViewport:    pvp,
 	}
 }
 

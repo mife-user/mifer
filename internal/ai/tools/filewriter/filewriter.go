@@ -30,11 +30,18 @@ type FileWriterOutput struct {
 	Error        string `json:"error,omitempty"`
 }
 
-func New() (tool.InvokableTool, error) {
-	return utils.InferTool("file_writer", "安全写入内容到本地文件，支持覆盖、追加、行前插入和行范围替换四种模式，含路径安全校验。", writeFile)
+// New 创建 file_writer 工具，可选 baseDir 参数限制写入目录
+func New(baseDir ...string) (tool.InvokableTool, error) {
+	restrictDir := ""
+	if len(baseDir) > 0 {
+		restrictDir = baseDir[0]
+	}
+	return utils.InferTool("file_writer", "安全写入内容到本地文件，支持覆盖、追加、行前插入和行范围替换四种模式，含路径安全校验。", func(ctx context.Context, input FileWriterInput) (FileWriterOutput, error) {
+		return writeFile(ctx, input, restrictDir)
+	})
 }
 
-func writeFile(_ context.Context, input FileWriterInput) (FileWriterOutput, error) {
+func writeFile(_ context.Context, input FileWriterInput, baseDir string) (FileWriterOutput, error) {
 	// 处理模式默认值
 	mode := input.Mode
 	if mode != "write" && mode != "append" && mode != "insert" && mode != "replace_lines" {
@@ -49,7 +56,28 @@ func writeFile(_ context.Context, input FileWriterInput) (FileWriterOutput, erro
 		absPath, _ = filepath.Abs(filepath.Clean(strings.ReplaceAll(input.FilePath, "..", "")))
 	}
 
+	// 路径限制校验：仅允许在 baseDir 目录下写入文件
+	if baseDir != "" {
+		cleanBase, err := filepath.Abs(filepath.Clean(baseDir))
+		if err != nil {
+			return FileWriterOutput{Error: "基准目录解析失败: " + err.Error()}, nil
+		}
+		baseSlash := filepath.ToSlash(cleanBase) + "/"
+		pathSlash := filepath.ToSlash(absPath)
+		if !strings.HasPrefix(pathSlash, baseSlash) || pathSlash == filepath.ToSlash(cleanBase) {
+			return FileWriterOutput{Error: "路径限制：仅允许在 " + cleanBase + " 目录下写入文件"}, nil
+		}
+	}
+
 	dir := filepath.Dir(absPath)
+	// 路径限制下，确保父目录也在限制范围内
+	if baseDir != "" {
+		cleanBase, _ := filepath.Abs(filepath.Clean(baseDir))
+		baseSlash := filepath.ToSlash(cleanBase) + "/"
+		if !strings.HasPrefix(filepath.ToSlash(dir)+"/", baseSlash) {
+			return FileWriterOutput{Error: "路径限制：不允许在限制目录外创建父目录"}, nil
+		}
+	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return FileWriterOutput{Error: "创建目录失败: " + err.Error()}, nil
 	}

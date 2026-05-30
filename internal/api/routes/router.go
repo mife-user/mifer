@@ -77,6 +77,11 @@ func (r *Router) Setup() *gin.Engine {
 		{
 			admin.POST("/reload", r.ReloadHandler)
 		}
+		plan := api.Group("/plan")
+		{
+			plan.GET("", r.agentHandler.ListPlans)
+			plan.GET("/:name", r.agentHandler.LoadPlan)
+		}
 	}
 
 	return router

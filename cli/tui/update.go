@@ -55,11 +55,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebackList.SetSize(sidebarW-4, 8)
 		m.memoryViewport.Width = m.width - 4
 		m.memoryViewport.Height = m.height - 2
+		m.planViewport.Width = m.width - 4
+		m.planViewport.Height = m.height - 2
 		_, _ = m.textarea.Update(msg)
 		_, _ = m.viewport.Update(msg)
 		_, _ = m.sidebarVP.Update(msg)
 		_, _ = m.memoryList.Update(msg)
 		_, _ = m.rebackList.Update(msg)
+		_, _ = m.planList.Update(msg)
 		return m, nil
 
 	// ======================================================================
@@ -69,6 +72,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.showingMemoryView {
 			var cmd tea.Cmd
 			m.memoryViewport, cmd = m.memoryViewport.Update(msg)
+			return m, cmd
+		}
+		if m.showingPlanView {
+			var cmd tea.Cmd
+			m.planViewport, cmd = m.planViewport.Update(msg)
 			return m, cmd
 		}
 		// Alt+滚轮 / 水平滚轮 → 水平滚动
@@ -105,6 +113,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ---- 全屏计划查看模式：仅响应 esc 和鼠标滚轮 ----
+		if m.showingPlanView {
+			switch msg.String() {
+			case "esc", "ctrl+c":
+				m.showingPlanView = false
+				m.planViewContent = ""
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.planViewport, cmd = m.planViewport.Update(msg)
+				return m, cmd
+			}
+		}
+
 		// ---- 记忆选择模式：拦截按键，委托给 memoryList 或处理选择 ----
 		if m.selectingMem {
 			switch msg.String() {
@@ -117,6 +139,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "down", "k", "j", "home", "end", "pgup", "pgdown":
 				var cmd tea.Cmd
 				m.memoryList, cmd = m.memoryList.Update(msg)
+				return m, cmd
+			default:
+				return m, nil
+			}
+		}
+
+		// ---- 计划选择模式：拦截按键，委托给 planList 或处理选择 ----
+		if m.selectingPlan {
+			switch msg.String() {
+			case "enter":
+				return m.handlePlanSelect()
+			case "esc":
+				m.selectingPlan = false
+				return m, nil
+			case "up", "down", "k", "j", "home", "end", "pgup", "pgdown":
+				var cmd tea.Cmd
+				m.planList, cmd = m.planList.Update(msg)
 				return m, cmd
 			default:
 				return m, nil
@@ -314,7 +353,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleRebackDone(msg)
 
 	// ======================================================================
-	// 11. 旋转动画帧推进
+	// 11. 计划列表结果
+	// ======================================================================
+	case planListMsg:
+		return m.handlePlanList(msg)
+
+	// ======================================================================
+	// 12. 计划查看结果
+	// ======================================================================
+	case planViewMsg:
+		return m.handlePlanView(msg)
+
+	// ======================================================================
+	// 13. 旋转动画帧推进
 	// ======================================================================
 	case spinner.TickMsg:
 		if m.thinking {
@@ -430,6 +481,33 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case input == "/reback":
 		return m, listRebackEntriesCmd(m.client)
+
+	case strings.HasPrefix(input, "/plan"):
+		args := strings.TrimSpace(strings.TrimPrefix(input, "/plan"))
+		if args != "" {
+			// /plan <说明> — 构造带计划指令前缀的聊天消息发送给 AI
+			chatMsg := "请先制定详细计划并等待我审批。计划说明如下：\n\n" + args
+			m.messages = append(m.messages, message{
+				role:    "user",
+				content: input,
+			})
+			m.thinking = true
+			m.needsAutoScroll = true
+			m.accBuf = &strings.Builder{}
+			m.streamCh = make(chan tea.Msg, 32)
+			m.sidebar = SidebarState{}
+			ctx, cancel := context.WithCancel(context.Background())
+			m.cancel = cancel
+			var spCmd tea.Cmd
+			m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
+			return m, tea.Batch(
+				startSSECmd(m.client, chatMsg, m.streamCh, ctx),
+				listenStreamCmd(m.streamCh),
+				spCmd,
+			)
+		}
+		// /plan (无参数) — 列出计划文件
+		return m, listPlansCmd(m.client)
 
 	default:
 		// ---- 用户聊天消息 ----

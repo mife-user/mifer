@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"path/filepath"
+
 	"mifer/internal/ai/rag"
 	"mifer/internal/ai/tools/commandexecutor"
 	"mifer/internal/ai/tools/filecreator"
@@ -10,6 +12,7 @@ import (
 	"mifer/internal/ai/tools/imagegenerator"
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
+	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/model"
@@ -88,6 +91,28 @@ func AuditTools(mmModel model.BaseChatModel) []tool.BaseTool {
 		logger.Error("创建 file_viewer 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fv)
+	}
+
+	return tools
+}
+
+// PlannerTools 返回计划编写专用工具（仅文件创建和写入，限制在 .mifer/plans 目录下）
+func PlannerTools() []tool.BaseTool {
+	var tools []tool.BaseTool
+	plansDir := filepath.Join(conf.GetConfig().Path.Workdir, ".mifer", "plans")
+
+	fc, err := filecreator.New(plansDir)
+	if err != nil {
+		logger.Error("创建 planner file_creator 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, fc)
+	}
+
+	fw, err := filewriter.New(plansDir)
+	if err != nil {
+		logger.Error("创建 planner file_writer 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, fw)
 	}
 
 	return tools

@@ -176,9 +176,11 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 	defer cancel()
 
 	// 8. 构建命令
+	// Windows: 使用 PowerShell 而非 cmd.exe，因为 AI 倾向于生成 Unix 风格命令，
+	// PowerShell 内置了大量 Unix 别名（ls/cat/curl/rm 等），兼容性远好于 cmd
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(execCtx, "cmd", "/C", input.Command)
+		cmd = exec.CommandContext(execCtx, "powershell", "-Command", input.Command)
 	} else {
 		cmd = exec.CommandContext(execCtx, "bash", "-c", input.Command)
 	}

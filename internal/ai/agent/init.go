@@ -44,8 +44,8 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("init summarizer agent failed", logger.C(err))
 		return nil, err
 	}
-	// 初始化计划编写agent（opus — 最强推理）
-	plannerAgent, err := newPlanner(c, reg.Get("opus"), mmModel)
+	// 初始化计划编写agent（opus — 最强推理），PlannerTools 内部读取 Workdir 配置
+	plannerAgent, err := newPlanner(c, reg.Get("opus"))
 	if err != nil {
 		logger.Error("init planner agent failed", logger.C(err))
 		return nil, err
@@ -66,7 +66,7 @@ func Init(c context.Context) (*Humen, error) {
 	agent, err := deep.New(c, &deep.Config{
 		Name:        "Mifer",
 		Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务",
-		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent\n2. 复杂任务可串联多个Agent协作完成\n3. 涉及安全操作时优先咨询MiAuditor\n4. 回复用户时使用中文，简洁清晰",
+		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent\n2. 复杂任务可串联多个Agent协作完成\n3. 涉及安全操作时优先咨询MiAuditor\n4. 回复用户时使用中文，简洁清晰\n5. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示",
 		ChatModel:   reg.Get("default"),
 		ToolsConfig: adk.ToolsConfig{
 			EmitInternalEvents: true, // 转发子Agent内部事件到父级事件流，使TUI侧边栏可显示子Agent及工具调用

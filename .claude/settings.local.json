@@ -74,7 +74,9 @@
       "Read(//d/vscode/VsCodeWork/pkg/mod/github.com/charmbracelet/**)",
       "Read(//d/vscode/VsCodeWork/pkg/mod/charm.land/**)",
       "Bash(ls -la \"D:\\\\\\\\vscode\\\\\\\\VsCodeWork\\\\\\\\pkg\\\\\\\\mod\\\\\\\\charm.land\\\\\\\\bubbles\\\\\\\\\")",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(New-Item *)",
+      "Bash(Select-Object -First 50)"
     ]
   }
 }

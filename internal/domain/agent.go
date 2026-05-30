@@ -48,3 +48,14 @@ type RebackResp struct {
 type PromptResp struct {
 	Prompt string // 当前生效的系统提示词
 }
+
+// PlanListResp 计划文件列表响应
+type PlanListResp struct {
+	Files []string // .mifer/plans/ 目录下的文件名列表
+}
+
+// PlanLoadResp 计划文件内容响应
+type PlanLoadResp struct {
+	Name    string // 文件名
+	Content string // 文件内容
+}

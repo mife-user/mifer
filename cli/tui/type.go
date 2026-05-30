@@ -157,6 +157,15 @@ type Model struct {
 	// 回退选择模式
 	selectingReback bool       // 是否正在显示回退选择列表
 	rebackList      list.Model // bubbles/list 回退选择组件
+
+	// 计划选择模式
+	selectingPlan bool       // 是否正在显示计划选择列表
+	planList      list.Model // bubbles/list 计划选择组件
+
+	// 全屏计划查看模式
+	showingPlanView bool           // 是否处于全屏计划查看模式
+	planViewContent string         // 计划文件内容
+	planViewport    viewport.Model // 独立的 viewport 用于全屏计划查看
 }
 
 // ============================================================================

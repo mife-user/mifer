@@ -1,4 +1,4 @@
-# Mifer — AI Agent Bot
+﻿# Mifer — AI Agent Bot
 
 基于 [CloudWeGo Eino](https://github.com/cloudwego/eino) 构建的智能 AI Agent，支持多 Agent 编排、流式对话、工具调用与 CLI / Web 双模交互。
 
@@ -8,14 +8,52 @@
 
 ---
 
-## 为什么做这个项目
+## 项目亮点
 
-现有 AI 助手产品功能丰富但封闭，开发者难以定制 Agent 行为或接入私有工具。Mifer 将 Agent 编排从 Web 端下沉到本地，提供一个**透明、可控、可扩展**的 AI 助手底座——你既可以直接使用 CLI 对话，也可以按需接入自己的工具链和业务系统。
+### 多 Agent 编排与模型路由
 
-核心设计目标：
-- **本地优先** — 对话记忆存本地 JSONL，零依赖即可运行，数据完全自主
-- **可编排** — 基于 Eino ADK 的多 Agent 协作，按任务复杂度自动路由到不同模型
-- **可扩展** — Registry 模式管理多 LLM 后端，统一接口接入 OpenAI / Claude / Gemini / Ollama
+基于 CloudWeGo Eino ADK 构建了 5 子 Agent + 1 Orchestrator 的协作体系，按任务类型和复杂度自动路由到不同模型：
+
+| Agent         | 职责               | 模型   |
+| ------------- | ------------------ | ------ |
+| **MiEditer**  | 文件读写与创建     | sonnet |
+| **MiSummarizer** | 文档摘要 + 知识库检索 | sonnet |
+| **MiPlanner**  | 项目计划与方案设计 | opus   |
+| **MiCommander** | 终端命令执行（白名单约束） | sonnet |
+| **MiAuditor**  | 代码与配置安全审计 | opus   |
+| **Mifer**      | 编排器，协调子 Agent，由模型自主控制迭代次数 | default |
+
+所有 Agent 通过 `adk.Runner` 统一启动，Agent / ChatModel / Tool 三层接口解耦。
+
+### RAG 检索增强：懒加载 + 工具闭包
+
+知识库检索以**可选工具**形式接入——LLM 在对话中自主判断何时检索、何时入库，不需要预设规则。启动时仅创建 embedder / loader / chunker（零网络调用），首次使用才连接 Qdrant；连接失败不阻塞 Agent，下次调用可重试。向量存储经历了 Milvus → Qdrant 的迁移，最终选型 Qdrant 以降低部署复杂度。
+
+### 对话回退（Reback）
+
+支持将对话回退到历史任意轮次后重新生成。底层在 JSONL 文件中按索引截断，`AgentService.Reback(ctx, index)` 统一接口，同时清理内存中的 Agent 状态，保证回退后对话连续性。
+
+### 配置热重载
+
+`/reload` 命令或 `POST /api/admin/reload` 接口触发，运行时重新加载 YAML 配置和命令白名单，无需重启服务。适用于动态切换模型、调整参数等场景。
+
+### 多模态与工具生态
+
+- **文件查看器**：支持 PDF / Word / Markdown / 纯文本的加载与分块
+- **图片生成器**：通过 API 调用图片生成服务
+- **知识库工具**：`knowledge_search` 检索 + `knowledge_store` 入库，文档自动切分与向量化
+
+### 系统提示词管理
+
+运行时通过 API 动态读取 / 修改 / 重置系统提示词，修改后立即生效于后续对话。支持多提示词模板管理，与记忆上下文自动拼接。
+
+### 全局工具回调
+
+基于 Eino 全局回调机制统一处理所有工具调用事件（开始 / 结束 / 错误），替代了早期分散在各 executor 中的事件处理代码。TUI 侧边栏通过回调事件实时展示工具执行状态。
+
+### 独立 Token 统计
+
+`tokens.go` 独立管理 TokenUsage 累计统计，与 executor 主逻辑解耦。支持按会话累计、按模型分类，为成本核算提供基础数据。
 
 ---
 
@@ -70,42 +108,57 @@ MIFER_ENV=prod go run ./cmd/main serve
 
 ## 功能一览
 
-### Agent 对话
+### 对话
 
-- 多 LLM 后端支持：OpenAI 兼容协议 / Claude / Gemini / Ollama，统一 ChatModel 接口
-- 三级模型分配（haiku / sonnet / opus），按任务复杂度路由，平衡成本与质量
-- 流式 SSE 响应，实时逐词输出，推理过程可见
+- 流式 SSE 响应（`text/event-stream`），实时逐词输出，事件类型区分内容与推理
+- 多后端 ChatModel：OpenAI 兼容 / Claude / Gemini / Ollama，缺失的后端自动 fallback
+- 模型按能力分级：haiku（轻量对话）、sonnet（文件 / 命令）、opus（计划 / 审计），多模态模型独立配置
+- Token 消耗按会话累计统计，persist 到记忆文件
 
-### 多 Agent 编排
+### Agent 编排
 
-- Eino ADK Orchestrator 协调主 Agent（Mifer）与子 Agent（MiTalker），最大 3 轮迭代
-- Agent、ChatModel、Tool 之间接口解耦，通过 `internal/domain` 的抽象层隔离依赖
-- 所有 Agent 通过统一的 `adk.Runner` 启动，自动处理流式 / 非流式消息并追加记忆
-
-### 工具调用
-
-- 完整的 Function Calling / Tool Use 流程，模型可自主决定调用时机与参数
-- 工具注册在 `internal/ai/tool/` 中集中管理，支持运行时按需注入
+- Eino ADK Orchestrator 协调 5 个子 Agent，`MaxIteration=0` 由模型自主控制迭代次数
+- `domain.AgentService` 接口隔离 HTTP 层与 AI 核心，方便 mock 与替换实现
+- 子 Agent 事件（工具调用、状态变更）通过 `EmitInternalEvents` 转发到 CLI 侧边栏
 
 ### 对话记忆
 
-- JSONL 文件持久化，锁安全 + 增量追加写入，零外部依赖
-- 多会话隔离，基于 workdir 哈希的会话 ID 自动生成
-- 服务层统一管理记忆的读取、追加、保存，对上层透明
+- JSONL 文件持久化，增量追加 + 锁保护并发写入
+- 多会话隔离（workdir 哈希 → session ID），支持列表 / 切换 / 清除 / 回退
+- 记忆自动追加：用户消息与 AI 回复在 `AgentService.Chat()` 中统一完成
 
 ### CLI 客户端
 
-- **TUI 模式**：Bubble Tea 全屏终端界面，支持鼠标操作
-- **Markdown 渲染**：Glamour 引擎，代码块语法高亮 + 表情符号 + 表格
-- **流式展示**：消息实时追加，推理过程以动画呈现（Thinking... 指示器）
+- **TUI 模式**：Bubble Tea 全屏终端，Elm 架构（Model / Update / View），支持鼠标
+- **Markdown 渲染**：Glamour 引擎（代码高亮 + 表情符号 + 表格），lipgloss 降级渲染兜底
+- **侧边栏**：实时展示当前 Agent、模型、Token 消耗、工具执行状态
+- **流式展示**：消息实时追加，推理过程以动画呈现
 - **会话管理**：`/viewmemory` 查看历史，`/excmem` 切换会话
-- **可配置样式**：lipgloss 主题色、消息样式、滚动指示器均支持自定义
+- **可配置样式**：主题色、消息样式、滚动指示器、水平滚动宽度均支持自定义
+
+### HTTP API
+
+| 方法   | 路径                       | 说明                   |
+| ------ | -------------------------- | ---------------------- |
+| POST   | `/api/ai/chat`             | 流式对话（SSE）        |
+| GET    | `/api/memory`              | 记忆列表               |
+| GET    | `/api/memory/:id`          | 获取指定会话记忆       |
+| POST   | `/api/memory/exchange/:id` | 切换记忆会话           |
+| POST   | `/api/memory/clear`        | 清除当前记忆           |
+| GET    | `/api/memory/reback`       | 获取回退索引列表       |
+| POST   | `/api/memory/reback/:index`| 回退到指定轮次         |
+| GET    | `/api/prompt`              | 获取系统提示词         |
+| POST   | `/api/prompt`              | 修改系统提示词         |
+| POST   | `/api/prompt/reset`        | 重置为默认提示词       |
+| POST   | `/api/admin/reload`        | 热重载配置与白名单     |
 
 ### 工程基础
 
-- 结构化日志（Uber Zap）：按级别分文件输出，dev 模式控制台彩色、prod 模式 JSON
-- JWT 认证：中间件已实现，路由可选启用
-- CI/CD：GitHub Actions，Tag 推送自动构建 Windows / Linux 多架构二进制
+- **结构化日志** — Uber Zap，按级别分文件（debug/info/warn/error），dev 彩色控制台 / prod JSON
+- **JWT 认证** — 中间件已实现，CORS 已配置，路由可选启用
+- **错误码体系** — `pkg/errorer` 统一错误码定义与包装
+- **异步任务** — `task.Do(ctx, fn)` 统一管理 goroutine 生命周期
+- **CI/CD** — GitHub Actions，Tag 推送自动构建 Windows / Linux 多架构二进制
 
 ---
 
@@ -233,7 +286,7 @@ mifer/
 │   ├── res/                   #   统一 HTTP 响应格式
 │   └── task/                  #   异步任务管理
 ├── .github/workflows/         #   CI/CD
-└── docs/screenshots/          #   截图（请在此添加实际截图）
+└── docs/                      #   截图（请在此添加实际截图）
 ```
 
 ---

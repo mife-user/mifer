@@ -57,8 +57,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 - **`internal/api/dto/request/` / `response/`** — 请求/响应 DTO，按模块分子目录（`agentreq/`, `agentresp/`, `adminresp/`）。
 - **`internal/api/middlewares/`** — JWT 认证 + CORS 中间件。
 - **`internal/service/agentservice/`** — Agent 服务层，实现 `domain.AgentService`，通过 `task.Do` 包装调用 executor。
-- **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。6 个子 Agent 加上 Orchestrator，按任务复杂度模型分级：
-  - **MiTalker** (haiku) — 日常对话
+- **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。5 个子 Agent 加上 Orchestrator，按任务复杂度模型分级：
   - **MiEditer** (sonnet) — 文件读取、写入、创建
   - **MiSummarizer** (sonnet) — 文档摘要 + 知识库工具（注入 `KnowledgeTools`）
   - **MiPlanner** (opus) — 项目计划与方案
@@ -103,7 +102,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 ## 新增功能指南
 
 ### 新增 Agent
-1. 在 `internal/ai/agent/` 创建子 Agent 定义（参考 `chatagent.go`、`planner.go` 等），接收 `model.BaseChatModel` 及可选的 `model.ToolCallingChatModel` 参数
+1. 在 `internal/ai/agent/` 创建子 Agent 定义（参考 `planner.go`、`auditor.go` 等），接收 `model.BaseChatModel` 及可选的 `model.ToolCallingChatModel` 参数
 2. 在 Orchestrator（`agent/init.go`）的 `deep.New` 配置中注册新子 Agent，通过 `registry.Get("<backend>")` 分配模型
 3. 如需新工具，在 `internal/ai/tools/` 定义
 

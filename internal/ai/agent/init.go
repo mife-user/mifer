@@ -1,4 +1,4 @@
-package agent
+﻿package agent
 
 import (
 	"context"
@@ -32,12 +32,6 @@ func Init(c context.Context) (*Humen, error) {
 	// RAG 懒加载服务，无网络调用，即时返回，Qdrant 连接推迟到首次工具调用
 	ragSvc := rag.NewLazyService(c)
 
-	// 初始化聊天agent（haiku — 快速响应）
-	chatAgent, err := newChatAgent(c, reg.Get("haiku"))
-	if err != nil {
-		logger.Error("init chat agent failed", logger.C(err))
-		return nil, err
-	}
 	// 初始化文件编辑agent（sonnet — 均衡）
 	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel)
 	if err != nil {
@@ -72,12 +66,12 @@ func Init(c context.Context) (*Humen, error) {
 	agent, err := deep.New(c, &deep.Config{
 		Name:        "Mifer",
 		Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务",
-		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiTalker：日常对话交流\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent\n2. 复杂任务可串联多个Agent协作完成\n3. 涉及安全操作时优先咨询MiAuditor\n4. 回复用户时使用中文，简洁清晰",
+		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent\n2. 复杂任务可串联多个Agent协作完成\n3. 涉及安全操作时优先咨询MiAuditor\n4. 回复用户时使用中文，简洁清晰",
 		ChatModel:   reg.Get("default"),
 		ToolsConfig: adk.ToolsConfig{
 			EmitInternalEvents: true, // 转发子Agent内部事件到父级事件流，使TUI侧边栏可显示子Agent及工具调用
 		},
-		SubAgents:    []adk.Agent{chatAgent, editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
+		SubAgents:    []adk.Agent{editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
 		MaxIteration: 0,
 	})
 	if err != nil {

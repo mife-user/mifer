@@ -79,7 +79,13 @@ rag:
   qdrant_collection: "mifer_docs"
   qdrant_api_key: ""
 mcp:
-  servers: []
+  servers:
+    # 内置 MCP 演示工具：echo / get_time / calculator / random_number
+    - name: "demo"
+      command: "./test/mcp-demo.exe"
+      args: []
+      agents: ["MiEditer"]
+      enabled: true
 ai:
   backends:
     default:

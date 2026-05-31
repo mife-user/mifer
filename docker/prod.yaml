@@ -1,0 +1,136 @@
+# ============================================================
+# Mifer Docker 配置文件
+# 挂载到容器内 /app/.mifer/config/prod.yaml（覆盖自动生成的配置）
+# ============================================================
+
+env: prod
+log:
+  max_size: 100
+  max_backups: 7
+  level: ""
+jwt:
+  secret: "change-me-in-production"
+rag:
+  chunk_size: 500
+  chunk_overlap: 50
+  top_k: 5
+  dim: 768
+  qdrant_host: "qdrant"
+  qdrant_port: 6334
+  qdrant_collection: "mifer_docs"
+  qdrant_api_key: ""
+mcp:
+  servers:
+    - name: "demo"
+      command: "./mcp-demo"
+      args: []
+      agents: ["MiEditer"]
+      enabled: true
+skill:
+  path: ""
+  enabled: true
+ai:
+  backends:
+    default:
+      provider: "openai"
+      base_url: "https://api.deepseek.com"
+      model: "deepseek-v4-flash"
+      api_key: ""
+    multi_modal:
+      provider: "openai"
+      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      model: "qwen-omni-turbo"
+      api_key: ""
+    haiku:
+      provider: "openai"
+      base_url: "https://api.deepseek.com"
+      model: "deepseek-v4-flash"
+      api_key: ""
+    sonnet:
+      provider: "claude"
+      model: "claude-sonnet-4-6"
+      api_key: ""
+    opus:
+      provider: "claude"
+      model: "claude-opus-4-7"
+      api_key: ""
+    embedder:
+      provider: "ollama"
+      base_url: "http://ollama:11434"
+      model: "nomic-embed-text"
+      api_key: "ollama"
+gin:
+  mode: "release"
+  port: 15555
+  cors:
+    allow_origins: ["*"]
+    allow_methods: ["POST","GET"]
+cli:
+  host: "127.0.0.1"
+  port: 15555
+  lip:
+    base:
+      foreground: "#00ff11"
+      background: "#2c2c2cff"
+    title:
+      foreground: "#00D787"
+    content:
+      foreground: "#FFB86C"
+    err:
+      foreground: "#FF5555"
+    help:
+      foreground: "#8BE9FD"
+    think:
+      foreground: "#FFB86C"
+    scroll:
+      foreground: "#666666"
+    separator:
+      foreground: "#444444"
+    sidebar:
+      foreground: "#555555"
+    sidebar_active:
+      foreground: "#00D787"
+    sidebar_completed:
+      foreground: "#666666"
+    sidebar_separator:
+      foreground: "#444444"
+    sidebar_placeholder:
+      foreground: "#555555"
+  tui:
+    max_history: 100
+    completable_commands:
+      - command: "/help"
+        description: "显示帮助信息"
+      - command: "/exit"
+        description: "退出程序"
+      - command: "/quit"
+        description: "退出程序"
+      - command: "/viewmemory"
+        description: "查看/切换对话记忆"
+      - command: "/excmem"
+        description: "切换到指定记忆"
+      - command: "/reback"
+        description: "回退对话到历史轮次"
+      - command: "/clear"
+        description: "创建并切换到新会话"
+      - command: "/prompt"
+        description: "查看/修改系统提示词"
+      - command: "/reload"
+        description: "热重载配置与模型"
+      - command: "/plan"
+        description: "列出/编写项目计划"
+      - command: "/mcp"
+        description: "显示MCP Server状态"
+      - command: "/skill"
+        description: "显示已加载的技能列表"
+    content_margin: 4
+    min_height: 10
+    spinner_type: "MiniDot"
+    spinner_frames: []
+    spinner_fps: 0
+    sidebar_max_log: 100
+    sidebar_show_tokens: true
+    sidebar_show_timing: true
+    completion_max_visible: 5
+    mouse_wheel_delta: 3
+    horizontal_scroll_step: 4

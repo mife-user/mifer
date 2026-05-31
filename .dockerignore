@@ -1,0 +1,47 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
+
+# Build artifacts
+*.exe
+*.exe~
+mifer
+mcp-demo
+
+# Logs
+*.log
+logs/
+
+# Memory files (don't include dev memory in image)
+memory/
+
+# Node modules (if any)
+node_modules/
+
+# Documentation
+docs/
+README.md
+CLAUDE.md
+
+# Docker files
+docker/
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp

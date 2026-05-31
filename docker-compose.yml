@@ -1,0 +1,117 @@
+# ============================================================
+# Mifer — Docker Compose 编排
+# ============================================================
+# 启动方式：
+#   完整栈（Mifer + Qdrant + Ollama）: docker-compose up -d
+#   仅 Mifer（已有外部 Qdrant / Ollama）: docker-compose up -d mifer
+#   构建并启动: docker-compose up -d --build
+# ============================================================
+
+services:
+  # ==========================================
+  # Mifer — AI Agent 服务
+  # ==========================================
+  mifer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mifer:latest
+    container_name: mifer
+    ports:
+      - "15555:15555"
+    environment:
+      - MIFER_ENV=prod
+      # 通过环境变量覆盖 API Key（优先级高于配置文件）
+      # - MIFER_AI_DEFAULT_APIKEY=sk-your-key
+      # - MIFER_AI_SONNET_APIKEY=sk-ant-xxx
+      # - MIFER_AI_OPUS_APIKEY=sk-ant-xxx
+      # - MIFER_AI_MULTI_MODAL_APIKEY=sk-xxx
+    volumes:
+      # 配置文件（挂载预配置的 Docker 专用配置）
+      - ./docker/prod.yaml:/app/.mifer/config/prod.yaml:ro
+      # 记忆持久化
+      - mifer_memory:/app/memory
+      # 计划文件持久化
+      - mifer_plans:/app/.mifer/plans
+      # 技能文件持久化
+      - mifer_skills:/app/.mifer/skills
+      # 日志持久化
+      - mifer_logs:/app/.mifer/logs
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mifer-net
+
+  # ==========================================
+  # Qdrant — 向量数据库（RAG 知识库存储）
+  # ==========================================
+  qdrant:
+    image: qdrant/qdrant:v1.15.2
+    container_name: mifer-qdrant
+    ports:
+      # 仅在需要外部访问 Qdrant HTTP API 时暴露
+      - "6333:6333"
+      # gRPC 端口（Mifer 内部使用，可不暴露）
+      # - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - mifer-net
+
+  # ==========================================
+  # Ollama — 本地嵌入模型服务（可选）
+  # ==========================================
+  # 取消下方注释以启用本地嵌入服务。
+  # 首次启动后需手动拉取嵌入模型：
+  #   docker-compose exec ollama ollama pull nomic-embed-text
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: mifer-ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   environment:
+  #     - OLLAMA_KEEP_ALIVE=24h
+  #     - OLLAMA_HOST=0.0.0.0
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   restart: unless-stopped
+  #   networks:
+  #     - mifer-net
+
+volumes:
+  mifer_memory:
+    name: mifer_memory
+  mifer_plans:
+    name: mifer_plans
+  mifer_skills:
+    name: mifer_skills
+  mifer_logs:
+    name: mifer_logs
+  qdrant_data:
+    name: mifer_qdrant_data
+  # ollama_data:
+  #   name: mifer_ollama_data
+
+networks:
+  mifer-net:
+    name: mifer-net
+    driver: bridge

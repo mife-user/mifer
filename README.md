@@ -1,4 +1,4 @@
-﻿# Mifer — AI Agent Bot
+# Mifer — AI Agent Bot
 
 基于 [CloudWeGo Eino](https://github.com/cloudwego/eino) 构建的智能 AI Agent，支持多 Agent 编排、流式对话、工具调用与 CLI / Web 双模交互。
 
@@ -25,9 +25,51 @@
 
 所有 Agent 通过 `adk.Runner` 统一启动，Agent / ChatModel / Tool 三层接口解耦。
 
-### RAG 检索增强：懒加载 + 工具闭包
+### RAG 检索增强（一）：懒加载 + 工具闭包注入
 
-知识库检索以**可选工具**形式接入——LLM 在对话中自主判断何时检索、何时入库，不需要预设规则。启动时仅创建 embedder / loader / chunker（零网络调用），首次使用才连接 Qdrant；连接失败不阻塞 Agent，下次调用可重试。向量存储经历了 Milvus → Qdrant 的迁移，最终选型 Qdrant 以降低部署复杂度。
+知识库检索以**可选工具**形式接入——LLM 在对话中自主判断何时检索、何时入库，不需要预设规则。
+
+**懒加载层** (`LazyService`)：
+```
+Init() → NewLazyService()   // 仅创建 embedder / loader / chunker，无网络调用，即时返回
+         ↓
+首次工具调用 → ensureReady()  // 此时才连接 Qdrant，创建 indexer / retriever
+         ↓                 // Mutex 保护，失败后下次调用可重试
+         组装为完整 Service
+```
+
+**工具闭包注入** (`tools.KnowledgeTools(ragSvc)`)：
+```go
+func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
+    return utils.InferTool("knowledge_search", "检索知识库...", func(ctx, input) {
+        docs, _ := ragSvc.RetrieveWithContext(ctx, query, ctxSize) // 闭包捕获 ragSvc
+        return KnowledgeSearchOutput{Results: ragSvc.FormatDocs(docs)}
+    })
+}
+```
+
+设计要点：
+1. **RAG 不是框架强制的依赖**，而是 AI 可选的工具——Agent 初始化时 `KnowledgeTools(ragSvc)` 为 nil 时静默返回空工具列表
+2. **懒初始化零等待**：启动时 `NewLazyService()` 不触碰网络；用户不触发知识库功能就永远不连接 Qdrant
+3. **失败可恢复**：`ensureReady()` 用 `sync.Mutex` 而非 `sync.Once`，上次连接失败后下次调用可重试
+4. **AI 自主决策**：工具通过闭包持有 RAG 接口，LLM 在对话中判断何时检索——不需要开发者预设规则
+
+### RAG 检索增强（二）：上下文分块扩展检索
+
+在基础语义检索之上，实现了**上下文窗口扩展**机制——检索到匹配分块后，自动获取其前后各 N 个相邻分块，合并去重后按文档和位置排序返回。
+
+```
+语义检索命中 chunk[i] → 查询同文档 chunk[i-N ... i+N] → 去重合并 → 排序输出
+```
+
+**核心实现** (`RetrieveWithContext`)：
+- 首次语义检索获取 TopK 匹配分块
+- 对每个匹配分块，按 `source_document` + `chunk_index` 范围查询相邻分块
+- 通过 `seen map` 去重，避免重复分块
+- 最终结果按源文档 + 分块序号排序，保证上下文连贯性
+- LLM 可通过 `context_size` 参数控制扩展窗口大小（默认 0 不扩展）
+
+这一设计解决了传统 RAG "只见树木不见森林"的问题——检索到的分块带有前后文，LLM 能理解完整语境而非孤立片段。
 
 ### 对话回退（Reback）
 
@@ -35,13 +77,13 @@
 
 ### 配置热重载
 
-`/reload` 命令或 `POST /api/admin/reload` 接口触发，运行时重新加载 YAML 配置和命令白名单，无需重启服务。适用于动态切换模型、调整参数等场景。
+`/reload` 命令或 `POST /api/admin/reload` 接口触发，运行时重新加载 YAML 配置、命令白名单和 MCP Server 配置，无需重启服务。适用于动态切换模型、调整参数等场景。
 
 ### 多模态与工具生态
 
-- **文件查看器**：支持 PDF / Word / Markdown / 纯文本的加载与分块
-- **图片生成器**：通过 API 调用图片生成服务
-- **知识库工具**：`knowledge_search` 检索 + `knowledge_store` 入库，文档自动切分与向量化
+- **文件查看器**：支持图片（多模态模型描述）、PDF / Word / Markdown / 纯文本的加载与读取，自动 MIME 检测
+- **图片生成器**：通过多模态模型 API 调用图片生成服务
+- **知识库工具**：`knowledge_search` 检索（含上下文扩展）+ `knowledge_store` 入库，文档自动切分（递归分块 + SHA256 去重）与向量化
 
 ### 系统提示词管理
 
@@ -68,6 +110,7 @@
 - **失败隔离** — 单个 Server 连接失败不阻塞其他 Server 和 Agent 启动，标记 Status=error 后可重试
 - **状态可观测** — `GET /api/mcp/status` 返回所有 Server 的连接状态与工具数量，CLI `/mcp` 命令实时查看
 - **进程隔离** — MCP Server 以 stdio 子进程运行，工具调用结果通过适配层过滤，错误不暴露给终端用户
+- **内置 Demo Server** — `cmd/mcp-demo/` 提供 echo / get_time / calculator / random_number 四个示例工具，开箱即用
 
 ### Skills 技能系统：声明式自定义技能
 
@@ -114,6 +157,8 @@ TUI 模式下支持 `Ctrl+C` 中断正在生成的 SSE 流——取消后对话�
 ### 环境要求
 
 - Go 1.25+
+- Qdrant（可选，用于知识库 RAG 功能）
+- Ollama（可选，用于文本嵌入和本地模型）
 
 ### 安装运行
 
@@ -122,7 +167,7 @@ git clone <repo-url> mifer
 cd mifer
 go mod tidy
 
-# 开发模式（默认端口 8080，同时启动 HTTP 服务 + CLI）
+# 开发模式（默认端口 15555，同时启动 HTTP 服务 + CLI）
 go run ./cmd/main
 
 # 仅启动 HTTP 服务
@@ -133,6 +178,16 @@ go run ./cmd/main chat
 
 # 生产模式
 MIFER_ENV=prod go run ./cmd/main serve
+```
+
+### Docker 部署
+
+```bash
+# 构建并启动全部服务（Mifer + Qdrant + Ollama）
+docker-compose up -d
+
+# 仅启动 Mifer（需自行提供 Qdrant 和 Ollama）
+docker-compose up -d mifer
 ```
 
 ### 配置
@@ -186,6 +241,7 @@ MIFER_ENV=prod go run ./cmd/main serve
 - **侧边栏**：实时展示当前 Agent、模型、Token 消耗、工具执行状态
 - **流式展示**：消息实时追加，推理过程以动画呈现
 - **会话管理**：`/viewmemory` 查看历史，`/excmem` 切换会话
+- **扩展命令**：`/mcp` MCP Server 状态，`/skill` 技能列表，`/plan` 计划管理
 - **可配置样式**：主题色、消息样式、滚动指示器、水平滚动宽度均支持自定义
 
 ### HTTP API
@@ -203,6 +259,10 @@ MIFER_ENV=prod go run ./cmd/main serve
 | POST   | `/api/prompt`              | 修改系统提示词         |
 | POST   | `/api/prompt/reset`        | 重置为默认提示词       |
 | POST   | `/api/admin/reload`        | 热重载配置与白名单     |
+| GET    | `/api/plan`                | 列出所有计划文件       |
+| GET    | `/api/plan/:name`          | 获取指定计划内容       |
+| GET    | `/api/mcp/status`          | MCP Server 状态查询    |
+| GET    | `/api/skill/list`          | 已加载技能列表         |
 
 ### 工程基础
 
@@ -246,57 +306,35 @@ go run ./cmd/main chat     → 仅启动 CLI 客户端（连接已有服务）
 
 ### 5. RAG 为什么用懒加载 + 工具闭包，而非全局注入？
 
-RAG 的 Qdrant 连接需要网络，如果 Agent 初始化时强行连接，不仅拖慢启动速度，还会在没有 Qdrant 的环境中直接报错导致整个 Agent 不可用。Mifer 的方案是将 RAG 的能力通过闭包注入工具，让 AI 在对话中自主调用：
+RAG 的 Qdrant 连接需要网络，如果 Agent 初始化时强行连接，不仅拖慢启动速度，还会在没有 Qdrant 的环境中直接报错导致整个 Agent 不可用。Mifer 的方案是将 RAG 的能力通过闭包注入工具，让 AI 在对话中自主调用。
 
-**懒加载层** (`LazyService`)：
-```
-Init() → NewLazyService()   // 仅创建 embedder / loader / chunker，无网络调用，即时返回
-         ↓
-首次工具调用 → ensureReady()  // 此时才连接 Qdrant，创建 indexer / retriever
-         ↓                 // MuTex 保护，失败后下次调用可重试
-         组装为完整 Service
-```
-
-**工具闭包注入** (`tools.KnowledgeTools(ragSvc)`)：
-```go
-func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
-    return utils.InferTool("knowledge_search", "检索知识库...", func(ctx, input) {
-        docs, _ := ragSvc.RetrieveWithContext(ctx, query, ctxSize) // 闭包捕获 ragSvc
-        return KnowledgeSearchOutput{Results: ragSvc.FormatDocs(docs)}
-    })
-}
-```
-
-这个设计的要点：
-
-1. **RAG 不是框架强制的依赖**，而是 AI 可选的工具——Agent 初始化时 `KnowledgeTools(ragSvc)` 为 nil 时静默返回空工具列表，不影响其他 Agent 正常工作
-2. **懒初始化零等待**：启动时 `NewLazyService()` 不触碰网络，启动速度不受 Qdrant 影响；用户不触发知识库功能就永远不连接
-3. **失败可恢复**：`ensureReady()` 用 `sync.Mutex` 而非 `sync.Once`，上次连接失败后下次调用可重试，不像 Once 那样失败即永久不可用
-4. **AI 自主决策**：工具通过闭包持有 RAG 接口，LLM 在对话中判断何时检索知识库、何时存文档——不需要开发者预设规则
+同时，仅有语义检索存在"断章取义"问题——命中的分块缺乏前后文。Mifer 在检索层实现了上下文窗口扩展：命中 chunk[i] 后拉取同文档 chunk[i-N ... i+N]，合并去重排序，让 LLM 获得连贯的上下文而非孤立片段。
 
 ---
 
 ## 架构
 
 ```
-┌─────────────────────────────────────────────┐
-│                  cmd / bootstrap             │
-│              (入口 + 依赖装配)                 │
-├─────────────────────────────────────────────┤
-│               internal/api                   │
-│    routes → handler → dto (HTTP 层)          │
-├─────────────────────────────────────────────┤
-│             internal/service                 │
-│       AgentService (业务编排 + 记忆管理)       │
-├─────────────────────────────────────────────┤
-│               internal/ai                    │
-│   agent / executor / llm / memory / tool     │
-│        (AI 核心，不含 HTTP 依赖)              │
-├─────────────────────────────────────────────┤
-│                  pkg                         │
-│   conf / logger / auth / res / utils ...    │
-│          (公共基础包，无业务依赖)               │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     cmd / bootstrap                          │
+│                 (入口 + 依赖装配)                              │
+├──────────────────────────────────────────────────────────────┤
+│                  internal/api                                │
+│       routes → handler → dto → middlewares (HTTP 层)          │
+├──────────────────────────────────────────────────────────────┤
+│                internal/service                              │
+│          AgentService (业务编排 + 记忆管理)                     │
+├──────────────────────────────────────────────────────────────┤
+│                  internal/ai                                 │
+│   agent / executor / callback / llm / memory / prompt / tool │
+│           rag (chunker / embedder / loader / vectorstore)    │
+│           (AI 核心，不含 HTTP 依赖)                            │
+├──────────────────────────────────────────────────────────────┤
+│                     pkg                                      │
+│   conf / logger / auth / errorer / res / task / utils        │
+│   mcp / skill / sse / qdrant / cache                         │
+│           (公共基础包，无业务依赖)                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 分层依赖：`cmd` → `api` → `service` → `ai` → `pkg`，每层只依赖下层，`pkg` 完全不依赖 `internal`。
@@ -307,38 +345,74 @@ func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
 
 ```
 mifer/
-├── cli/                       # CLI 客户端
-│   ├── client/                #   HTTP API 调用
-│   ├── render/                #   终端渲染（Glamour + Lip Gloss）
-│   └── tui/                   #   TUI 界面（Bubble Tea）
+├── cli/                          # CLI 客户端
+│   ├── client/                   #   HTTP API 调用
+│   │   ├── chathandler/          #     对话 SSE 流处理
+│   │   ├── memhandler/           #     记忆管理
+│   │   ├── clearhandler/         #     清除记忆
+│   │   ├── excmemhandler/        #     切换记忆
+│   │   ├── rebackhandler/        #     对话回退
+│   │   ├── prompthandler/        #     提示词管理
+│   │   ├── reloadhandler/        #     配置热重载
+│   │   ├── mcphandler/           #     MCP 状态查询
+│   │   ├── skillhandler/         #     技能列表查询
+│   │   └── planhandler/          #     计划管理
+│   ├── render/                   #   终端渲染
+│   │   ├── mark/                 #     Glamour Markdown 引擎
+│   │   └── lip/                  #     Lip Gloss 样式组件
+│   └── tui/                      #   TUI 界面（Bubble Tea）
 ├── cmd/
-│   ├── main/                  #   服务主入口
-│   └── bootstrap/             #   启动引导（配置→日志→路由→CLI）
+│   ├── main/                     #   服务主入口
+│   ├── bootstrap/                #   启动引导（配置→日志→路由→CLI）
+│   └── mcp-demo/                 #   MCP 内置演示 Server
 ├── config/
-│   └── dev.yaml               #   开发环境配置（自动生成）
+│   └── dev.yaml                  #   开发环境配置（自动生成）
 ├── internal/
 │   ├── ai/
-│   │   ├── agent/             #   Eino ADK 多 Agent 编排
-│   │   ├── executor/          #   adk.Runner 包装器
-│   │   ├── llm/               #   多后端 ChatModel 管理（Registry）
-│   │   ├── memory/            #   JSONL 对话记忆持久化
-│   │   └── tool/              #   Function Calling 工具定义
+│   │   ├── agent/                #   Eino ADK 多 Agent 编排
+│   │   ├── executor/             #   adk.Runner 包装器 + Token 统计
+│   │   ├── callback/             #   全局 Tool 回调处理器
+│   │   ├── llm/                  #   多后端 ChatModel 管理（Registry）
+│   │   ├── memory/               #   JSONL 对话记忆持久化
+│   │   ├── prompt/               #   系统提示词构建与管理
+│   │   ├── rag/                  #   RAG 检索增强
+│   │   │   ├── chunker/          #     递归分块 + SHA256 去重
+│   │   │   ├── embedder/         #     Ollama 嵌入模型
+│   │   │   ├── loader/           #     文件加载（PDF/Word/Text/Markdown）
+│   │   │   └── vectorstore/      #     Qdrant 向量存储封装
+│   │   └── tools/                #   Function Calling 工具定义
+│   │       ├── commandexecutor/  #     终端命令执行（白名单约束）
+│   │       ├── filecreator/      #     文件创建
+│   │       ├── filereader/       #     文件读取
+│   │       ├── fileviewer/       #     文件查看（含图片多模态描述）
+│   │       ├── filewriter/       #     文件写入
+│   │       ├── imagegenerator/   #     图片生成
+│   │       ├── knowledgesearch/  #     知识库检索（含上下文扩展）
+│   │       └── knowledgestore/   #     文档入库
 │   ├── api/
-│   │   ├── dto/               #   请求 / 响应 DTO
-│   │   ├── handler/           #   HTTP Handler（chat / memory）
-│   │   ├── middlewares/       #   JWT 认证 + CORS
-│   │   └── routes/            #   Gin 路由注册
-│   ├── domain/                #   核心接口（AgentService、Agent）
-│   └── service/               #   业务编排层
+│   │   ├── dto/                  #   请求 / 响应 DTO
+│   │   │   ├── request/          #     请求 DTO（按模块分子目录）
+│   │   │   └── response/         #     响应 DTO（按模块分子目录）
+│   │   ├── handler/              #   HTTP Handler（chat / memory / plan / mcp / skill）
+│   │   ├── middlewares/          #   JWT 认证 + CORS
+│   │   └── routes/               #   Gin 路由注册 + 热重载
+│   ├── domain/                   #   核心接口（AgentService、Agent）
+│   └── service/                  #   业务编排层
 ├── pkg/
-│   ├── auth/                  #   JWT Token
-│   ├── conf/                  #   Viper 配置管理（全局单例）
-│   ├── errorer/               #   统一错误码
-│   ├── logger/                #   Uber Zap 日志封装
-│   ├── res/                   #   统一 HTTP 响应格式
-│   └── task/                  #   异步任务管理
-├── .github/workflows/         #   CI/CD
-└── docs/                      #   截图（请在此添加实际截图）
+│   ├── auth/                     #   JWT Token 生成与验证
+│   ├── cache/                    #   Redis 缓存封装（预留）
+│   ├── conf/                     #   Viper 配置管理（全局单例）
+│   ├── errorer/                  #   统一错误码定义与包装
+│   ├── logger/                   #   Uber Zap 日志封装
+│   ├── mcp/                      #   MCP 协议支持（Manager + Adapter + Status）
+│   ├── qdrant/                   #   Qdrant gRPC 客户端初始化
+│   ├── res/                      #   统一 HTTP 响应格式
+│   ├── skill/                    #   技能系统（Manager + Tool + AgentHub）
+│   ├── sse/                      #   SSE 流式响应工具
+│   ├── task/                     #   异步任务管理
+│   └── utils/                    #   通用工具（hash / random）
+├── .github/workflows/            #   CI/CD
+└── docs/                         #   截图（请在此添加实际截图）
 ```
 
 ---
@@ -351,8 +425,11 @@ mifer/
 | HTTP     | Gin v1.12                             | 轻量高性能路由                |
 | AI 编排  | CloudWeGo Eino v0.8 (ADK)             | 字节跳动开源 Agent 框架       |
 | 默认模型 | DeepSeek V4                           | OpenAI 兼容协议              |
+| MCP 协议 | mcp-go v0.44                          | MCP Client / Server 实现     |
 | TUI      | Bubble Tea + Bubbles                  | Elm 架构的终端 UI 框架       |
 | 终端渲染 | Glamour + Lip Gloss                   | Markdown + 声明式样式        |
+| 向量存储 | Qdrant                                | gRPC 向量数据库              |
+| 嵌入模型 | Ollama (nomic-embed-text)             | 本地文本嵌入                 |
 | 日志     | Uber Zap                              | 结构化、高性能                |
 | 配置     | Viper                                 | 多源配置 + 环境变量覆盖       |
 | 认证     | JWT                                   | 无状态 Token 认证            |
@@ -363,7 +440,6 @@ mifer/
 ## 后续方向
 
 - MCP Server 模式——让 Mifer 自身作为 MCP Server 对外暴露能力
-- RAG 语义索引增强——本地代码库级语义检索
 - Web UI 管理面板
-- Docker 一键部署
 - 会话分支与多路线对话探索
+- Redis 缓存集成——会话状态与工具结果缓存

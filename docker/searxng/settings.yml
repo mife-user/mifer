@@ -1,0 +1,62 @@
+# ============================================================
+# SearXNG 配置 — Mifer 元搜索引擎
+# ============================================================
+# SearXNG 聚合多个搜索引擎结果，通过 JSON API 供 Mifer 调用
+# API 地址: http://<host>:8080/search?q=<query>&format=json&categories=general
+
+use_default_settings: true
+
+general:
+  instance_name: "Mifer Search"
+  debug: false
+  privacypolicy_url: false
+  contact_url: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: ""
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "mifer-searxng-secret-key-change-in-production"
+  bind_address: "0.0.0.0"
+  port: 8080
+  limiter: false
+  public_instance: false
+
+ui:
+  static_use_hash: true
+  default_theme: simple
+  default_locale: zh-Hans-CN
+
+# 启用的搜索引擎（通用网页搜索）
+engines:
+  - name: bing
+    disabled: false
+  - name: google
+    disabled: false
+  - name: duckduckgo
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: baidu
+    disabled: false
+  # 禁用图片/视频等非文本搜索
+  - name: bing images
+    disabled: true
+  - name: bing videos
+    disabled: true
+  - name: google images
+    disabled: true
+  - name: google videos
+    disabled: true
+
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 10.0
+  useragent_suffix: ""
+  enable_http2: true

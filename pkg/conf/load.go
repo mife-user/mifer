@@ -1,4 +1,4 @@
-package conf
+﻿package conf
 
 import (
 	"mifer/pkg/errorer"
@@ -95,6 +95,17 @@ func applyEnvOverrides(v *viper.Viper) {
 		"rag.qdrant_collection": "MIFER_RAG_QDRANT_COLLECTION",
 	}
 	for key, envVar := range ragOverrides {
+		if val := os.Getenv(envVar); val != "" {
+			v.Set(key, val)
+		}
+	}
+	// Web Search 配置
+	searchOverrides := map[string]string{
+		"search.provider": "MIFER_SEARCH_PROVIDER",
+		"search.api_key":  "MIFER_SEARCH_API_KEY",
+		"search.base_url": "MIFER_SEARCH_BASE_URL",
+	}
+	for key, envVar := range searchOverrides {
 		if val := os.Getenv(envVar); val != "" {
 			v.Set(key, val)
 		}

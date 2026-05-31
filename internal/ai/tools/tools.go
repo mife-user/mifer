@@ -12,6 +12,8 @@ import (
 	"mifer/internal/ai/tools/imagegenerator"
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
+	"mifer/internal/ai/tools/webfetch"
+	"mifer/internal/ai/tools/websearch"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 
@@ -137,6 +139,27 @@ func KnowledgeTools(ragSvc rag.RAGService) []tool.BaseTool {
 		logger.Error("创建 knowledge_store 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, kst)
+	}
+
+	return tools
+}
+
+// WebTools 返回网页相关工具（搜索 + 抓取）
+func WebTools() []tool.BaseTool {
+	var tools []tool.BaseTool
+
+	ws, err := websearch.New()
+	if err != nil {
+		logger.Error("创建 web_search 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, ws)
+	}
+
+	wf, err := webfetch.New()
+	if err != nil {
+		logger.Error("创建 web_fetch 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, wf)
 	}
 
 	return tools

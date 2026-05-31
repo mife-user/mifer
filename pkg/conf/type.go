@@ -12,8 +12,9 @@ type Config struct {
 	Path PathConfig `mapstructure:"path"`
 	Cli  CliConfig  `mapstructure:"cli"`
 	Rag  RAGConfig  `mapstructure:"rag"`
-	Mcp   MCPConfig   `mapstructure:"mcp"`
-	Skill SkillConfig `mapstructure:"skill"`
+	Mcp    MCPConfig    `mapstructure:"mcp"`
+	Search SearchConfig `mapstructure:"search"`
+	Skill  SkillConfig  `mapstructure:"skill"`
 }
 
 // cli配置结构体
@@ -124,6 +125,15 @@ type MCPServerConfig struct {
 	Env     []string `mapstructure:"env"`     // 环境变量（可选），如 ["GITHUB_TOKEN=xxx"]
 	Agents  []string `mapstructure:"agents"`  // 分配给哪些 Agent，空或 ["*"] 表示全部
 	Enabled bool     `mapstructure:"enabled"` // 是否启用，默认 true
+}
+
+// SearchConfig 网页搜索配置
+type SearchConfig struct {
+	Provider   string `mapstructure:"provider"`    // 搜索方式：留空默认 searxng / bing（Azure API）/ duckduckgo（国外）
+	APIKey     string `mapstructure:"api_key"`     // API密钥（仅 bing provider 需要，Azure 免费层 1000次/月）
+	BaseURL    string `mapstructure:"base_url"`    // 自定义搜索地址（searxng 默认 http://localhost:8080）
+	MaxResults int    `mapstructure:"max_results"` // 默认最大搜索结果数，默认5
+	TimeoutSec int    `mapstructure:"timeout_sec"` // HTTP请求超时秒数，默认10
 }
 
 // Skill配置结构体

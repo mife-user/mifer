@@ -86,6 +86,12 @@ mcp:
       args: []
       agents: ["MiEditer"]
       enabled: true
+search:
+  provider: ""              # 搜索方式：留空默认 searxng / bing（Azure API）/ duckduckgo（国外可用）
+  api_key: ""               # 仅 bing provider 需要（Azure 免费层 1000次/月）
+  base_url: "http://localhost:18080"  # SearXNG 地址（docker-compose 默认映射到 18080）
+  max_results: 5            # 默认最大搜索结果数
+  timeout_sec: 10           # HTTP请求超时（秒）
 skill:
   path: ""
   enabled: true

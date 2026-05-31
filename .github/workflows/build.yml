@@ -81,6 +81,9 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
+            - [x] 新增 Web 搜索与网页抓取工具（WebSearch / WebFetch），支持互联网信息检索（基于 SearXNG）
+            - [x] 新增搜索配置项，支持通过环境变量灵活控制搜索功能
+            - [x] 新增 Docker 部署支持——Dockerfile、docker-compose.yml 及生产环境配置
             - [x] 新增 MCP 服务支持，实现 MCP Server 状态查询与外部工具集成（外挂式工具生态）
             - [x] 新增 Skills 技能管理系统，支持 YAML 声明式自定义技能与 /skill 命令
             - [x] Skills 支持 inline（内联）和 fork（分叉）双模式执行

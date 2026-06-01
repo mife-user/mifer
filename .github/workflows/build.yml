@@ -81,6 +81,13 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
+            - [x] 新增工具调用确认机制 —— Eino ToolMiddleware 拦截，SSE 通知 TUI，用户选择 Yes/No/Allow
+            - [x] TUI 侧边栏确认选择列表 [Yes | No | Allow]，支持 ↑↓ 导航、Enter 确认
+            - [x] Allow 模式：非命令工具加入 Session 白名单（当前会话自动确认），命令工具加入 .mifer/allowlist.yaml 持久化
+            - [x] 新增 POST /api/tool/confirm 与 /api/tool/allowlist/add API 端点
+            - [x] 工具参数 DTO 化，所有工具确认信息含完整参数展示（文件路径、命令、搜索词等）
+            - [x] 新增 pkg/exc 工具包（JSON 序列化/反序列化、类型转换、断言）
+            - [x] SSE Scanner 缓冲区扩展至 10MB，修复大参数 SSE 事件截断问题
             - [x] 新增 Web 搜索与网页抓取工具（WebSearch / WebFetch），支持互联网信息检索（基于 SearXNG）
             - [x] 新增搜索配置项，支持通过环境变量灵活控制搜索功能
             - [x] 新增 Docker 部署支持——Dockerfile、docker-compose.yml 及生产环境配置
@@ -89,8 +96,6 @@ jobs:
             - [x] Skills 支持 inline（内联）和 fork（分叉）双模式执行
             - [x] 新增 Plan 管理功能——AI 自主编写与查看计划文件（.mifer/plans/）
             - [x] TUI 新增 SSE 流取消支持，Ctrl+C 中断正在生成的对话流
-            - [x] 重构 Agent 编排——移除 MiTalker 子 Agent，简化 Agent 体系
-            - [x] 重构 SSE 工具，提取通用 SSE Writer 封装
             - [x] 新增默认 MCP Demo Server 配置，开箱即用
           files: artifacts/**/*
           draft: false

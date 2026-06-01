@@ -93,6 +93,24 @@ func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
 
 基于 Eino 全局回调机制统一处理所有工具调用事件（开始 / 结束 / 错误），替代了早期分散在各 executor 中的事件处理代码。TUI 侧边栏通过回调事件实时展示工具执行状态。
 
+### 工具调用确认机制
+
+基于 **Eino `ToolsNodeConfig.ToolCallMiddlewares`** 实现的工具调用前用户确认系统——AI 执行任何工具前先通过 SSE 通知 TUI，用户确认后才真正执行。
+
+**架构**：
+```
+LLM 请求工具 → ToolMiddleware 拦截 → 存入 PendingStore + 发送 SSE "tool_confirm"
+→ TUI 侧边栏显示确认列表 [Yes / No / Allow]
+→ 用户选择 → POST /api/tool/confirm → resolve channel → 中间件解阻塞
+```
+
+**关键设计**：
+- **Channel 阻塞模型** — 中间件生成 UUID，写入 `PendingStore`（含 `chan ConfirmResult`），发送 SSE 后 `select` 阻塞等待，用户确认后通过 API 端写入 channel 解除阻塞
+- **三态确认** — Yes（仅本次执行）、No（拒绝）、Allow（始终允许：非命令工具加入 Session 白名单，命令工具写入 `.mifer/allowlist.yaml` 持久化）
+- **Session 白名单** — `Store.sessionAllowed[sessionID][toolName]`，对话结束时自动清理，Allow 过的工具同会话内不再询问
+- **工具参数 DTO** — 每种工具定义独立参数字段结构体，确认时展示完整参数（文件路径、命令、搜索词、内容预览等）
+- **配置驱动** — `confirm.enabled` 开关 + `confirm.exclude` 排除列表，默认关闭
+
 ### 独立 Token 统计
 
 `tokens.go` 独立管理 TokenUsage 累计统计，与 executor 主逻辑解耦。支持按会话累计、按模型分类，为成本核算提供基础数据。

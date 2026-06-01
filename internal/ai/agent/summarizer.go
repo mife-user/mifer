@@ -23,7 +23,8 @@ func newSummarizer(c context.Context, chatModel model.BaseChatModel, mmModel mod
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: allTools,
+				Tools:               allTools,
+				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 			},
 		},
 		MaxIterations: 0,

@@ -95,6 +95,13 @@ search:
 skill:
   path: ""
   enabled: true
+confirm:
+  enabled: true             # 是否启用工具调用确认，开启后所有工具调用都需要用户确认
+  timeout_sec: 60            # 确认超时秒数
+  exclude:                   # 排除不需要确认的工具列表
+    - knowledge_search
+    - file_reader
+    - file_viewer
 ai:
   backends:
     default:

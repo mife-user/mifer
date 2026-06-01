@@ -8,6 +8,7 @@ import (
 	"time"
 
 	aicallback "mifer/internal/ai/callback"
+	"mifer/internal/ai/confirm"
 	"mifer/internal/domain"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -24,8 +25,20 @@ const maxRetries = 3
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
 
+	// 获取会话 ID 用于工具确认和清理
+	sessionID, _ := c.Value("id").(string)
+
 	// 将 executor 回调注入 context，供 Eino callback handler 捕获 Tool 调用
 	ctx := aicallback.WithExecutorCallback(c, callback)
+
+	// 将 executor 回调注入 confirm 中间件的 context key
+	ctx = confirm.WithCallback(ctx, confirm.ExecutorCallback(callback))
+
+	// 将会话 ID 注入 context，供 confirm 中间件使用
+	ctx = confirm.WithSessionID(ctx, sessionID)
+
+	// 确保对话结束时清理该 session 的所有待确认项
+	defer e.Humen.ConfirmStore.Cleanup(sessionID)
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {

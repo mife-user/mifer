@@ -167,6 +167,13 @@ type Model struct {
 	showingPlanView bool           // 是否处于全屏计划查看模式
 	planViewContent string         // 计划文件内容
 	planViewport    viewport.Model // 独立的 viewport 用于全屏计划查看
+
+	// 工具确认
+	selectingConfirm bool                  // 是否处于确认选择模式
+	confirmQueue     []*ToolConfirmPrompt  // 待确认队列
+	currentConfirm   *ToolConfirmPrompt    // 当前正在确认的项（队首）
+	confirmList      list.Model            // bubbles/list 选择组件 [Yes | No | Allow]
+	sessionAllowed   map[string]bool       // 当前会话已 Allow 的工具名集合
 }
 
 // ============================================================================

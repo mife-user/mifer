@@ -21,7 +21,8 @@ func newPlanner(c context.Context, chatModel model.BaseChatModel, extraTools []t
 		Model:       chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: allTools,
+				Tools:               allTools,
+				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 			},
 		},
 		MaxIterations: 0,

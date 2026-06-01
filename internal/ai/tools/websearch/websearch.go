@@ -76,7 +76,6 @@ func webSearch(ctx context.Context, input WebSearchInput) (WebSearchOutput, erro
 	case "duckduckgo":
 		return duckduckgoSearch(ctx, input.Query, maxResults, timeoutSec)
 	default:
-		// 默认：SearXNG 元搜索引擎（免费，聚合多家结果）
 		return searxngSearch(ctx, input.Query, maxResults, timeoutSec, cfg)
 	}
 }

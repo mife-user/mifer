@@ -223,6 +223,11 @@ func (m *Model) renderSidebar(width int) string {
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.planList.SetWidth(width - 4)
 		lines = append(lines, m.planList.View())
+	} else if m.selectingConfirm {
+		lines = append(lines, m.lip.SidebarActive.Render(" 确认执行"))
+		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
+		m.confirmList.SetWidth(width - 4)
+		lines = append(lines, m.confirmList.View())
 	} else {
 		lines = append(lines, m.lip.SidebarPlaceholder.Render("(按 Tab 补全命令)"))
 	}

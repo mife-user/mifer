@@ -4,6 +4,7 @@ import (
 	"context"
 	"mifer/internal/ai/executor"
 	"mifer/internal/api/handler/agenthandler"
+	"mifer/internal/api/handler/toolhandler"
 	"mifer/internal/api/middlewares"
 	"mifer/internal/service/agentservice"
 	"mifer/pkg/conf"
@@ -16,6 +17,7 @@ import (
 // Router 路由结构体
 type Router struct {
 	agentHandler *agenthandler.AgentHandler
+	toolHandler  *toolhandler.ToolHandler
 	appCtx       context.Context
 }
 
@@ -32,6 +34,7 @@ func (r *Router) NewRouter(c context.Context) error {
 	}
 	service := agentservice.NewAgentService(exec)
 	r.agentHandler = agenthandler.NewAgentHandler(service)
+	r.toolHandler = toolhandler.NewToolHandler(exec.Humen.ConfirmStore, conf.GetConfig().Path.Workdir)
 	r.appCtx = c
 
 	return nil
@@ -89,6 +92,11 @@ func (r *Router) Setup() *gin.Engine {
 		skill := api.Group("/skill")
 		{
 			skill.GET("/list", r.agentHandler.ListSkills)
+		}
+		tool := api.Group("/tool")
+		{
+			tool.POST("/confirm", r.toolHandler.Confirm)
+			tool.POST("/allowlist/add", r.toolHandler.AddAllowList)
 		}
 	}
 

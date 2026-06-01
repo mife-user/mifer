@@ -13,6 +13,7 @@ import (
 	"mifer/cli/client/rebackhandler"
 	"mifer/cli/client/reloadhandler"
 	"mifer/cli/client/skillhandler"
+	"mifer/cli/client/toolconfirmhandler"
 )
 
 const (
@@ -30,31 +31,35 @@ const (
 
 // Client HTTP API客户端，按服务聚合各Handler
 type Client struct {
-	Chat   *chathandler.ChatHandler
-	Memory *memhandler.MemHandler
-	Excmem *excmemhandler.ExcmemHandler
-	Clear  *clearhandler.ClearHandler
-	Reback *rebackhandler.RebackHandler
-	Prompt *prompthandler.PromptHandler
-	Reload *reloadhandler.ReloadHandler
-	Plan   *planhandler.PlanHandler
-	MCP    *mcphandler.MCPHandler
-	Skill  *skillhandler.SkillHandler
+	Chat       *chathandler.ChatHandler
+	Memory     *memhandler.MemHandler
+	Excmem     *excmemhandler.ExcmemHandler
+	Clear      *clearhandler.ClearHandler
+	Reback     *rebackhandler.RebackHandler
+	Prompt     *prompthandler.PromptHandler
+	Reload     *reloadhandler.ReloadHandler
+	Plan       *planhandler.PlanHandler
+	MCP        *mcphandler.MCPHandler
+	Skill      *skillhandler.SkillHandler
+	ToolConfirm  *toolconfirmhandler.ConfirmHandler
+	AllowlistAdd *toolconfirmhandler.AllowlistHandler
 }
 
 // New 创建API客户端实例
 func New(baseURL string) *Client {
 	httpClient := http.DefaultClient
 	return &Client{
-		Chat:   chathandler.New(httpClient, baseURL+APIChatPath),
-		Memory: memhandler.New(httpClient, baseURL+APIMemoryPath),
-		Excmem: excmemhandler.New(httpClient, baseURL+APIExcmemPath),
-		Clear:  clearhandler.New(httpClient, baseURL+APIClearPath),
-		Reback: rebackhandler.New(httpClient, baseURL+APIRebackPath),
-		Prompt: prompthandler.New(httpClient, baseURL+APIPromptPath),
-		Reload: reloadhandler.New(httpClient, baseURL+APIReloadPath),
-		Plan:   planhandler.New(httpClient, baseURL+APIPlanPath),
-		MCP:    mcphandler.New(httpClient, baseURL+APIMCPPath+"/status"),
-		Skill:  skillhandler.New(httpClient, baseURL+APISkillPath+"/list"),
+		Chat:         chathandler.New(httpClient, baseURL+APIChatPath),
+		Memory:       memhandler.New(httpClient, baseURL+APIMemoryPath),
+		Excmem:       excmemhandler.New(httpClient, baseURL+APIExcmemPath),
+		Clear:        clearhandler.New(httpClient, baseURL+APIClearPath),
+		Reback:       rebackhandler.New(httpClient, baseURL+APIRebackPath),
+		Prompt:       prompthandler.New(httpClient, baseURL+APIPromptPath),
+		Reload:       reloadhandler.New(httpClient, baseURL+APIReloadPath),
+		Plan:         planhandler.New(httpClient, baseURL+APIPlanPath),
+		MCP:          mcphandler.New(httpClient, baseURL+APIMCPPath+"/status"),
+		Skill:        skillhandler.New(httpClient, baseURL+APISkillPath+"/list"),
+		ToolConfirm:  toolconfirmhandler.New(httpClient, baseURL),
+		AllowlistAdd: toolconfirmhandler.NewAllowlist(httpClient, baseURL),
 	}
 }

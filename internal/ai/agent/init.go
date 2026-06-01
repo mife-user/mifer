@@ -2,6 +2,9 @@
 
 import (
 	"context"
+	"time"
+
+	"mifer/internal/ai/confirm"
 	"mifer/internal/ai/llm"
 	"mifer/internal/ai/memory"
 	"mifer/internal/ai/prompt"
@@ -19,12 +22,16 @@ import (
 	"github.com/cloudwego/eino/compose"
 )
 
+// confirmMiddleware 包级工具确认中间件，由 Init() 设置后供各 Agent 构造函数使用。
+var confirmMiddleware compose.ToolMiddleware
+
 type Humen struct {
 	Agent        adk.Agent
 	Prompt       *prompt.Prompty
 	Registry     *llm.Registry
 	MCPManager   *mcp.Manager
 	SkillManager *skill.Manager
+	ConfirmStore *confirm.Store // 工具确认存储
 }
 
 func Init(c context.Context) (*Humen, error) {
@@ -45,6 +52,15 @@ func Init(c context.Context) (*Humen, error) {
 	// 初始化技能管理器
 	skillMgr, _ := skill.NewManager(conf.GetConfig().Skill)
 	skillHub := skill.NewAgentHub()
+
+	// 初始化工具确认存储与中间件
+	confirmStore := confirm.NewStore()
+	confirmCfg := conf.GetConfig().Confirm
+	confirmMiddleware = confirm.NewConfirmMiddleware(
+		confirmStore,
+		confirm.NeedConfirm(confirmStore),
+		time.Duration(confirmCfg.TimeoutSec)*time.Second,
+	)
 
 	// 初始化文件编辑agent（sonnet — 均衡）
 	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer")))
@@ -103,7 +119,10 @@ func Init(c context.Context) (*Humen, error) {
 		ChatModel:   reg.Get("default"),
 		ToolsConfig: adk.ToolsConfig{
 			EmitInternalEvents: true,
-			ToolsNodeConfig:    compose.ToolsNodeConfig{Tools: orchTools},
+			ToolsNodeConfig: compose.ToolsNodeConfig{
+				Tools:               orchTools,
+				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
+			},
 		},
 		SubAgents:    []adk.Agent{editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
 		MaxIteration: 0,
@@ -124,7 +143,7 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr}, nil
+	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore}, nil
 }
 
 // mcpToBaseTools 将 []tool.InvokableTool 转为 []tool.BaseTool

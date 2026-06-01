@@ -83,6 +83,11 @@ func NewModel(client *client.Client) *Model {
 		// 全屏计划查看
 		showingPlanView: false,
 		planViewport:    pvp,
+
+		// 工具确认
+		selectingConfirm: false,
+		confirmQueue:     nil,
+		sessionAllowed:   make(map[string]bool),
 	}
 }
 

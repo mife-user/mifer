@@ -179,6 +179,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ---- 工具确认选择模式：拦截按键，委托给 confirmList 或处理选择 ----
+		if m.selectingConfirm {
+			switch msg.String() {
+			case "enter":
+				return m.handleConfirmSelect()
+			case "esc":
+				return m.cancelConfirm()
+			case "up", "down", "k", "j":
+				var cmd tea.Cmd
+				m.confirmList, cmd = m.confirmList.Update(msg)
+				return m, cmd
+			default:
+				return m, nil
+			}
+		}
+
 		switch msg.String() {
 
 		// ---- 退出/中断：Ctrl+C 或 Esc ----
@@ -271,7 +287,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleStreamStatus(msg)
 
 	// ======================================================================
-	// 4b. 流式内容片段
+	// 4b. 工具确认事件
+	// ======================================================================
+	case toolConfirmMsg:
+		return m.handleToolConfirm(msg)
+
+	case toolAutoConfirmMsg:
+		return m.handleToolAutoConfirm(msg)
+
+	// ======================================================================
+	// 4c. 流式内容片段
 	// ======================================================================
 	case streamContentMsg:
 		return m.handleStreamContent(msg)

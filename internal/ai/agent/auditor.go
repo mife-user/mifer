@@ -21,7 +21,8 @@ func newAuditor(c context.Context, chatModel model.BaseChatModel, mmModel model.
 		Model:         chatModel,
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools: allTools,
+				Tools:               allTools,
+				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 			},
 		},
 		MaxIterations: 0,

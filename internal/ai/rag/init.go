@@ -34,7 +34,13 @@ func NewService(ctx context.Context) (*Service, error) {
 		return nil, errorer.NewS(errorer.ErrInitChunkerFailed, err)
 	}
 	// 初始化 Qdrant 客户端
-	qdrantClient, err := qdrant.Init(ctx)
+	ragCfg := conf.GetConfig().Rag
+	qdrantCfg := qdrant.QdrantCfg{
+		Host:   ragCfg.QdrantHost,
+		Port:   ragCfg.QdrantPort,
+		APIKey: ragCfg.QdrantAPIKey,
+	}
+	qdrantClient, err := qdrantCfg.Init(ctx)
 	if err != nil {
 		logger.Error("初始化Qdrant客户端失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitQdrantFailed, err)
@@ -52,7 +58,6 @@ func NewService(ctx context.Context) (*Service, error) {
 		return nil, errorer.NewS(errorer.ErrInitRetrieverFailed, err)
 	}
 
-	ragCfg := conf.GetConfig().Rag
 	logger.Info("RAG服务初始化成功",
 		logger.S("collection", ragCfg.QdrantCollection),
 		logger.S("host", ragCfg.QdrantHost),

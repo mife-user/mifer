@@ -12,9 +12,10 @@ type Config struct {
 	Path PathConfig `mapstructure:"path"`
 	Cli  CliConfig  `mapstructure:"cli"`
 	Rag  RAGConfig  `mapstructure:"rag"`
-	Mcp    MCPConfig    `mapstructure:"mcp"`
-	Search SearchConfig `mapstructure:"search"`
-	Skill  SkillConfig  `mapstructure:"skill"`
+	Mcp     MCPConfig     `mapstructure:"mcp"`
+	Search  SearchConfig  `mapstructure:"search"`
+	Skill   SkillConfig   `mapstructure:"skill"`
+	Confirm ConfirmConfig `mapstructure:"confirm"`
 }
 
 // cli配置结构体
@@ -140,6 +141,13 @@ type SearchConfig struct {
 type SkillConfig struct {
 	Path    string `mapstructure:"path"`    // 技能目录路径，为空时自动选择默认路径
 	Enabled bool   `mapstructure:"enabled"` // 是否启用，默认 true
+}
+
+// ConfirmConfig 工具调用确认配置
+type ConfirmConfig struct {
+	Enabled    bool     `mapstructure:"enabled"`     // 是否启用工具确认，所有工具调用都需要确认
+	TimeoutSec int      `mapstructure:"timeout_sec"` // 确认超时秒数，默认 60
+	Exclude    []string `mapstructure:"exclude"`     // 排除不需要确认的工具名列表
 }
 
 // RAG配置结构体

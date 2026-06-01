@@ -6,6 +6,7 @@ import (
 	"mifer/internal/ai/rag/embedder"
 	"mifer/internal/ai/rag/loader"
 	"mifer/internal/ai/rag/vectorstore"
+	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"mifer/pkg/qdrant"
@@ -58,7 +59,13 @@ func (s *LazyService) ensureReady(ctx context.Context) error {
 	}
 
 	// 尝试连接 Qdrant 并构建完整 Service
-	qdrantClient, err := qdrant.Init(ctx)
+	ragCfg := conf.GetConfig().Rag
+	qdrantCfg := qdrant.QdrantCfg{
+		Host:   ragCfg.QdrantHost,
+		Port:   ragCfg.QdrantPort,
+		APIKey: ragCfg.QdrantAPIKey,
+	}
+	qdrantClient, err := qdrantCfg.Init(ctx)
 	if err != nil {
 		s.initErr = errorer.New(errorer.ErrRAGNotReady)
 		logger.Warn("Qdrant客户端连接失败，知识库暂时不可用", logger.C(err))

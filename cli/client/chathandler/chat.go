@@ -39,6 +39,8 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(eve
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
+	// 增加缓冲区上限至 10MB，处理超大 SSE data 行（如 tool_confirm 携带大参数）
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
 	currentEvent := "response"
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -53,8 +55,11 @@ func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(eve
 		}
 		data := strings.TrimPrefix(line, "data: ")
 
-		// 反转义服务端转义的换行符
-		data = strings.ReplaceAll(data, "\\n", "\n")
+		// 仅在 response 事件时反转义服务端转义的换行符
+		// 其他事件（如 tool_confirm）的 data 是结构化 JSON，不能做此替换
+		if currentEvent == "response" {
+			data = strings.ReplaceAll(data, "\\n", "\n")
+		}
 
 		switch data {
 		case "[DONE]":

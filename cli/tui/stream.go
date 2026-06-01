@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"mifer/cli/client"
+	"mifer/pkg/exc"
 	"mifer/pkg/logger"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -92,28 +93,19 @@ func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
 			m.needsAutoScroll = true
 		}
 
-	case "tool_start":
-		m.messages = append(m.messages, message{
-			role:    "system",
-			content: "调用工具: " + msg.name + msg.arg,
-		})
-		logger.Info("调用工具", logger.S("name", msg.name), logger.S("arg", msg.arg))
-		m.needsAutoScroll = true
+		case "tool_start":
+			// 仅更新侧边栏，不在对话框显示（避免与 tool_confirm 重复）
+			logger.Info("调用工具", logger.S("name", msg.name), logger.S("arg", msg.arg))
 
-	case "tool_end":
-		ct := "--- " + msg.name + " done"
-		m.messages = append(m.messages, message{
-			role:    "system",
-			content: ct,
-		})
-		m.needsAutoScroll = true
+		case "tool_end":
+			// 仅更新侧边栏
 
-	case "tool_error":
-		m.messages = append(m.messages, message{
-			role:    "system",
-			content: "--- " + msg.name + " error: " + msg.arg,
-		})
-		m.needsAutoScroll = true
+		case "tool_error":
+			m.messages = append(m.messages, message{
+				role:    "system",
+				content: "--- " + msg.name + " error: " + msg.arg,
+			})
+			m.needsAutoScroll = true
 	}
 
 	if m.streamCh != nil {
@@ -245,6 +237,15 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx c
 						usage.CachedTokens, _ = strconv.Atoi(parts[3])
 						usage.ReasoningTokens, _ = strconv.Atoi(parts[4])
 						ch <- streamStatusMsg{event: "token", tokenUsage: usage}
+					}
+				case "tool_confirm":
+					var prompt ToolConfirmPrompt
+					if err := exc.ExcJSONToFile(chunk, &prompt); err == nil {
+						ch <- toolConfirmMsg{prompt: &prompt}
+					} else {
+						logger.Error("tool_confirm JSON解析失败",
+							logger.C(err),
+							logger.S("chunk_preview", chunk[:min(len(chunk), 200)]))
 					}
 				case "thinking":
 					// 跳过 thinking 事件

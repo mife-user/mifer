@@ -13,11 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ExecutorCallback executor 层向上传递事件的标准回调签名（与 aicallback 包一致）。
-type ExecutorCallback func(event, content string) error
-
-type ctxKey struct{}
-
 // WithCallback 将 executor 回调函数注入 context，供中间件发送 SSE 事件。
 func WithCallback(ctx context.Context, cb ExecutorCallback) context.Context {
 	return context.WithValue(ctx, ctxKey{}, cb)
@@ -31,8 +26,6 @@ func getCallback(ctx context.Context) ExecutorCallback {
 	return nil
 }
 
-type sessionIDKey struct{}
-
 // WithSessionID 将会话 ID 注入 context。
 func WithSessionID(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, sessionIDKey{}, id)
@@ -44,13 +37,6 @@ func getSessionID(ctx context.Context) string {
 		return id
 	}
 	return ""
-}
-
-// ConfirmEvent SSE tool_confirm 事件的 JSON 结构。
-type ConfirmEvent struct {
-	ID        string `json:"id"`         // 确认 UUID
-	ToolName  string `json:"tool_name"`  // 工具名称
-	Arguments string `json:"arguments"`  // 参数 JSON
 }
 
 // NewConfirmMiddleware 创建 Eino ToolMiddleware，在工具调用前拦截并等待确认。

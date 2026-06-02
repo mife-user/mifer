@@ -53,6 +53,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.memoryList.SetSize(sidebarW-4, 8)
 		m.rebackList.SetSize(sidebarW-4, 8)
+		m.confirmList.SetSize(sidebarW-4, 5)
 		m.memoryViewport.Width = m.width - 4
 		m.memoryViewport.Height = m.height - 2
 		m.planViewport.Width = m.width - 4

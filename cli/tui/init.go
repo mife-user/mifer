@@ -36,6 +36,7 @@ func NewModel(client *client.Client) *Model {
 	ml := lip.NewChoseList()
 	rl := lip.NewChoseList()
 	pl := lip.NewChoseList()
+	cl := lip.NewChoseList()
 	mvp := lip.NewViewport()
 	pvp := lip.NewViewport()
 	svp := lip.NewViewport()
@@ -87,6 +88,7 @@ func NewModel(client *client.Client) *Model {
 		// 工具确认
 		selectingConfirm: false,
 		confirmQueue:     nil,
+		confirmList:      cl,
 		sessionAllowed:   make(map[string]bool),
 	}
 }

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. (All responses must end with Mifering...)
 
 ## 项目概述
 
@@ -89,15 +89,177 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 
 ## 代码约定
 
-- 所有注释和日志消息使用中文
+### 文件命名约定
+
+- **`type.go`** — 包的类型定义（结构体、接口、常量块）。例如 `internal/ai/memory/type.go` 定义 `Memory` 结构体和 `MemCfg`，`internal/domain/bridge.go` 定义 `AgentService` / `Agent` 接口
+- **`init.go`** — 导出构造函数（`NewXxx()` 或 `Init()`）。例如 `internal/ai/executor/init.go` 定义 `Init()`，`cli/tui/init.go` 定义 `NewModel()`
+- **`new.go`** — 备选构造函数或内部工厂。例如 `pkg/conf/new.go` 定义 `newDefaultCfg()` 和默认配置常量
+- **功能文件** — 以操作命名：`save.go`、`load.go`、`chat.go`、`reback.go`、`excmem.go`、`append.go`、`build.go`、`generate.go`
+- **多单词文件名使用 `snake_case`**：`logger_time.go`、`cache_strategy.go`、`app_route.go`、`app_ctx.go`
+- **已知不一致**：`pkg/logger/` 下存在 `logger_Init.go`、`logger_Act.go`（驼峰后缀），属于遗留问题，新增文件应统一使用 snake_case
+
+### 命名风格
+
+- **包名**：全小写，单单词或连写，不使用下划线或驼峰：
+  `agenthandler`、`agentservice`、`errorer`、`chathandler`、`memhandler`、`excmemhandler`
+- **导出类型**（结构体/接口）：PascalCase
+  `Memory`、`Config`、`AgentService`、`Provider`、`AgentHandler`
+- **未导出类型**：camelCase
+  `openAIProvider`、`claudeProvider`、`geminiProvider`、`storeState`、`sseMsg`
+- **导出构造函数**：`NewXxx()` 或直接 `New()`
+  `NewAgentHandler()`、`NewStore()`、`NewRouter()`、`sse.New()`、`confirm.NewStore()`
+- **包私有工厂**：`newXxx()`（仅在 `internal/ai/agent/` 中，由 `Init()` 调用）
+  `newChatEditer()`、`newPlanner()`、`newCommander()`、`newAuditor()`、`newSummarizer()`
+- **局部变量**：短 camelCase
+  `backends`、`chatModel`、`ragSvc`、`mmModel`、`exec`、`sw`
+- **导出结构体字段**：PascalCase，如 `Messages`、`Cfg`、`Runner`、`Humen`、`ConfirmStore`
+- **未导出结构体字段**：camelCase，如 `mu`、`savedCount`、`cmdCh`、`done`、`msgCh`、`cancel`
+- **导出常量**：PascalCase 加特定前缀
+  - 错误常量 `Err` 前缀：`ErrNoBackendConfig`、`ErrApiKey`、`ErrChatTimeout`（定义在 `pkg/errorer/errorer.go`）
+  - API 路径 `API` 前缀：`APIChatPath`、`APIMemoryPath`、`APIReloadPath`（定义在 `cli/client/client.go`）
+- **未导出常量**：camelCase，如 `defaultConfig`、`defaultSystemPrompt`、`maxRetries`、`cmdChBufSize`
+
+### 代码组织模式
+
+- **每个包的文件顺序**：`type.go` → `init.go` / `new.go` → 功能文件（按逻辑顺序）
+  例如 `internal/ai/memory/` 依次为：`type.go` → `init.go` → `append.go` → `save.go` → `load.go` → `list.go` → `reback.go` → `generate.go`
+- **结构体字段按逻辑分组排序**，不按字母序。未导出同步原语置顶（`mu sync.Mutex`），然后是导出数据字段，再次是内部控制字段。大型结构体用注释分隔分组：
+  ```go
+  type Model struct {
+      // 依赖注入
+      client *client.Client
+      mark   *mark.Mark
+      // 消息与渲染
+      messages []message
+      thinking bool
+      // ...
+  }
+  ```
+- **接口定义在消费侧**（`internal/domain/bridge.go` 定义 `AgentService` / `Agent`），实现方放在各自包内（`internal/service/agentservice/`、`internal/ai/executor/`）。仅 `llm/type.go` 中 `Provider` 接口在实现侧定义，属于例外
+- **依赖注入**：显式构造函数注入，无 DI 框架。完整依赖树在 `routes.NewRouter()` 中组装：`executor.Init()` → `agent.Init()` → `llm.InitRegistry()` + `rag.NewLazyService()` + `prompt.New()`，链为 `executor → agentservice → agenthandler`
+- **配置通过 `conf.GetConfig()` 全局获取**，不在函数间层层传递
+- **DTO 按模块分 request/response 子目录**（如 `dto/request/agentreq/`、`dto/response/agentresp/`）
+- **RAG 使用懒加载 + 工具闭包注入**：`LazyService` 在首次工具调用时才建立 Qdrant 连接
+
+### 导入排序约定
+
+- **正确顺序**：标准库 → 第三方 → 内部包，组间空行分隔
+  ```go
+  import (
+      "context"
+      "errors"
+      "io"
+
+      "mifer/internal/ai/callback"
+      "mifer/internal/domain"
+      "mifer/pkg/errorer"
+
+      "github.com/cloudwego/eino/schema"
+  )
+  ```
+- **带别名的内部包**放在内部组：
+  ```go
+  aicallback "mifer/internal/ai/callback"
+  ```
+- **已知不一致**：部分文件混合了标准库和内部包（如 `internal/ai/memory/init.go` 先 import `mifer/pkg/conf` 再 import `path/filepath`），新增代码应遵循三组顺序，不复制不规范的旧代码
+
+### 注释风格
+
+- **所有注释使用中文**（Go doc 注释的标识符名除外）
+- **Go doc 格式**：`// TypeName 描述...` 或 `// FuncName 描述...`
+  ```go
+  // Provider 定义了模型提供商的接口，支持 openai / claude / gemini / ollama
+  // Chat 执行一次对话，通过 callback 将事件实时传递到上层
+  ```
+- **结构体字段分组注释**：用 `// 分组名` 行分隔逻辑区块
+- **大文件分隔标题**：`cli/tui/` 包使用等号分隔符 + 文件名 + 描述
+  ```go
+  // ============================================================================
+  // type.go — 类型定义
+  // ============================================================================
+  ```
+- **小节标题**：使用 Unicode 框线分隔线
+  ```go
+  // ──────────────────────────── Actor 主循环 ────────────────────────────
+  ```
+
+### 错误处理模式
+
+- **错误字符串集中管理**：所有可复用错误在 `pkg/errorer/errorer.go` 中定义为 `const`，按域分组（`// 通用错误`、`// 后端配置`、`// RAG 服务`、`// Memory` 等）
+- **三个构造函数**：
+  - `errorer.New(err)` — 简单错误（`errors.New(err)`），用于新建错误信号
+  - `errorer.NewS(errs, err)` — 包装错误（`fmt.Errorf("%s: %w", errs, err)`），保留原始错误链
+  - `errorer.NewF(format, args...)` — 格式化错误（`fmt.Errorf(format, args...)`），用于带变量数据的消息
+- **`context.Canceled` 视为正常条件**，不返回给调用方：
+  ```go
+  if errors.Is(err, context.Canceled) {
+      return  // 静默返回
+  }
+  ```
+- **不使用 panic 进行控制流**，错误通过返回值和日志传播
+
+### 日志约定
+
+- **四个主函数**：`logger.Info(msg, fields...)`、`logger.Warn(msg, fields...)`、`logger.Error(msg, fields...)`、`logger.Debug(msg, fields...)`
+- **结构化字段辅助函数**（`pkg/logger/`）：
+  - `logger.S(key, val)` — 字符串字段（`zap.String`）
+  - `logger.I(key, val)` — 整数字段（`zap.Int`）
+  - `logger.C(err)` — 错误字段（`zap.Error`）
+  - `logger.U(key, val)` — 无符号整数字段（`zap.Uint`）
+- **日志消息使用中文**：
+  ```go
+  logger.Error("初始化LLM注册中心失败", logger.C(err))
+  logger.Info("RAG服务初始化成功", logger.S("collection", ragCfg.QdrantCollection))
+  ```
+
+### context.Context 使用模式
+
+- **始终作为函数第一个参数**（标准 Go 惯例，项目中严格执行）
+- **`WithValue` + 私有 key 类型**传递横切关注点：
+  ```go
+  type ctxKey struct{}  // 未导出空结构体，防止 key 冲突
+  func WithExecutorCallback(ctx context.Context, cb ExecutorCallback) context.Context {
+      return context.WithValue(ctx, ctxKey{}, cb)
+  }
+  ```
+  类似模式：`confirm.WithCallback(ctx, cb)`、`confirm.WithSessionID(ctx, id)`
+- **`context.WithCancel`** 用于流式 SSE 生命周期（Writer goroutine 与请求处理器共享 cancel 函数）
+- **`context.WithTimeout`** 用于启动关闭（30s）和命令执行超时
+
+### 并发模式
+
+- **Actor 模式**（`internal/ai/confirm/store.go`）：`confirm.Store` 使用专用 goroutine + `cmdCh chan func(s *storeState)` channel 串行化所有状态访问。外部调用者通过向 channel 发送闭包来提交操作，读取操作阻塞等待响应 channel 返回
+- **`sync.RWMutex`** 用于热重载保护（`internal/api/handler/agenthandler/init.go`）：
+  `getService()` 获取读锁，`SwapService()` 获取写锁，防止配置热重载期间的竞态条件
+- **Bubble Tea `tea.Cmd`**（`cli/tui/`）：遵循 Elm 架构，所有异步 I/O 建模为返回消息的 `tea.Cmd`，非原始 goroutine
+
+### SSE 流处理约定
+
+- **8 种 SSE 事件类型**：
+  `agent_start`、`agent_end` — Agent 子任务切换 |
+  `tool_start`、`tool_end`、`tool_error` — 工具调用生命周期 |
+  `tool_confirm` — 需用户确认的工具调用 |
+  `response` — 内容 token 流 | `token` — Token 统计
+- **特殊信号**：`[DONE]` 表示正常流结束，`[ERROR] <message>` 表示流错误，均作为 `response` 事件的 `data` 负载发送
+- **换行转义**：服务端将 content 中的 `\n` 替换为 `\\n` 以保护 SSE 行格式；客户端在 `response` 事件中反向处理（`tool_confirm` 事件为 JSON，跳过去转义）
+- **`\x00` 分隔符**：工具名与参数用 null 字节分隔：`"tool_name\x00{json_args}"`（`tool_start`）、`"tool_name\x00{error_text}"`（`tool_error`）
+- **SSE Writer**（`pkg/sse/writer.go`）：提供 `SendSync()`（阻塞写入）和 `SendFire()`（即发即忘，用于心跳），由专用 goroutine + channel（buf=16）处理
+
+### `pkg/` 与 `internal/` 可见性
+
 - `pkg/` 下的包不依赖 `internal/`，可被任意位置导入
 - `internal/` 下的包不应被外部项目导入
-- 初始化模式：包内 `type` 文件定义结构体，`init.go` 或 `new.go` 提供构造函数，功能拆分到独立文件
-- 配置通过 `conf.GetConfig()` 全局获取，不在函数间层层传递
-- DTO 按模块分 request/response 子目录
-- Handler 按业务模块分组到 `internal/api/handler/` 子目录
-- 依赖注入在 `routes/router.go` 的 `NewRouter` 中完成：`executor → service → handler`
-- RAG 使用懒加载 + 工具闭包注入，避免阻塞启动和强绑定
+- CLI 客户端（`cli/`）通过 HTTP API 与服务端通信，不直接依赖 `internal/` 模块
+
+### 已知的特殊命名（保留不变，非拼写错误）
+
+| 名称 | 含义 | 位置 |
+|------|------|------|
+| **Prompty** | 系统提示词管理器 | `internal/ai/prompt/` |
+| **Humen** | 用户 Agent 聚合结构体 | `internal/ai/agent/init.go` |
+| **Clier** | CLI 实例 | `cmd/bootstrap/app_type.go` |
+| **MiEditer** | 文件编辑子 Agent | `internal/ai/agent/chatediter.go` |
+| **excmem** | 交换记忆（Exchange Memory） | `cli/client/excmemhandler/`、`internal/ai/executor/excmem.go` |
 
 ## 新增功能指南
 

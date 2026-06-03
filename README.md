@@ -105,6 +105,7 @@ LLM 请求工具 → ToolMiddleware 拦截 → 存入 PendingStore + 发送 SSE 
 ```
 
 **关键设计**：
+- **Actor 模型并发** — `confirm.Store` 使用专用 goroutine + `cmdCh chan func(s *storeState)` channel 串行化所有状态访问，外部通过 channel 发送闭包提交操作，避免锁竞争
 - **Channel 阻塞模型** — 中间件生成 UUID，写入 `PendingStore`（含 `chan ConfirmResult`），发送 SSE 后 `select` 阻塞等待，用户确认后通过 API 端写入 channel 解除阻塞
 - **三态确认** — Yes（仅本次执行）、No（拒绝）、Allow（始终允许：非命令工具加入 Session 白名单，命令工具写入 `.mifer/allowlist.yaml` 持久化）
 - **Session 白名单** — `Store.sessionAllowed[sessionID][toolName]`，对话结束时自动清理，Allow 过的工具同会话内不再询问
@@ -163,6 +164,22 @@ Plan 功能的设计哲学是**"由 AI 决定，而非框架强制"**——不�
 - **面向 AI 能力演进** — 随着 LLM 推理能力增强，许多需要工程化 Graph 编排的场景可以由 AI 自主完成。**用 AI 的判断替代代码的分支逻辑**，减少工程化复杂度
 - **工作目录隔离** — 文件操作限制在 `.mifer/plans/` 下，安全边界在工具层保证
 - **CLI 集成** — `/plan` 命令查看计划文件列表，回车加载并展示计划内容
+
+### /init 命令：AI 自动生成项目提示词
+
+`/init` 命令让 AI 自动探索项目结构、阅读源码和已有文档，然后生成 `.mifer/MIFER.md` 项目级提示词文件，帮助 AI 更好地理解项目上下文。
+
+**执行流程**：
+1. AI 列出项目目录结构，识别配置文件、源码目录和文档
+2. 分批次阅读所有核心源文件和配置文件
+3. 阅读已有的 CLAUDE.md、README.md 等文档补充理解
+4. 生成 `.mifer/MIFER.md`，包含项目概述、技术栈、架构、构建命令、代码约定和开发指南
+
+生成的 MIFER.md 会自动拼接到系统提示词中（优先级低于用户级 `~/.mifer/MIFER.md`），后续对话中 AI 自动获得项目上下文。
+
+### /config 命令：外部编辑器修改配置
+
+`/config` 命令调出系统默认编辑器（优先级：配置 `cli.tui.editor` → `$VISUAL` → `$EDITOR` → 平台默认）直接编辑 YAML 配置文件，关闭编辑器后自动执行 `/reload` 热重载，无需手动重启服务。
 
 ### SSE 流取消
 
@@ -258,8 +275,8 @@ docker-compose up -d mifer
 - **Markdown 渲染**：Glamour 引擎（代码高亮 + 表情符号 + 表格），lipgloss 降级渲染兜底
 - **侧边栏**：实时展示当前 Agent、模型、Token 消耗、工具执行状态
 - **流式展示**：消息实时追加，推理过程以动画呈现
-- **会话管理**：`/viewmemory` 查看历史，`/excmem` 切换会话
-- **扩展命令**：`/mcp` MCP Server 状态，`/skill` 技能列表，`/plan` 计划管理
+- **会话管理**：`/viewmemory` 查看历史（支持跨会话加载），`/excmem` 切换会话
+- **扩展命令**：`/mcp` MCP Server 状态，`/skill` 技能列表，`/plan` 计划管理，`/init` 生成项目提示词，`/config` 编辑配置文件
 - **可配置样式**：主题色、消息样式、滚动指示器、水平滚动宽度均支持自定义
 
 ### HTTP API

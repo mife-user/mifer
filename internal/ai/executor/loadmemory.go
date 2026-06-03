@@ -2,15 +2,28 @@ package executor
 
 import (
 	"context"
-	"mifer/internal/domain"
 	"strings"
+
+	"mifer/internal/domain"
 
 	"github.com/cloudwego/eino/schema"
 )
 
 func (e *Executor) LoadMemory(c context.Context, req *domain.MemoryReq) (*domain.MemoryResp, error) {
+	// 根据请求ID决定数据源：当前会话走内存缓存，其他会话从磁盘加载
+	var msgs []*schema.Message
+	if req.ID == e.Humen.Prompt.Memory.GetCurrentID() {
+		msgs = e.Humen.Prompt.Memory.Messages
+	} else {
+		var err error
+		msgs, err = e.Humen.Prompt.Memory.LoadByID(req.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var sb strings.Builder
-	for _, msg := range e.Humen.Prompt.Memory.Messages {
+	for _, msg := range msgs {
 		sb.WriteString("[")
 		sb.WriteString(roleToChinese(msg.Role))
 		sb.WriteString("]: ")

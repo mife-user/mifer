@@ -214,6 +214,8 @@ cli:
         description: "编辑配置文件"
       - command: "/plan"
         description: "列出/编写项目计划"
+      - command: "/init"
+        description: "生成项目MIFER.md提示词"
       - command: "/mcp"
         description: "显示MCP Server状态"
       - command: "/skill"

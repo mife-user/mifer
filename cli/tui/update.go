@@ -1,4 +1,4 @@
-package tui
+﻿package tui
 
 // ============================================================================
 // update.go — Bubble Tea 消息分发器与核心交互逻辑
@@ -13,7 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const helper = "命令: ↑↓ 历史输入 | Ctrl+N 换行 /n /viewmemory 查看记忆 | /excmem <id> 切换会话 | /reback 回退对话 | /clear 新建会话 | /prompt 查看/设置提示词 | /reload 重载配置 | /config 编辑配置文件 | /exit 退出 | /help 帮助"
+const helper = "命令: ↑↓ 历史输入 | Ctrl+N 换行 /n /viewmemory 查看记忆 | /excmem <id> 切换会话 | /reback 回退对话 | /clear 新建会话 | /prompt 查看/设置提示词 | /reload 重载配置 | /config 编辑配置文件 | /init 生成项目MIFER.md | /exit 退出 | /help 帮助"
 
 // ============================================================================
 // Update — 消息分发器

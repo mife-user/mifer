@@ -62,86 +62,106 @@ allow_list:
 `
 
 const defaultConfig = `
-env: dev
+# ── 运行环境 ──
+env: dev                             # 运行环境：dev / prod
+
+# ── 日志 ──
 log:
-  max_size: 100
-  max_backups: 7
-  level: ""
+  max_size: 100                      # 单文件最大大小（MB）
+  max_backups: 7                     # 保留备份文件数量
+  level: ""                          # 日志级别，为空时由 env 决定
+
+# ── JWT ──
 jwt:
-  secret: "123456"
+  secret: "123456"                   # JWT 签名密钥
+
+# ── RAG 检索增强 ──
 rag:
-  chunk_size: 500
-  chunk_overlap: 50
-  top_k: 5
-  dim: 768
-  qdrant_host: "localhost"
-  qdrant_port: 6334
-  qdrant_collection: "mifer_docs"
-  qdrant_api_key: ""
+  chunk_size: 500                    # 文档分块大小（字符数）
+  chunk_overlap: 50                  # 相邻分块重叠字符数
+  top_k: 5                           # 检索返回结果数量
+  dim: 768                           # 向量维度（需匹配嵌入模型）
+  qdrant_host: "localhost"           # Qdrant 服务地址
+  qdrant_port: 6334                  # Qdrant gRPC 端口
+  qdrant_collection: "mifer_docs"    # Qdrant 集合名称
+  qdrant_api_key: ""                 # Qdrant API Key（可选）
+
+# ── MCP 服务器 ──
 mcp:
   servers:
-    # 内置 MCP 演示工具：echo / get_time / calculator / random_number
-    - name: "demo"
-      command: "./mcp-demo.exe"
-      args: []
-      agents: ["MiEditer"]
-      enabled: true
+    - name: "demo"                   # 唯一标识
+      command: "./mcp-demo.exe"      # 启动命令
+      args: []                       # 命令参数
+      agents: ["MiEditer"]           # 分配给哪些 Agent，空或 ["*"] 表示全部
+      enabled: true                  # 是否启用
+
+# ── 网页搜索 ──
 search:
-  provider: ""              # 搜索方式：留空默认 searxng / bing（Azure API）/ duckduckgo（国外可用）
-  api_key: ""               # 仅 bing provider 需要（Azure 免费层 1000次/月）
-  base_url: "http://localhost:18080"  # SearXNG 地址（docker-compose 默认映射到 18080）
-  max_results: 5            # 默认最大搜索结果数
-  timeout_sec: 10           # HTTP请求超时（秒）
+  provider: ""                       # 搜索方式：searxng / bing / duckduckgo，留空自动
+  api_key: ""                        # API 密钥（仅 bing 需要）
+  base_url: "http://localhost:18080" # 自定义搜索地址
+  max_results: 5                     # 单次最大搜索结果数
+  timeout_sec: 10                    # 请求超时（秒）
+
+# ── 技能系统 ──
 skill:
-  path: ""
-  enabled: true
+  path: ""                           # 技能目录路径，为空时使用默认路径
+  enabled: true                      # 是否启用
+
+# ── 工具确认 ──
 confirm:
-  enabled: true             # 是否启用工具调用确认，开启后所有工具调用都需要用户确认
-  timeout_sec: 60            # 确认超时秒数
-  exclude:                   # 排除不需要确认的工具列表
+  enabled: true                      # 是否启用工具调用确认
+  timeout_sec: 60                    # 确认超时（秒）
+  exclude:                           # 无需确认的工具名单
     - knowledge_search
     - file_reader
     - file_viewer
+
+# ── AI 模型后端 ──
 ai:
   backends:
-    default:
+    default:                         # 默认模型（fallback）
       provider: "openai"
       base_url: "https://api.deepseek.com"
       model: "deepseek-v4-flash"
       api_key: ""
-    multi_modal:
+    multi_modal:                     # 多模态模型（图片识别）
       provider: "openai"
       base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
       model: "qwen-omni-turbo"
       api_key: ""
-    haiku:
+    haiku:                           # 轻量快速模型
       provider: "openai"
       base_url: "https://api.deepseek.com"
       model: "deepseek-v4-flash"
       api_key: ""
-    sonnet:
+    sonnet:                          # 均衡模型
       provider: "claude"
       model: "claude-sonnet-4-6"
       api_key: ""
-    opus:
+    opus:                            # 最强推理模型
       provider: "claude"
       model: "claude-opus-4-7"
       api_key: ""
-    embedder:
+    embedder:                        # 文本嵌入模型
       provider: "ollama"
       base_url: "http://localhost:11434"
       model: "nomic-embed-text"
       api_key: "ollama"
+
+# ── HTTP 服务 ──
 gin:
-  mode: "debug"
-  port: 15555
+  mode: "debug"                      # 运行模式：debug / release / test
+  port: 15555                        # 监听端口
   cors:
-    allow_origins: ["*"]
-    allow_methods: ["POST","GET"]
+    allow_origins: ["*"]             # 允许的跨域来源
+    allow_methods: ["POST","GET"]    # 允许的 HTTP 方法
+
+# ── CLI 客户端 ──
 cli:
-  host: "127.0.0.1"
-  port: 15555
-  lip:
+  host: "127.0.0.1"                  # 服务端地址
+  port: 15555                        # 服务端端口
+  lip:                               # 终端颜色配置
     base:
       foreground: "#00ff11"
       background: "#2c2c2cff"
@@ -170,8 +190,8 @@ cli:
     sidebar_placeholder:
       foreground: "#555555"
   tui:
-    max_history: 100
-    completable_commands:
+    max_history: 100                 # 最大输入历史条数
+    completable_commands:            # Tab 补全命令列表
       - command: "/help"
         description: "显示帮助信息"
       - command: "/exit"
@@ -198,15 +218,16 @@ cli:
         description: "显示MCP Server状态"
       - command: "/skill"
         description: "显示已加载的技能列表"
-    content_margin: 4
-    min_height: 10
-    spinner_type: "MiniDot"
-    spinner_frames: []
-    spinner_fps: 0
-    sidebar_max_log: 100
-    sidebar_show_tokens: true
-    sidebar_show_timing: true
-    completion_max_visible: 5
-    mouse_wheel_delta: 3
-    horizontal_scroll_step: 4
+    content_margin: 4                # 内容区域水平边距
+    min_height: 10                   # 终端最小高度（行）
+    editor: ""                       # 外部编辑器命令（如 "code --wait"），为空时自动检测
+    spinner_type: "MiniDot"          # 加载动画类型
+    spinner_frames: []               # 自定义动画帧序列，非空时覆盖 spinner_type
+    spinner_fps: 0                   # 自定义动画帧率，0 使用默认值
+    sidebar_max_log: 100             # 侧边栏状态日志最大行数
+    sidebar_show_tokens: true        # 侧边栏是否显示 token 统计
+    sidebar_show_timing: true        # 侧边栏是否显示时间戳
+    completion_max_visible: 5        # 补全列表最大可见行数
+    mouse_wheel_delta: 3             # 滚轮每次滚动行数
+    horizontal_scroll_step: 4        # 水平滚动每次列数
 `

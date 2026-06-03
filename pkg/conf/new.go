@@ -190,6 +190,8 @@ cli:
         description: "查看/修改系统提示词"
       - command: "/reload"
         description: "热重载配置与模型"
+      - command: "/config"
+        description: "编辑配置文件"
       - command: "/plan"
         description: "列出/编写项目计划"
       - command: "/mcp"

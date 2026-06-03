@@ -62,6 +62,9 @@ type TuiConfig struct {
 	CompletionMaxVisible int                  `mapstructure:"completion_max_visible"` // 补全列表最大可见行数，默认 5
 	MouseWheelDelta      int                  `mapstructure:"mouse_wheel_delta"`      // 垂直滚轮每次滚动行数，默认 3
 	HorizontalScrollStep int                  `mapstructure:"horizontal_scroll_step"` // 水平滚动每次列数，默认 4
+
+	// 编辑器
+	Editor string `mapstructure:"editor"` // 外部编辑器命令（如 "code --wait"），为空时自动检测
 }
 
 type Colorlip struct {

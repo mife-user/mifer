@@ -13,6 +13,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+const helper = "命令: ↑↓ 历史输入 | Ctrl+N 换行 /n /viewmemory 查看记忆 | /excmem <id> 切换会话 | /reback 回退对话 | /clear 新建会话 | /prompt 查看/设置提示词 | /reload 重载配置 | /config 编辑配置文件 | /exit 退出 | /help 帮助"
+
 // ============================================================================
 // Update — 消息分发器
 // ============================================================================
@@ -476,7 +478,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	case input == "/help":
 		m.messages = append(m.messages, message{
 			role:    "system",
-			content: "命令: ↑↓ 历史输入 | Ctrl+N 换行 | /viewmemory 查看记忆 | /excmem <id> 切换会话 | /reback 回退对话 | /clear 新建会话 | /prompt 查看/设置提示词 | /reload 重载配置 | /exit 退出 | /help 帮助",
+			content: helper,
 		})
 		m.needsAutoScroll = true
 		return m, nil
@@ -486,6 +488,9 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case input == "/reload":
 		return m, reloadCmd(m.client)
+
+	case input == "/config":
+		return m, configCmd(m.client)
 
 	case input == "/prompt":
 		return m, promptGetCmd(m.client)

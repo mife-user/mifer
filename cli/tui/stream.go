@@ -36,9 +36,9 @@ type TokenUsageData struct {
 	ReasoningTokens  int // 推理 token
 }
 
-// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用、工具错误、token统计）
+// streamStatusMsg AI流式响应中的状态更新（agent切换、工具调用、工具错误、token统计、系统通知）
 type streamStatusMsg struct {
-	event      string          // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error" | "token"
+	event      string          // "agent_start" | "agent_end" | "tool_start" | "tool_end" | "tool_error" | "token" | "system"
 	name       string          // agent名称或工具名称
 	arg        string          // tool_error 时携带的错误消息 或 tool_start 时的工具参数 JSON
 	tokenUsage *TokenUsageData // token 事件时的数据（nil 表示非 token 事件）
@@ -104,6 +104,13 @@ func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
 			m.messages = append(m.messages, message{
 				role:    "system",
 				content: "--- " + msg.name + " error: " + msg.arg,
+			})
+			m.needsAutoScroll = true
+
+		case "system":
+			m.messages = append(m.messages, message{
+				role:    "system",
+				content: msg.name,
 			})
 			m.needsAutoScroll = true
 	}
@@ -205,6 +212,7 @@ func formatToolArgs(rawJSON string) string {
 //
 //	agent_start/agent_end/tool_start/tool_end → streamStatusMsg（侧边栏更新）
 //	tool_error → streamStatusMsg（工具错误）
+//	system → streamStatusMsg（系统通知）
 //	token → streamStatusMsg（token 统计）
 //	response → streamContentMsg（累积到 accBuf）
 //	thinking → 跳过
@@ -247,6 +255,8 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx c
 							logger.C(err),
 							logger.S("chunk_preview", chunk[:min(len(chunk), 200)]))
 					}
+				case "system":
+					ch <- streamStatusMsg{event: "system", name: chunk}
 				case "thinking":
 					// 跳过 thinking 事件
 				case "response":

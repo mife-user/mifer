@@ -110,6 +110,12 @@ const (
 	ErrRebuildExecutorFailed = "重建执行器失败"
 	ErrReloadHandlerNotReady = "处理器尚未初始化，无法重载"
 
+	// Compressor
+	ErrCompressorSkillNotFound = "上下文压缩技能 [context-summarizer] 不存在，已降级为移除最早轮次"
+	ErrCompressorModelNotFound = "压缩模型后端 [%s] 不可用，已降级为移除最早轮次"
+	ErrCompressorCallFailed    = "调用压缩模型失败，已降级为移除最早轮次"
+	ErrCompressorReplaceFailed = "压缩后替换记忆失败"
+
 	// 命令执行器
 	ErrWorkDirNotInProject = "工作目录必须在项目目录内: %s"
 )

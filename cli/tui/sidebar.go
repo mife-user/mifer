@@ -66,6 +66,8 @@ func (s *SidebarState) update(msg streamStatusMsg) {
 		if msg.arg != "" {
 			append("  E: %s", msg.arg)
 		}
+	case "system":
+		append("[系统] %s", msg.name)
 	case "token":
 		if msg.tokenUsage != nil {
 			s.Token = msg.tokenUsage

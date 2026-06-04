@@ -10,6 +10,7 @@ import (
 	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/confirm"
 	"mifer/internal/domain"
+	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 
@@ -23,6 +24,17 @@ const maxRetries = 3
 // 此处仅处理对话内容（response、thinking）、Agent 切换和 token 统计。
 // 网络临时错误（TLS 超时等）自动重试最多 maxRetries 次。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
+	// 检查是否需要压缩上下文（上一轮结束时已标记）
+	if e.needsCompression {
+		if err := e.Compressor.Compress(
+			c, e.Humen.Prompt.Memory, e.Humen.Prompt.SystemPrompt,
+			e.lastPromptTokens, callback,
+		); err != nil {
+			logger.Error("上下文压缩失败", logger.C(err))
+		}
+		e.needsCompression = false
+	}
+
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
 
 	// 获取会话 ID 用于工具确认和清理
@@ -126,6 +138,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 							if err := e.Token.send(callback); err != nil {
 								return err
 							}
+							e.checkCompressionThreshold()
 						}
 						continue
 					}
@@ -143,6 +156,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 						if err := e.Token.send(callback); err != nil {
 							return err
 						}
+						e.checkCompressionThreshold()
 					}
 				}
 			} else {
@@ -162,6 +176,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 					if err := e.Token.send(callback); err != nil {
 						return err
 					}
+					e.checkCompressionThreshold()
 				}
 			}
 		}
@@ -190,6 +205,28 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	}
 
 	return errorer.New("AI调用达到最大重试次数")
+}
+
+// checkCompressionThreshold 检查当前 PromptTokens 是否超过压缩阈值
+// 超过时设置 needsCompression 标记，供下一轮对话开始时压缩
+func (e *Executor) checkCompressionThreshold() {
+	if e.needsCompression {
+		return
+	}
+	ctxCfg := conf.GetConfig().Ai.Context
+	if ctxCfg.Length <= 0 {
+		return
+	}
+	thresholdTokens := int(float64(ctxCfg.Length) * ctxCfg.Threshold)
+	if e.Token.Prompt >= thresholdTokens {
+		e.needsCompression = true
+		e.lastPromptTokens = e.Token.Prompt
+		logger.Warn("上下文超过压缩阈值",
+			logger.I("prompt_tokens", e.Token.Prompt),
+			logger.I("threshold", thresholdTokens),
+			logger.I("limit", ctxCfg.Length),
+		)
+	}
 }
 
 // isRetryable 判断错误是否可重试（网络超时、TLS 握手、连接拒绝等临时错误）

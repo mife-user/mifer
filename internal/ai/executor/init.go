@@ -5,6 +5,7 @@ import (
 
 	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/agent"
+	"mifer/internal/ai/compressor"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/adk"
@@ -12,9 +13,12 @@ import (
 )
 
 type Executor struct {
-	Runner *adk.Runner
-	Humen  *agent.Humen
-	Token  *TokenUsage // token 累计用量统计
+	Runner           *adk.Runner
+	Humen            *agent.Humen
+	Token            *TokenUsage             // token 累计用量统计
+	Compressor       *compressor.Compressor  // 上下文压缩器
+	needsCompression bool                    // 下次对话前需要压缩标记
+	lastPromptTokens int                     // 触发压缩时的 PromptTokens 快照
 }
 
 func Init(c context.Context) (*Executor, error) {
@@ -31,6 +35,14 @@ func Init(c context.Context) (*Executor, error) {
 		Agent:           ag.Agent,
 		EnableStreaming: true,
 	})
-	return &Executor{Runner: runner, Humen: ag, Token: &TokenUsage{}}, nil
 
+	// 创建上下文压缩器
+	comp := compressor.NewCompressor(ag.Registry, ag.SkillManager)
+
+	return &Executor{
+		Runner:     runner,
+		Humen:      ag,
+		Token:      &TokenUsage{},
+		Compressor: comp,
+	}, nil
 }

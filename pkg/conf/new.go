@@ -149,6 +149,13 @@ ai:
       model: "nomic-embed-text"
       api_key: "ollama"
 
+  # ── 上下文压缩 ──
+  context:
+    length: 1000000                   # 上下文长度阈值（token数）
+    threshold: 0.8                    # 触发压缩的比例
+    model: "haiku"                    # 压缩用模型后端
+    recent_rounds: 3                  # 压缩后保留的最近轮数
+
 # ── HTTP 服务 ──
 gin:
   mode: "debug"                      # 运行模式：debug / release / test

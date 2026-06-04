@@ -62,6 +62,10 @@ func (m *Manager) ensureInit() error {
 		if err := m.createSampleSkill(); err != nil {
 			return fmt.Errorf("创建示例技能失败: %w", err)
 		}
+		// 复制内置技能
+		if err := m.copyBuiltinSkills(); err != nil {
+			return fmt.Errorf("复制内置技能失败: %w", err)
+		}
 	}
 	return nil
 }

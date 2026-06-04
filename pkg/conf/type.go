@@ -96,6 +96,7 @@ type BackendConfig struct {
 // ai配置结构体
 type AiConfig struct {
 	Backends map[string]BackendConfig `mapstructure:"backends"`
+	Context  ContextConfig            `mapstructure:"context"` // 上下文压缩配置
 }
 
 // gin配置结构体
@@ -151,6 +152,14 @@ type ConfirmConfig struct {
 	Enabled    bool     `mapstructure:"enabled"`     // 是否启用工具确认，所有工具调用都需要确认
 	TimeoutSec int      `mapstructure:"timeout_sec"` // 确认超时秒数，默认 60
 	Exclude    []string `mapstructure:"exclude"`     // 排除不需要确认的工具名列表
+}
+
+// ContextConfig 上下文压缩配置
+type ContextConfig struct {
+	Length       int     `mapstructure:"length"`        // 上下文长度阈值（token数），默认 1000000
+	Threshold    float64 `mapstructure:"threshold"`     // 触发压缩的比例，默认 0.8
+	Model        string  `mapstructure:"model"`         // 压缩用模型后端名，默认 "haiku"
+	RecentRounds int     `mapstructure:"recent_rounds"` // 压缩后保留的最近完整对话轮数，默认 3
 }
 
 // RAG配置结构体

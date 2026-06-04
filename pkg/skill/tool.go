@@ -15,11 +15,6 @@ import (
 
 const skillToolName = "skill"
 
-// SkillTool 将技能系统适配为 Eino 的 tool.InvokableTool
-type SkillTool struct {
-	manager  *Manager
-	agentHub *AgentHub
-}
 
 // NewSkillTool 创建技能工具适配器
 func NewSkillTool(manager *Manager, agentHub *AgentHub) *SkillTool {

@@ -6,11 +6,6 @@ import (
 	"github.com/cloudwego/eino/adk"
 )
 
-// AgentHub 管理已注册的子 Agent 实例，供 fork 模式技能查找
-type AgentHub struct {
-	agents map[string]adk.Agent
-}
-
 // NewAgentHub 创建 AgentHub 实例
 func NewAgentHub() *AgentHub {
 	return &AgentHub{

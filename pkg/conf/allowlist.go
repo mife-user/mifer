@@ -58,13 +58,6 @@ func AddToAllowList(workdir, command string) error {
 		AllowList: append(existing, command),
 	}
 
-	v := viper.New()
-	v.SetConfigFile(path)
-	v.SetConfigType("yaml")
-	if err := v.WriteConfigAs(path); err != nil {
-		// 文件可能不存在，直接写入
-	}
-
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -72,9 +65,6 @@ func AddToAllowList(workdir, command string) error {
 	defer f.Close()
 
 	// 简单写入 YAML 格式
-	if _, err := f.WriteString("# 命令执行白名单 — Allow 后自动添加，可手动编辑\n"); err != nil {
-		return err
-	}
 	if _, err := f.WriteString("allow_list:\n"); err != nil {
 		return err
 	}

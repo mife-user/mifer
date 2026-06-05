@@ -81,11 +81,11 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 重构工具调用确认功能：确认存储从互斥锁改为 Actor 模型优化并发，格式化代码拆分至独立文件
-            - [x] 新增 /config 命令：支持调出外部编辑器直接修改配置文件，关闭后自动重载
-            - [x] 新增 /init 命令：AI 自动探索项目结构并生成 .mifer/MIFER.md 项目级提示词文件
-            - [x] 默认配置文件新增中文注释与功能分区，提升可读性
-            - [x] 修复 /viewmemory 跨会话加载问题：查看非当前会话记忆时从磁盘正确加载对应记忆文件
+            - [x] 重构技能管理：技能类型定义移至 DTO 层，Manager 改用 RWMutex 保护并发安全
+            - [x] 新增上下文自动压缩：PromptTokens 超过 Length×Threshold 时自动调用 haiku 模型生成摘要替换早期记忆，压缩失败降级为移除最早轮次
+            - [x] 新增 /compact 命令：支持手动触发上下文压缩，Tab 补全，system 样式显示结果
+            - [x] DTO 层重构：domain 类型移除 json 标签，handler 改用 agentresp DTO 类型返回 JSON 响应
+            - [x] SSE 新增 system 事件类型：TUI 侧边栏与对话框同步显示系统通知
           files: artifacts/**/*
           draft: false
           prerelease: false

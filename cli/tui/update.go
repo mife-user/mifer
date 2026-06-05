@@ -345,6 +345,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 6. 系统命令结果（/viewmemory、/excmem）
 	// ======================================================================
 	case systemMsg:
+		m.thinking = false
 		if msg.err != nil {
 			m.err = "错误: " + msg.err.Error()
 			return m, nil
@@ -486,7 +487,11 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	case input == "/clear":
 		return m, clearCmd(m.client)
 	case input == "/compact":
-		return m, compactCmd(m.client)
+		m.thinking = true
+		m.needsAutoScroll = true
+		var spCmd tea.Cmd
+		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
+		return m, tea.Batch(compactCmd(m.client), spCmd)
 
 	case input == "/reload":
 		return m, reloadCmd(m.client)

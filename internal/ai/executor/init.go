@@ -3,8 +3,8 @@ package executor
 import (
 	"context"
 
-	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/agent"
+	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/compressor"
 	"mifer/pkg/logger"
 
@@ -15,10 +15,10 @@ import (
 type Executor struct {
 	Runner           *adk.Runner
 	Humen            *agent.Humen
-	Token            *TokenUsage             // token 累计用量统计
-	Compressor       *compressor.Compressor  // 上下文压缩器
-	needsCompression bool                    // 下次对话前需要压缩标记
-	lastPromptTokens int                     // 触发压缩时的 PromptTokens 快照
+	Token            *TokenUsage            // token 累计用量统计
+	Compressor       *compressor.Compressor // 上下文压缩器
+	needsCompression bool                   // 下次对话前需要压缩标记
+	lastPromptTokens int                    // 触发压缩时的 PromptTokens 快照
 }
 
 func Init(c context.Context) (*Executor, error) {
@@ -39,10 +39,13 @@ func Init(c context.Context) (*Executor, error) {
 	// 创建上下文压缩器
 	comp := compressor.NewCompressor(ag.Registry, ag.SkillManager)
 
+	// 初始化 token 用量统计
+	tokens := initTokenUsage()
+
 	return &Executor{
 		Runner:     runner,
 		Humen:      ag,
-		Token:      &TokenUsage{},
+		Token:      tokens,
 		Compressor: comp,
 	}, nil
 }

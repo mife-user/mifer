@@ -485,6 +485,8 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case input == "/clear":
 		return m, clearCmd(m.client)
+	case input == "/compact":
+		return m, compactCmd(m.client)
 
 	case input == "/reload":
 		return m, reloadCmd(m.client)

@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"mifer/internal/api/dto/response/agentresp"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,5 +14,14 @@ func (h *AgentHandler) ListSkills(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, resp)
+	skills := make([]agentres.SkillInfo, len(resp.Skills))
+	for i, s := range resp.Skills {
+		skills[i] = agentres.SkillInfo{
+			Name:        s.Name,
+			Description: s.Description,
+			Context:     s.Context,
+			Agent:       s.Agent,
+		}
+	}
+	c.JSON(http.StatusOK, agentres.SkillListRes{Skills: skills})
 }

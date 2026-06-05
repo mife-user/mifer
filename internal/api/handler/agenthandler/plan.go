@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"mifer/internal/api/dto/response/agentresp"
 	"mifer/pkg/logger"
 	"net/http"
 
@@ -15,9 +16,7 @@ func (h *AgentHandler) ListPlans(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"files": resp.Files,
-	})
+	c.JSON(http.StatusOK, agentres.PlanListRes{Files: resp.Files})
 }
 
 // LoadPlan 加载指定计划文件的内容
@@ -29,8 +28,8 @@ func (h *AgentHandler) LoadPlan(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"name":    resp.Name,
-		"content": resp.Content,
+	c.JSON(http.StatusOK, agentres.PlanLoadRes{
+		Name:    resp.Name,
+		Content: resp.Content,
 	})
 }

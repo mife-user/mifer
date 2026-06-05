@@ -15,6 +15,16 @@ type TokenUsage struct {
 	Reasoning  int // 推理 token
 }
 
+func initTokenUsage() *TokenUsage {
+	return &TokenUsage{
+		Prompt:     0,
+		Completion: 0,
+		Total:      0,
+		Cached:     0,
+		Reasoning:  0,
+	}
+}
+
 // accumulate 从 schema.Message 中累加 token 用量，返回是否有新数据
 func (t *TokenUsage) accumulate(msg *schema.Message) bool {
 	if msg == nil || msg.ResponseMeta == nil || msg.ResponseMeta.Usage == nil {

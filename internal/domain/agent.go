@@ -56,32 +56,37 @@ type PlanListResp struct {
 
 // MCPServerStatus MCP Server 状态
 type MCPServerStatus struct {
-	Name      string `json:"name"`
-	Status    string `json:"status"`     // connected / disabled / error / disconnected
-	ToolCount int    `json:"tool_count"` // 已加载的工具数量
-	Error     string `json:"error,omitempty"`
+	Name      string // Server 名称
+	Status    string // connected / disabled / error / disconnected
+	ToolCount int    // 已加载的工具数量
+	Error     string // 错误信息
 }
 
 // SkillInfo 技能简要信息
 type SkillInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Context     string `json:"context"`
-	Agent       string `json:"agent"`
+	Name        string // 技能名
+	Description string // 技能描述
+	Context     string // 执行模式: inline / fork
+	Agent       string // fork 模式的目标 Agent 名
 }
 
 // SkillListResp 技能列表响应
 type SkillListResp struct {
-	Skills []SkillInfo `json:"skills"`
+	Skills []SkillInfo
 }
 
 // MCPStatusResp MCP 状态响应
 type MCPStatusResp struct {
-	Servers []MCPServerStatus `json:"servers"`
+	Servers []MCPServerStatus
 }
 
 // PlanLoadResp 计划文件内容响应
 type PlanLoadResp struct {
 	Name    string // 文件名
 	Content string // 文件内容
+}
+
+// CompactResp 上下文压缩结果
+type CompactResp struct {
+	Message string // 结果描述消息
 }

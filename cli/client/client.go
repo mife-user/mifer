@@ -5,6 +5,7 @@ import (
 
 	"mifer/cli/client/chathandler"
 	"mifer/cli/client/clearhandler"
+	"mifer/cli/client/compactorhandler"
 	"mifer/cli/client/excmemhandler"
 	"mifer/cli/client/mcphandler"
 	"mifer/cli/client/memhandler"
@@ -17,16 +18,17 @@ import (
 )
 
 const (
-	APIChatPath   = "/api/ai/chat"
-	APIMemoryPath = "/api/memory"
-	APIExcmemPath = "/api/memory/exchange"
-	APIClearPath  = "/api/memory/clear"
-	APIPromptPath = "/api/prompt"
-	APIRebackPath = "/api/memory/reback"
-	APIReloadPath = "/api/admin/reload"
-	APIPlanPath   = "/api/plan"
-	APIMCPPath    = "/api/mcp"
-	APISkillPath  = "/api/skill"
+	APIChatPath    = "/api/ai/chat"
+	APIMemoryPath  = "/api/memory"
+	APIExcmemPath  = "/api/memory/exchange"
+	APIClearPath   = "/api/memory/clear"
+	APICompactPath = "/api/memory/compact"
+	APIPromptPath  = "/api/prompt"
+	APIRebackPath  = "/api/memory/reback"
+	APIReloadPath  = "/api/admin/reload"
+	APIPlanPath    = "/api/plan"
+	APIMCPPath     = "/api/mcp"
+	APISkillPath   = "/api/skill"
 )
 
 // Client HTTP API客户端，按服务聚合各Handler
@@ -35,6 +37,7 @@ type Client struct {
 	Memory     *memhandler.MemHandler
 	Excmem     *excmemhandler.ExcmemHandler
 	Clear      *clearhandler.ClearHandler
+	Compact    *compactorhandler.CompactHandler
 	Reback     *rebackhandler.RebackHandler
 	Prompt     *prompthandler.PromptHandler
 	Reload     *reloadhandler.ReloadHandler
@@ -53,6 +56,7 @@ func New(baseURL string) *Client {
 		Memory:       memhandler.New(httpClient, baseURL+APIMemoryPath),
 		Excmem:       excmemhandler.New(httpClient, baseURL+APIExcmemPath),
 		Clear:        clearhandler.New(httpClient, baseURL+APIClearPath),
+		Compact:      compactorhandler.New(httpClient, baseURL+APICompactPath),
 		Reback:       rebackhandler.New(httpClient, baseURL+APIRebackPath),
 		Prompt:       prompthandler.New(httpClient, baseURL+APIPromptPath),
 		Reload:       reloadhandler.New(httpClient, baseURL+APIReloadPath),

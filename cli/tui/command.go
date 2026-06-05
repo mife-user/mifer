@@ -186,3 +186,14 @@ func configCmd(client *client.Client) tea.Cmd {
 		reloadCmd(client),
 	)
 }
+
+// compactCmd 异步请求服务端执行上下文压缩
+func compactCmd(client *client.Client) tea.Cmd {
+	return func() tea.Msg {
+		result, err := client.Compact.Compact()
+		if err != nil {
+			return systemMsg{err: err}
+		}
+		return systemMsg{content: result}
+	}
+}

@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"mifer/internal/api/dto/response/agentresp"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,5 +14,14 @@ func (h *AgentHandler) MCPStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, resp)
+	servers := make([]agentres.MCPServerStatus, len(resp.Servers))
+	for i, s := range resp.Servers {
+		servers[i] = agentres.MCPServerStatus{
+			Name:      s.Name,
+			Status:    s.Status,
+			ToolCount: s.ToolCount,
+			Error:     s.Error,
+		}
+	}
+	c.JSON(http.StatusOK, agentres.MCPStatusRes{Servers: servers})
 }

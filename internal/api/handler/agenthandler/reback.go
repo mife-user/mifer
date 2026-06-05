@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"mifer/internal/api/dto/response/agentresp"
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
 	"net/http"
@@ -17,7 +18,14 @@ func (h *AgentHandler) ListRebackEntries(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"entries": resp.Entries})
+	entries := make([]agentres.RebackEntryRes, len(resp.Entries))
+	for i, e := range resp.Entries {
+		entries[i] = agentres.RebackEntryRes{
+			Index:   e.Index,
+			Summary: e.Summary,
+		}
+	}
+	c.JSON(http.StatusOK, agentres.RebackListRes{Entries: entries})
 }
 
 // Reback 回退到指定轮次的用户消息
@@ -35,5 +43,9 @@ func (h *AgentHandler) Reback(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"summary": resp.Summary, "content": resp.Content, "message": resp.Message})
+	c.JSON(http.StatusOK, agentres.RebackRes{
+		Summary: resp.Summary,
+		Content: resp.Content,
+		Message: resp.Message,
+	})
 }

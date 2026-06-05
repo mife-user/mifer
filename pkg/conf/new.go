@@ -227,6 +227,8 @@ cli:
         description: "显示MCP Server状态"
       - command: "/skill"
         description: "显示已加载的技能列表"
+      - command: "/compact"
+        description: "手动压缩当前对话上下文"
     content_margin: 4                # 内容区域水平边距
     min_height: 10                   # 终端最小高度（行）
     editor: ""                       # 外部编辑器命令（如 "code --wait"），为空时自动检测

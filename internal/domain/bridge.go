@@ -17,6 +17,7 @@ type AgentService interface {
 	LoadPlan(ctx context.Context, name string) (*PlanLoadResp, error)
 	MCPStatus(ctx context.Context) (*MCPStatusResp, error)
 	ListSkills(ctx context.Context) (*SkillListResp, error)
+	Compact(ctx context.Context) (*CompactResp, error)
 }
 
 type Agent interface {
@@ -34,4 +35,5 @@ type Agent interface {
 	LoadPlan(ctx context.Context, name string) (*PlanLoadResp, error)
 	MCPStatus(ctx context.Context) (*MCPStatusResp, error)
 	ListSkills(ctx context.Context) (*SkillListResp, error)
+	Compact(ctx context.Context) (*CompactResp, error)
 }

@@ -36,14 +36,14 @@ func (c *Compressor) Compress(
 	skill, err := c.skillManager.Get("context-summarizer")
 	if err != nil {
 		logger.Warn("获取上下文压缩技能失败，降级为移除最早轮次", logger.C(err))
-		return c.fallbackRemoveEarliestRound(mem, callback)
+		return c.fallbackRemoveEarliestRound(mem)
 	}
 
 	// 3. 获取压缩模型
 	chatModel := c.registry.Get(ctxCfg.Model)
 	if chatModel == nil {
 		logger.Warn("压缩模型后端不可用，降级为移除最早轮次", logger.S("model", ctxCfg.Model))
-		return c.fallbackRemoveEarliestRound(mem, callback)
+		return c.fallbackRemoveEarliestRound(mem)
 	}
 
 	// 4. 切分消息：需总结的部分 vs 保留的最近轮次
@@ -55,7 +55,7 @@ func (c *Compressor) Compress(
 	summary, err := c.generateSummary(ctx, chatModel, skill.Content, oldMsgs)
 	if err != nil {
 		logger.Error("调用压缩模型失败，降级为移除最早轮次", logger.C(err))
-		return c.fallbackRemoveEarliestRound(mem, callback)
+		return c.fallbackRemoveEarliestRound(mem)
 	}
 
 	// 6. 构建新的消息列表：[系统提示词, 摘要消息, 最近轮次]
@@ -138,7 +138,6 @@ func extractRecentRounds(messages []*schema.Message, n int) []*schema.Message {
 // fallbackRemoveEarliestRound 降级策略：移除最早的1轮对话（第一条用户消息及其助手回复）
 func (c *Compressor) fallbackRemoveEarliestRound(
 	mem *memory.Memory,
-	callback func(event, content string) error,
 ) error {
 	// 找到第一个用户消息的位置
 	firstUserIdx := -1

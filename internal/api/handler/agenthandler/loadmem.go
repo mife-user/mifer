@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"mifer/internal/api/dto/response/agentresp"
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
 	"net/http"
@@ -18,5 +19,5 @@ func (h *AgentHandler) LoadMemory(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"memory": resp.Memory})
+	c.JSON(http.StatusOK, agentres.MemoryRes{Memory: resp.Memory})
 }

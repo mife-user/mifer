@@ -1,6 +1,7 @@
 package agenthandler
 
 import (
+	"mifer/internal/api/dto/response/agentresp"
 	"mifer/internal/domain"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -22,5 +23,5 @@ func (h *AgentHandler) ExchangeMemory(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "记忆交换成功"})
+	c.JSON(http.StatusOK, agentres.ExchangeMemoryRes{Message: "记忆交换成功"})
 }

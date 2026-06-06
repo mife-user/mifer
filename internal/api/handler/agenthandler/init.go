@@ -2,13 +2,7 @@ package agenthandler
 
 import (
 	"mifer/internal/domain"
-	"sync"
 )
-
-type AgentHandler struct {
-	agentService domain.AgentService
-	mu           sync.RWMutex
-}
 
 func NewAgentHandler(agentService domain.AgentService) *AgentHandler {
 	return &AgentHandler{agentService: agentService}

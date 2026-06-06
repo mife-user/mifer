@@ -1,7 +1,7 @@
 package agenthandler
 
 import (
-	"mifer/internal/api/dto/response/agentresp"
+	agentres "mifer/internal/api/dto/response/agentresp"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

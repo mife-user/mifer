@@ -102,6 +102,9 @@ func Init(c context.Context) (*Humen, error) {
 	}
 	skillHub.Register("MiAuditor", auditorAgent)
 
+	// 加载用户自定义 Agent（从 ~/.mifer/agents/*.yaml）
+	customOrchAgents := buildAllCustomAgents(c, reg.Get, mmModel, ragSvc, mcpManager, skillHub)
+
 	// 构建编排器的工具集
 	orchTools := []tool.BaseTool{skill.NewSkillTool(skillMgr, skillHub)}
 	for _, t := range mcpToBaseTools(mcpManager.GetToolsForAgent("Mifer")) {
@@ -124,7 +127,7 @@ func Init(c context.Context) (*Humen, error) {
 				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 			},
 		},
-		SubAgents:    []adk.Agent{editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
+		SubAgents:    append([]adk.Agent{editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent}, customOrchAgents...),
 		MaxIteration: 0,
 	})
 	if err != nil {

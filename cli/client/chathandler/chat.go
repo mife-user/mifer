@@ -12,11 +12,13 @@ import (
 
 type chatReq struct {
 	Content string `json:"content"`
+	Agent   string `json:"agent,omitempty"`
 }
 
-// Send 发送消息并处理SSE流式响应，每收到一个chunk调用onChunk回调
-func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(event, chunk string) error) error {
-	body, err := json.Marshal(chatReq{Content: content})
+// Send 发送消息并处理SSE流式响应，每收到一个chunk调用onChunk回调。
+// agent 为可选的目标 Agent 名称（@AgentName 路由），为空时使用 Orchestrator。
+func (h *ChatHandler) Send(ctx context.Context, content string, agent string, onChunk func(event, chunk string) error) error {
+	body, err := json.Marshal(chatReq{Content: content, Agent: agent})
 	if err != nil {
 		return errorer.NewS(errorer.ErrSerializeRequestFailed, err)
 	}

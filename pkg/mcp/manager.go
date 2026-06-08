@@ -220,6 +220,24 @@ func (m *Manager) GetToolsForAgent(agentName string) []tool.InvokableTool {
 	return tools
 }
 
+// GetToolsForServer 根据 MCP Server 名称获取该 Server 提供的所有工具。
+// serverName 对应 MCPServerConfig.Name，不存在或未连接时返回 error。
+func (m *Manager) GetToolsForServer(serverName string) ([]tool.InvokableTool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	inst, ok := m.servers[serverName]
+	if !ok {
+		return nil, fmt.Errorf("MCP Server [%s] 未配置", serverName)
+	}
+	if inst.Status != StatusConnected {
+		return nil, fmt.Errorf("MCP Server [%s] 状态为 %s，不可用", serverName, inst.Status)
+	}
+	result := make([]tool.InvokableTool, len(inst.Tools))
+	copy(result, inst.Tools)
+	return result, nil
+}
+
 // isAgentTargeted 判断 Agent 是否在分配列表中（空或 ["*"] 表示全部）
 func isAgentTargeted(agents []string, agentName string) bool {
 	if len(agents) == 0 {

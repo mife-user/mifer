@@ -6,6 +6,7 @@
 
 import (
 	"context"
+	"fmt"
 	"mifer/pkg/conf"
 	"strings"
 
@@ -471,6 +472,22 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	m.pendingInput = ""
 	m.resetCompletion()
 
+	// ---- @AgentName 前缀路由 ----
+	// 检测 @AgentName 格式，提取目标 Agent 名称并构造调度指令
+	var targetAgent string
+	var chatInput = input // 实际发送给 AI 的消息
+	if strings.HasPrefix(input, "@") {
+		if idx := strings.Index(input, " "); idx > 1 {
+			targetAgent = input[1:idx]
+			userMsg := strings.TrimSpace(input[idx:])
+			if userMsg == "" {
+				m.err = "@AgentName 后需要输入消息内容"
+				return m, nil
+			}
+			chatInput = fmt.Sprintf("[系统指令: 请使用 %s 专家处理以下请求]\n\n%s", targetAgent, userMsg)
+		}
+	}
+
 	// ---- 命令分发 ----
 	switch {
 	case input == "/exit" || input == "/quit":
@@ -557,7 +574,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 			var spCmd tea.Cmd
 			m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 			return m, tea.Batch(
-				startSSECmd(m.client, chatMsg, m.streamCh, ctx),
+				startSSECmd(m.client, chatMsg, "", m.streamCh, ctx),
 				listenStreamCmd(m.streamCh),
 				spCmd,
 			)
@@ -581,7 +598,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		var spCmd tea.Cmd
 		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 		return m, tea.Batch(
-			startSSECmd(m.client, input, m.streamCh, ctx),
+			startSSECmd(m.client, chatInput, targetAgent, m.streamCh, ctx),
 			listenStreamCmd(m.streamCh),
 			spCmd,
 		) // 启动流式传输并监听消息

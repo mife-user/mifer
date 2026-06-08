@@ -1,4 +1,4 @@
-package conf
+﻿package conf
 
 import (
 	"mifer/pkg/errorer"
@@ -44,6 +44,24 @@ func newDefaultCfg(s string) error {
 	if _, err := os.Stat(allowlistPath); os.IsNotExist(err) {
 		if err := os.WriteFile(allowlistPath, []byte(defaultAllowList), 0644); err != nil {
 			return errorer.NewS(errorer.ErrWriteDefaultConfigFailed, err)
+		}
+	}
+
+	// 创建用户级自定义 Agent 配置目录（仅在 prod 模式下创建）
+	if s == "prod" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return errorer.NewS(errorer.ErrGetHomeDirFailed, err)
+		}
+		agentsDir := filepath.Join(home, "/mifer/agents")
+		if err := os.MkdirAll(agentsDir, 0755); err != nil {
+			return errorer.NewS(errorer.ErrCreateConfigDirFailed, err)
+		}
+		examplePath := filepath.Join(agentsDir, "_example.yaml")
+		if _, err := os.Stat(examplePath); os.IsNotExist(err) {
+			if err := os.WriteFile(examplePath, []byte(agentExample), 0644); err != nil {
+				return errorer.NewS(errorer.ErrWriteDefaultConfigFailed, err)
+			}
 		}
 	}
 
@@ -241,4 +259,43 @@ cli:
     completion_max_visible: 5        # 补全列表最大可见行数
     mouse_wheel_delta: 3             # 滚轮每次滚动行数
     horizontal_scroll_step: 4        # 水平滚动每次列数
+`
+
+
+// agentExample 自定义 Agent 配置示例文件，放置在 ~/.mifer/agents/_example.yaml
+const agentExample = `# 自定义 Agent 配置示例
+# 文件名可任意（.yaml / .yml），以下为一个完整示例。
+# 取消下方注释并修改即可生效：
+#
+# name: MyAgent                       # 必填，唯一标识，不可与内置 Agent 重名
+# description: 我的自定义助手           # 必填，Orchestrator 调度依据
+# model: default                      # 可选，后端名: default/sonnet/opus/haiku
+# base_dir: ""                        # 可选，限制 file_writer/file_creator 路径
+# instruction: |                      # 必填，系统提示词
+#   你是我的自定义助手，负责完成特定任务。
+#
+#   工作原则：
+#   1. 用中文回复
+#   2. 文件操作前先确认路径
+# tools:                              # 必填，至少一个工具
+#   - file_reader                     # 文件读取
+#   - file_writer                     # 文件写入
+#   - file_viewer                     # 文件查看（含图片识别）
+#   - web_search                      # 网页搜索
+#   # - mcp:filesystem                # MCP Server 工具（通过 mcp:<server名> 引用）
+# max_iterations: 20                  # 可选，0=默认20，负值=无限
+# integration: orchestrator           # 可选，orchestrator/standalone，默认 orchestrator
+#
+# 工具名完整列表：
+#   file_reader       — 读取文本文件
+#   file_writer       — 写入文件（支持覆盖/追加/插入/替换四种模式）
+#   file_creator      — 创建新文件
+#   file_viewer       — 读取文件（文本/图片/文档）
+#   image_generator   — 图片生成
+#   command_executor  — 终端命令执行
+#   knowledge_search  — 知识库检索
+#   knowledge_store   — 文档存入知识库
+#   web_search        — 网页搜索
+#   web_fetch         — 网页内容抓取
+#   mcp:<server名>    — 引用 MCP Server 的所有工具
 `

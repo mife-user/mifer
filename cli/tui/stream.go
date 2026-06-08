@@ -218,11 +218,11 @@ func formatToolArgs(rawJSON string) string {
 //	thinking → 跳过
 //
 // goroutine 退出前关闭 channel，触发 listenStreamCmd 返回 nil 停止递归。
-func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx context.Context) tea.Cmd {
+func startSSECmd(client *client.Client, content string, agent string, ch chan<- tea.Msg, ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		go func() {
 			defer close(ch)
-			err := client.Chat.Send(ctx, content, func(event, chunk string) error {
+			err := client.Chat.Send(ctx, content, agent, func(event, chunk string) error {
 				switch event {
 				case "agent_start", "agent_end":
 					ch <- streamStatusMsg{event: event, name: chunk}

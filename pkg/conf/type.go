@@ -4,14 +4,15 @@ var globalConfig Config
 
 // 配置结构体
 type Config struct {
-	Env  string     `mapstructure:"env"`
-	Log  LogConfig  `mapstructure:"log"`
-	Gin  GinConfig  `mapstructure:"gin"`
-	JWT  JWTConfig  `mapstructure:"jwt"`
-	Ai   AiConfig   `mapstructure:"ai"`
-	Path PathConfig `mapstructure:"path"`
-	Cli  CliConfig  `mapstructure:"cli"`
-	Rag  RAGConfig  `mapstructure:"rag"`
+	Env     string        `mapstructure:"env"`
+	Log     LogConfig     `mapstructure:"log"`
+	Gin     GinConfig     `mapstructure:"gin"`
+	JWT     JWTConfig     `mapstructure:"jwt"`
+	Ai      AiConfig      `mapstructure:"ai"`
+	Agents  []AgentConfig `mapstructure:"agents"`
+	Path    PathConfig    `mapstructure:"path"`
+	Cli     CliConfig     `mapstructure:"cli"`
+	Rag     RAGConfig     `mapstructure:"rag"`
 	Mcp     MCPConfig     `mapstructure:"mcp"`
 	Search  SearchConfig  `mapstructure:"search"`
 	Skill   SkillConfig   `mapstructure:"skill"`
@@ -97,6 +98,15 @@ type BackendConfig struct {
 type AiConfig struct {
 	Backends map[string]BackendConfig `mapstructure:"backends"`
 	Context  ContextConfig            `mapstructure:"context"` // 上下文压缩配置
+}
+
+// agent自定义
+type AgentConfig struct {
+	Name        string   `mapstructure:"name"`
+	Description string   `mapstructure:"description"`
+	Instruction string   `mapstructure:"instruction"`
+	Model       string   `mapstructure:"model"`
+	Tools       []string `mapstructure:"tools"`
 }
 
 // gin配置结构体

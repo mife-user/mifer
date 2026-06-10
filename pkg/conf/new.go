@@ -156,6 +156,14 @@ ai:
     model: "haiku"                    # 压缩用模型后端
     recent_rounds: 3                  # 压缩后保留的最近轮数
 
+agents:
+  - name: "MiTest"                 # Agent名称，唯一标识
+    description: "测试Agent" # Agent描述
+    instruction: "你是MiTest，测试Agent。" # Agent系统提示词
+    model: "sonnet"            # 使用的聊天模型后端，需在 ai.backends 中定义
+    tools:                         # 可用工具列表，工具名需在代码中定义
+      - file_reader
+      
 # ── HTTP 服务 ──
 gin:
   mode: "debug"                      # 运行模式：debug / release / test

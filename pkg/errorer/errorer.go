@@ -7,11 +7,11 @@ import (
 
 const (
 	// 通用错误
-	ErrChatTimeout  = "ctx killed or timeout"
-	ErrCallBackNull = "AI 未生成回复内容"
-	ErrArgUnknowid  = "未知的参数ID"
+	ErrChatTimeout      = "ctx killed or timeout"
+	ErrCallBackNull     = "AI 未生成回复内容"
+	ErrArgUnknowid      = "未知的参数ID"
 	ErrPathCannotCreate = "路径创建失败"
-	ErrIdEmpty      = "ID 不能为空"
+	ErrIdEmpty          = "ID 不能为空"
 
 	// 后端配置
 	ErrNoBackendConfig      = "未配置任何模型后端，请在配置中添加 ai.backends"
@@ -52,8 +52,8 @@ const (
 	ErrIDNotString = "id is not string"
 
 	// Memory
-	ErrIDIllegalChars      = "id 包含非法字符: %s"
-	ErrIndexOutOfRange     = "%s"
+	ErrIDIllegalChars        = "id 包含非法字符: %s"
+	ErrIndexOutOfRange       = "%s"
 	ErrCreateMemoryDirFailed = "创建内存目录失败"
 	ErrOpenFileFailed        = "打开文件失败"
 	ErrSerializeJSONFailed   = "序列化JSON失败"
@@ -83,7 +83,8 @@ const (
 
 	// Auth
 	ErrTokenInvalid = "token无效"
-
+	// tools
+	ErrToolUnknown = "未知工具错误"
 	// 配置
 	ErrGetWorkDirFailed              = "获取当前工作目录失败"
 	ErrGetHomeDirFailed              = "获取用户主目录失败"
@@ -106,7 +107,7 @@ const (
 	ErrUnsupportedProvider      = "不支持的模型提供商: %s（后端: %s），支持: openai, claude, gemini, ollama"
 
 	// 配置重载
-	ErrConfigReloadFailed   = "配置重载失败"
+	ErrConfigReloadFailed    = "配置重载失败"
 	ErrRebuildExecutorFailed = "重建执行器失败"
 	ErrReloadHandlerNotReady = "处理器尚未初始化，无法重载"
 

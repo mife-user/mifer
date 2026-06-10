@@ -61,7 +61,7 @@ func Init(c context.Context) (*Humen, error) {
 		confirm.NeedConfirm(confirmStore),
 		time.Duration(confirmCfg.TimeoutSec)*time.Second,
 	)
-
+	var subagents []adk.Agent
 	// 初始化文件编辑agent（sonnet — 均衡）
 	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer")))
 	if err != nil {
@@ -69,7 +69,7 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	skillHub.Register("MiEditer", editerAgent)
-
+	subagents = append(subagents, editerAgent)
 	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具 + MCP 工具
 	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer")))
 	if err != nil {
@@ -77,7 +77,7 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	skillHub.Register("MiSummarizer", summarizerAgent)
-
+	subagents = append(subagents, summarizerAgent)
 	// 初始化计划编写agent（opus — 最强推理），PlannerTools 内部读取 Workdir 配置
 	plannerAgent, err := newPlanner(c, reg.Get("opus"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiPlanner")))
 	if err != nil {
@@ -85,7 +85,7 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	skillHub.Register("MiPlanner", plannerAgent)
-
+	subagents = append(subagents, plannerAgent)
 	// 初始化终端命令agent（sonnet — 均衡）
 	commanderAgent, err := newCommander(c, reg.Get("sonnet"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiCommander")))
 	if err != nil {
@@ -93,7 +93,7 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	skillHub.Register("MiCommander", commanderAgent)
-
+	subagents = append(subagents, commanderAgent)
 	// 初始化安全审计agent（opus — 最强推理）
 	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiAuditor")))
 	if err != nil {
@@ -101,7 +101,33 @@ func Init(c context.Context) (*Humen, error) {
 		return nil, err
 	}
 	skillHub.Register("MiAuditor", auditorAgent)
-
+	subagents = append(subagents, auditorAgent)
+	//创建自定义agent，注入MCP工具和技能工具
+	for _, agentcfg := range conf.GetConfig().Agents {
+		var tool []tool.BaseTool
+		tool, err = tools.NewWithName(agentcfg.Tools, mmModel, ragSvc)
+		if err != nil {
+			return nil, err
+		}
+		extraAgent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
+			Name:        agentcfg.Name,
+			Description: agentcfg.Description,
+			Instruction: agentcfg.Instruction,
+			Model:       reg.Get(agentcfg.Model),
+			ToolsConfig: adk.ToolsConfig{
+				ToolsNodeConfig: compose.ToolsNodeConfig{
+					Tools:               tool,
+					ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
+				},
+			},
+			MaxIterations: 0,
+		})
+		if err != nil {
+			return nil, err
+		}
+		subagents = append(subagents, extraAgent)
+		skillHub.Register(agentcfg.Name, extraAgent)
+	}
 	// 构建编排器的工具集
 	orchTools := []tool.BaseTool{skill.NewSkillTool(skillMgr, skillHub)}
 	for _, t := range mcpToBaseTools(mcpManager.GetToolsForAgent("Mifer")) {
@@ -115,7 +141,7 @@ func Init(c context.Context) (*Humen, error) {
 	agent, err := deep.New(c, &deep.Config{
 		Name:        "Mifer",
 		Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务",
-			Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n你自身具备以下工具：\n- web_search：搜索互联网获取最新信息（基于 SearXNG 元搜索引擎，聚合 Google/Bing/百度等多家结果）\n- web_fetch：抓取指定网页URL的文本内容\n- skill：调用预定义的技能\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent或工具\n2. 涉及实时信息、新闻、最新资料时使用 web_search 搜索\n3. 需要阅读具体网页内容时使用 web_fetch 抓取\n4. 复杂任务可串联多个Agent协作完成\n5. 涉及安全操作时优先咨询MiAuditor\n6. 回复用户时使用中文，简洁清晰\n7. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示",
+		Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n你自身具备以下工具：\n- web_search：搜索互联网获取最新信息（基于 SearXNG 元搜索引擎，聚合 Google/Bing/百度等多家结果）\n- web_fetch：抓取指定网页URL的文本内容\n- skill：调用预定义的技能\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent或工具\n2. 涉及实时信息、新闻、最新资料时使用 web_search 搜索\n3. 需要阅读具体网页内容时使用 web_fetch 抓取\n4. 复杂任务可串联多个Agent协作完成\n5. 涉及安全操作时优先咨询MiAuditor\n6. 回复用户时使用中文，简洁清晰\n7. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示",
 		ChatModel:   reg.Get("default"),
 		ToolsConfig: adk.ToolsConfig{
 			EmitInternalEvents: true,
@@ -124,7 +150,7 @@ func Init(c context.Context) (*Humen, error) {
 				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 			},
 		},
-		SubAgents:    []adk.Agent{editerAgent, summarizerAgent, plannerAgent, commanderAgent, auditorAgent},
+		SubAgents:    subagents,
 		MaxIteration: 0,
 	})
 	if err != nil {

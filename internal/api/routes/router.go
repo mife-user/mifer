@@ -94,6 +94,10 @@ func (r *Router) Setup() *gin.Engine {
 		{
 			skill.GET("/list", r.agentHandler.ListSkills)
 		}
+		agents := api.Group("/agents")
+		{
+			agents.GET("", r.agentHandler.ListAgents)
+		}
 		tool := api.Group("/tool")
 		{
 			tool.POST("/confirm", r.toolHandler.Confirm)

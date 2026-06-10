@@ -18,6 +18,7 @@ type AgentService interface {
 	MCPStatus(ctx context.Context) (*MCPStatusResp, error)
 	ListSkills(ctx context.Context) (*SkillListResp, error)
 	Compact(ctx context.Context) (*CompactResp, error)
+	ListAgents(ctx context.Context) (*AgentListResp, error)
 }
 
 type Agent interface {
@@ -36,4 +37,5 @@ type Agent interface {
 	MCPStatus(ctx context.Context) (*MCPStatusResp, error)
 	ListSkills(ctx context.Context) (*SkillListResp, error)
 	Compact(ctx context.Context) (*CompactResp, error)
+	ListAgents(ctx context.Context) (*AgentListResp, error)
 }

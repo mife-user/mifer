@@ -32,6 +32,7 @@ type Humen struct {
 	MCPManager   *mcp.Manager
 	SkillManager *skill.Manager
 	ConfirmStore *confirm.Store // 工具确认存储
+	AgentInfos   []AgentInfo    // Agent 元数据列表
 }
 
 func Init(c context.Context) (*Humen, error) {
@@ -62,6 +63,7 @@ func Init(c context.Context) (*Humen, error) {
 		time.Duration(confirmCfg.TimeoutSec)*time.Second,
 	)
 	var subagents []adk.Agent
+	var agentInfos []AgentInfo
 	// 初始化文件编辑agent（sonnet — 均衡）
 	editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer")))
 	if err != nil {
@@ -70,6 +72,8 @@ func Init(c context.Context) (*Humen, error) {
 	}
 	skillHub.Register("MiEditer", editerAgent)
 	subagents = append(subagents, editerAgent)
+	editerTools := append(tools.FileTools(mmModel), mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer"))...)
+	agentInfos = append(agentInfos, AgentInfo{Name: "MiEditer", ModelBackend: "sonnet", Description: "文件编辑专家，安全处理本地文件的读取、写入、创建、查看和图片生成操作", Tools: resolveToolNames(c, editerTools)})
 	// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具 + MCP 工具
 	summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer")))
 	if err != nil {
@@ -78,6 +82,8 @@ func Init(c context.Context) (*Humen, error) {
 	}
 	skillHub.Register("MiSummarizer", summarizerAgent)
 	subagents = append(subagents, summarizerAgent)
+	summarizerTools := append(append(tools.AuditTools(mmModel), tools.KnowledgeTools(ragSvc)...), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer"))...)
+	agentInfos = append(agentInfos, AgentInfo{Name: "MiSummarizer", ModelBackend: "sonnet", Description: "文档摘要与知识库管理专家，读取文档、查看图片、生成摘要并可检索和存储知识库", Tools: resolveToolNames(c, summarizerTools)})
 	// 初始化计划编写agent（opus — 最强推理），PlannerTools 内部读取 Workdir 配置
 	plannerAgent, err := newPlanner(c, reg.Get("opus"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiPlanner")))
 	if err != nil {
@@ -86,6 +92,8 @@ func Init(c context.Context) (*Humen, error) {
 	}
 	skillHub.Register("MiPlanner", plannerAgent)
 	subagents = append(subagents, plannerAgent)
+	plannerTools := append(tools.PlannerTools(), mcpToBaseTools(mcpManager.GetToolsForAgent("MiPlanner"))...)
+	agentInfos = append(agentInfos, AgentInfo{Name: "MiPlanner", ModelBackend: "opus", Description: "项目计划专家，根据需求编写结构化、可执行的计划文档", Tools: resolveToolNames(c, plannerTools)})
 	// 初始化终端命令agent（sonnet — 均衡）
 	commanderAgent, err := newCommander(c, reg.Get("sonnet"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiCommander")))
 	if err != nil {
@@ -94,6 +102,8 @@ func Init(c context.Context) (*Humen, error) {
 	}
 	skillHub.Register("MiCommander", commanderAgent)
 	subagents = append(subagents, commanderAgent)
+	commanderTools := append(tools.CommandTools(), mcpToBaseTools(mcpManager.GetToolsForAgent("MiCommander"))...)
+	agentInfos = append(agentInfos, AgentInfo{Name: "MiCommander", ModelBackend: "sonnet", Description: "终端命令执行专家，在安全沙箱中执行shell命令并返回结果", Tools: resolveToolNames(c, commanderTools)})
 	// 初始化安全审计agent（opus — 最强推理）
 	auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiAuditor")))
 	if err != nil {
@@ -102,6 +112,8 @@ func Init(c context.Context) (*Humen, error) {
 	}
 	skillHub.Register("MiAuditor", auditorAgent)
 	subagents = append(subagents, auditorAgent)
+	auditorTools := append(tools.AuditTools(mmModel), mcpToBaseTools(mcpManager.GetToolsForAgent("MiAuditor"))...)
+	agentInfos = append(agentInfos, AgentInfo{Name: "MiAuditor", ModelBackend: "opus", Description: "安全审计专家，审查代码和配置文件中的安全隐患", Tools: resolveToolNames(c, auditorTools)})
 	//创建自定义agent，注入MCP工具和技能工具
 	for _, agentcfg := range conf.GetConfig().Agents {
 		var tool []tool.BaseTool
@@ -127,6 +139,7 @@ func Init(c context.Context) (*Humen, error) {
 		}
 		subagents = append(subagents, extraAgent)
 		skillHub.Register(agentcfg.Name, extraAgent)
+		agentInfos = append(agentInfos, AgentInfo{Name: agentcfg.Name, ModelBackend: agentcfg.Model, Description: agentcfg.Description, Tools: resolveToolNames(c, tool)})
 	}
 	// 构建编排器的工具集
 	orchTools := []tool.BaseTool{skill.NewSkillTool(skillMgr, skillHub)}
@@ -157,6 +170,7 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("init agent failed", logger.C(err))
 		return nil, err
 	}
+	agentInfos = append(agentInfos, AgentInfo{Name: "Mifer", ModelBackend: "default", Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务", Tools: resolveToolNames(c, orchTools)})
 	id, ok := c.Value("id").(string)
 	if !ok {
 		logger.Error("id is not string")
@@ -169,7 +183,7 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore}, nil
+	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos}, nil
 }
 
 // mcpToBaseTools 将 []tool.InvokableTool 转为 []tool.BaseTool

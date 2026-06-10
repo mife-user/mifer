@@ -11,7 +11,7 @@ Mifer — AI Agent Bot，蓝山最终考核项目。基于 CloudWeGo Eino 构建
 ```bash
 go mod tidy                       # 同步依赖
 go build ./cmd/main              # 编译 HTTP 服务
-go run ./cmd/main                # 运行（默认同时启动服务+CLI，端口 8080）
+go run ./cmd/main                # 运行（默认同时启动服务+CLI，端口 15555）
 go run ./cmd/main serve          # 仅启动 HTTP 服务
 go run ./cmd/main chat           # 仅启动 CLI（需先启动服务）
 go run ./cmd/main chat --<id>    # 指定会话 ID 启动 CLI
@@ -28,7 +28,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 
 `cmd/main/main.go` → `bootstrap.NewApplication()`:
 1. `loadConfig` — Viper 加载 YAML 配置，首次运行自动生成默认配置文件
-2. `initContext` — 创建带 session ID 的 context（基于 workdir 哈希，用于记忆隔离；可通过 `--<id>` 参数手动指定）
+2. `initontext` — 创建带 session ID 的 context（基于 workdir 哈希，用于记忆隔离；可通过 `--<id>` 参数手动指定）
 3. `initLogger` — 初始化 Zap 日志
 4. `initRouter` — 初始化 Gin 路由（内部创建 `executor → agentservice → agenthandler` 依赖链）
 5. `initCli` — 初始化 CLI 客户端（连接到 HTTP 服务）
@@ -37,45 +37,58 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 
 ### 各层职责
 
-- **`pkg/conf/`** — Viper 配置管理。`LoadConfig()` 根据 `MIFER_ENV` 加载 `./config/dev.yaml` 或 `~/.mifer/config/prod.yaml`。环境变量覆盖格式：`MIFER_AI_<BACKEND>_<FIELD>`（如 `MIFER_AI_DEFAULT_APIKEY`）。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。
-- **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），dev 模式控制台彩色，prod 模式 JSON。
+- **`pkg/conf/`** — Viper 配置管理。`LoadConfig()` 根据 `MIFER_ENV` 加载 `./config/dev.yaml` 或 `~/mifer/config/prod.yaml`。环境变量覆盖格式：`MIFER_AI_<BACKEND>_<FIELD>`（如 `MIFER_AI_DEFAULT_APIKEY`），支持的后端名：`DEFAULT`、`MULTI`（映射 `multi_modal`）、`HAIKU`、`SONNET`、`OPUS`；字段后缀：`APIKEY`、`BASE_URL`、`PROVIDER`、`MODEL`。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。
+- **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），由 `lumberjack` 支持自动轮换，ConsoleEncoder 编码，dev 模式 Debug 级别，prod 模式 Info 级别。
 - **`pkg/auth/`** — JWT Token 生成与验证。
 - **`pkg/errorer/`** — 统一错误码与错误包装。
 - **`pkg/task/`** — 异步任务管理，`task.Do(ctx, fn)` 提供 context 感知的任务执行。
 - **`pkg/qdrant/`** — Qdrant gRPC 客户端初始化，用于 RAG 向量存储连接。
-- **`pkg/cache/`** — Redis 缓存封装（go-redis/v8/v9）。预留待启用。
-- **`pkg/res/`** — Redis 客户端工厂和 HTTP 响应格式工具。
+- **`pkg/cache/`** — Redis 缓存封装（go-redis/v8/v9）。已定义但 Redis 初始化代码在 bootstrap 中被注释掉，尚未启用。
+- **`pkg/res/`** — Redis 客户端工厂。初始化代码已注释，尚未启用。
 - **`pkg/utils/`** — 通用工具函数（hash、random 等）。
-- **`internal/domain/`** — 核心接口定义。`agent.go` 定义 DTO（`TalkReq`, `MemoryReq/Resp`, `RebackReq/Resp` 等），`bridge.go` 定义 `AgentService` 和 `Agent` 接口，实现 service ↔ executor 解耦。
+- **`pkg/exc/`** — 类型转换与 JSON 编组工具函数（`StrToUint`、`UintToStr`、`IsUint`、`IsString` 等）。
+- **`internal/domain/`** — 核心接口定义。`agent.go` 定义 DTO（`TalkReq`, `MemoryReq/Resp`, `RebackReq/Resp` 等）和 `Agent` 接口（executor 层），`bridge.go` 定义 `AgentService` 接口（service 层），两个接口方法签名完全相同，实现 service ↔ executor 解耦。
 - **`internal/api/routes/`** — Gin 路由注册。完整路由表：
   - `POST /api/ai/chat` — 流式对话（SSE）
-  - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear` — 记忆管理
+  - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear`, `POST /api/memory/compact` — 记忆管理与手动压缩
   - `GET /api/memory/reback`, `POST /api/memory/reback/:index` — 对话回退
   - `GET /api/prompt`, `POST /api/prompt`, `POST /api/prompt/reset` — 系统提示词管理
+  - `GET /api/plan`, `GET /api/plan/:name` — 计划文件管理
+  - `GET /api/mcp/status` — MCP 服务状态
+  - `GET /api/skill/list` — 技能列表
+  - `POST /api/tool/confirm`, `POST /api/tool/allowlist/add` — 工具确认与白名单
   - `POST /api/admin/reload` — 配置热重载
-- **`internal/api/handler/agenthandler/`** — HTTP Handler，按功能拆分文件（chat/prompt/memory/reback 等）。
+- **`internal/api/handler/agenthandler/`** — HTTP Handler，按功能拆分文件（chat/prompt/memory/reback/plan/mcp/skill/compact 等）。
+- **`internal/api/handler/toolhandler/`** — 工具确认与白名单管理 Handler。
 - **`internal/api/dto/request/` / `response/`** — 请求/响应 DTO，按模块分子目录（`agentreq/`, `agentresp/`, `adminresp/`）。
 - **`internal/api/middlewares/`** — JWT 认证 + CORS 中间件。
-- **`internal/service/agentservice/`** — Agent 服务层，实现 `domain.AgentService`，通过 `task.Do` 包装调用 executor。
-- **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。5 个子 Agent 加上 Orchestrator，按任务复杂度模型分级：
-  - **MiEditer** (sonnet) — 文件读取、写入、创建
+- **`internal/service/agentservice/`** — Agent 服务层，实现 `domain.AgentService`，每个方法 1:1 委托给 executor，`Chat` 通过 `task.Do` 包装调用。
+- **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。5 个子 Agent 加上 Orchestrator，加上通过 `conf.GetConfig().Agents` 配置的自定义 Agent，按任务复杂度模型分级：
+  - **MiEditer** (sonnet) — 文件读取、写入、创建、查看、图片生成（注入 `FileTools` + MCP 工具）
   - **MiSummarizer** (sonnet) — 文档摘要 + 知识库工具（注入 `KnowledgeTools`）
-  - **MiPlanner** (opus) — 项目计划与方案
-  - **MiCommander** (sonnet) — 终端命令执行（受白名单约束）
-  - **MiAuditor** (opus) — 代码与配置安全审计
-  - **Mifer** (default, Orchestrator) — `deep.New` 编排器，MaxIteration=0（由模型自主控制迭代次数），`EmitInternalEvents: true` 转发子 Agent 事件到 TUI 侧边栏
-- **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 执行 agent 迭代，处理流式/非流式消息，自动追加记忆并保存。`tokens.go` 独立管理 TokenUsage 累计统计。
-- **`internal/ai/callback/`** — 全局 Tool 回调处理器。统一处理工具调用事件（开始/结束/错误），替代 executor 内手动处理工具事件的逻辑。
-- **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。支持 openai/claude/gemini/ollama 四种 provider，按名称索引（default/haiku/sonnet/opus/multi_modal），缺失后端自动 fallback 到 default。
-- **`internal/ai/prompt/`** — 系统提示词管理。`build.go` 构建完整提示词（系统提示词 + 记忆上下文），支持运行时通过 API 动态修改。
-- **`internal/ai/memory/`** — JSONL 文件持久化对话历史。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。支持列表、加载、切换、清除、回退操作。
-- **`internal/ai/tools/`** — 工具定义（Function Calling）。包含：`knowledgesearch`（知识库检索）、`knowledgestore`（文档入库）、`filereader`/`fileviewer`/`filecreator`/`filewriter`（文件操作）、`commandexecutor`（命令执行）、`imagegenerator`（图片生成）。工具通过闭包注入依赖（如 RAG 服务）。
-- **`internal/ai/rag/`** — RAG 检索增强。`LazyService` 懒加载模式：`Init()` 仅创建 embedder/loader/chunker（无网络调用），首次工具调用时才通过 `ensureReady()` 连接 Qdrant（Mutex 保护，失败可重试）。子目录：`chunker/`（文档切分）、`embedder/`（Ollama 嵌入）、`loader/`（文件加载，支持 PDF/Word/Text/Markdown）、`vectorstore/`（Qdrant 向量存储封装）。
-- **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。
+  - **MiPlanner** (opus) — 项目计划与方案（工具限制在 `.mifer/plans` 目录）
+  - **MiCommander** (sonnet) — 终端命令执行（受白名单约束，注入 `CommandTools`）
+  - **MiAuditor** (opus) — 代码与配置安全审计（注入 `AuditTools`）
+  - **Mifer** (default, Orchestrator) — `deep.New` 编排器，MaxIteration=0（由模型自主控制迭代次数），`EmitInternalEvents: true` 转发子 Agent 事件到 TUI 侧边栏。编排器工具包含 `SkillTool`（技能调用）+ MCP 工具 + WebTools（web_search、web_fetch）
+  - 所有子 Agent 在创建后通过 `skillHub.Register()` 注册到 `AgentHub`，供技能 fork 模式路由使用
+- **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 执行 agent 迭代，处理流式/非流式消息，最多 3 次自动重试，自动追加记忆并保存，检测压缩阈值。`tokens.go` 独立管理 TokenUsage 累计统计。`compressor` 在 prompt tokens 超阈值时自动触发压缩。
+- **`internal/ai/callback/`** — 全局 Tool 回调处理器。通过 `callbacks.AppendGlobalHandlers` 注册，统一处理工具调用事件（开始/结束/错误），发送 `tool_start`/`tool_end`/`tool_error` SSE 事件。
+- **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。支持 openai/claude/gemini/ollama 四种 provider，按名称索引（default/haiku/sonnet/opus/multi_modal），缺失后端自动 fallback 到 default。provider 实现在各自文件中（`openai.go`、`claude.go`、`gemini.go`、`ollama.go`），`providers.go` 包含 `initBackend()` 工厂方法。
+- **`internal/ai/prompt/`** — 系统提示词管理。`build.go` 构建完整提示词（系统提示词 + 记忆上下文），支持模板格式 `{system_prompt}`、`{history}`、`{query}`，运行时可通过 API 动态修改。
+- **`internal/ai/memory/`** — JSONL 文件持久化对话历史。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。支持列表、加载、切换、清除、回退、按 ID 加载（不修改当前会话）。
+- **`internal/ai/tools/`** — 工具定义（Function Calling）。每个工具独立子目录，通过 `utils.InferTool` 创建。`tools.go` 提供按角色分组的工具工厂函数：`FileTools(mmModel)` — file_reader/file_writer/file_creator/file_viewer/image_generator；`CommandTools()` — command_executor；`AuditTools(mmModel)` — file_reader/file_viewer；`PlannerTools()` — file_creator/file_writer（限制目录）；`KnowledgeTools(ragSvc)` — knowledge_search/knowledge_store；`WebTools()` — web_search/web_fetch；`NewWithName(names, ...)` — 按名称构造自定义工具集。
+- **`internal/ai/rag/`** — RAG 检索增强。`LazyService` 懒加载模式：`Init()` 仅创建 embedder/loader/chunker（无网络调用），首次工具调用时才通过 `ensureReady()` 连接 Qdrant（Mutex 保护，失败可重试）。子目录：`chunker/`（递归分块，SHA256 去重）、`embedder/`（Ollama 嵌入，默认 `nomic-embed-text`）、`loader/`（文件加载，支持 PDF/Word/Text/Markdown）、`vectorstore/`（Qdrant 索引器 + 检索器）。
+- **`internal/ai/confirm/`** — 工具调用确认子系统。Actor 模式：`Store` 用专用 goroutine + channel 序列化所有状态访问，30s 心跳清理超时条目。`Middleware` 实现 Eino `compose.ToolMiddleware` 接口，拦截工具调用并阻塞等待用户确认，通过 SSE `tool_confirm` 事件与前端通信。`config.go` 管理确认规则（enable/exclude 列表、command_executor 白名单、会话 allow 列表）。
+- **`internal/ai/compressor/`** — 上下文自动压缩。当 prompt tokens 超过配置阈值时自动触发压缩：使用 `context-summarizer` 技能模板和配置的压缩模型（默认 haiku）对早期消息生成摘要，通过 `ReplaceMessages` 原子替换记忆。也支持手动 `/compact` 命令触发。降级策略：压缩失败时移除最早一轮对话。
+- **`pkg/skill/`** — 声明式技能系统。`Manager` 扫描 `.mifer/skills/` 目录下的 `SKILL.md` 文件（带 frontmatter 解析），按名称加载技能。`AgentHub` 收集所有子 Agent 并注册，供 `SkillTool` 在 fork 模式下路由到特定 Agent 执行。`SkillTool` 适配为 Eino 工具，支持 `inline`（当前上下文执行）和 `fork`（子 Agent 独立执行）两种模式。内置 `context-summarizer` 技能用于上下文压缩。
+- **`pkg/mcp/`** — MCP 协议支持。`Manager` 管理 MCP Server 的启动/停止/重载生命周期，按 Agent 分配工具。`MCPToolAdapter` 将 MCP 工具桥接为 Eino `tool.InvokableTool` 接口，使外部 MCP 工具无缝集成到子 Agent 的工具列表中。
+- **`pkg/sse/`** — SSE 写入器。由专用 goroutine + 缓冲 channel（buf=16）驱动，`SendSync()` 阻塞写入，`SendFire()` 即发即忘（用于心跳）。内置心跳保活机制。
+- **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。端口不足时自动递增回退（+=10，上限 18000）。
+- **`cmd/mcp-demo/`** — 独立 MCP Stdio 演示服务，包含 echo、get_time、calculator、random_number 四个示例工具。
 - **`cli/`** — CLI 客户端（Bubble Tea TUI）。通过 HTTP + SSE 调用服务端，核心组件：
-  - `cli/tui/` — Bubble Tea 界面（`init.go` 初始化、`update.go` 消息循环、`view.go` 主视图、`stream.go` 流式接收、`sidebar.go` 侧边栏、`command.go` 命令处理、`reback.go` 回退界面、`memory.go` 记忆界面、`system.go` 系统提示词界面）
+  - `cli/tui/` — Bubble Tea 界面（`init.go` 初始化、`update.go` 消息循环、`view.go` 主视图、`stream.go` 流式接收、`sidebar.go` 侧边栏、`command.go` 命令处理、`reback.go` 回退界面、`memory.go` 记忆界面、`system.go` 系统提示词界面、`toolconfirm.go` 工具确认弹窗）
   - `cli/render/` — 终端渲染（Glamour Markdown 引擎 + Lip Gloss 样式）
-  - `cli/client/` — HTTP API 客户端（`chathandler/`, `memhandler/`, `excmemhandler/`, `clearhandler/`, `rebackhandler/`, `prompthandler/`, `reloadhandler/`）
+  - `cli/client/` — HTTP API 客户端（`chathandler/`, `memhandler/`, `excmemhandler/`, `clearhandler/`, `compacthandler/`, `rebackhandler/`, `prompthandler/`, `reloadhandler/`, `planhandler/`, `mcphandler/`, `skillhandler/`, `toolconfirmhandler/`）
 
 ### 关键依赖
 
@@ -83,6 +96,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 - **Eino 扩展** — model/openai, model/claude, model/gemini, model/ollama, embedding/ollama, indexer/qdrant, retriever/qdrant, document/loader, document/transformer
 - **Gin** (`v1.12.0`) — HTTP 框架
 - **Bubble Tea + Bubbles + Glamour + Lip Gloss** — TUI 框架与终端渲染
+- **MCP Go** (`github.com/mark3labs/mcp-go v0.44.0`) — MCP 协议 Go SDK
 - **Qdrant** (`github.com/qdrant/go-client v1.15.2`) — RAG 向量存储
 - **Uber Zap** — 结构化日志
 - **Viper** — 配置管理
@@ -135,8 +149,8 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
       // ...
   }
   ```
-- **接口定义在消费侧**（`internal/domain/bridge.go` 定义 `AgentService` / `Agent`），实现方放在各自包内（`internal/service/agentservice/`、`internal/ai/executor/`）。仅 `llm/type.go` 中 `Provider` 接口在实现侧定义，属于例外
-- **依赖注入**：显式构造函数注入，无 DI 框架。完整依赖树在 `routes.NewRouter()` 中组装：`executor.Init()` → `agent.Init()` → `llm.InitRegistry()` + `rag.NewLazyService()` + `prompt.New()`，链为 `executor → agentservice → agenthandler`
+- **接口定义在消费侧**（`internal/domain/bridge.go` 定义 `AgentService`，`agent.go` 定义 `Agent`），实现方放在各自包内（`internal/service/agentservice/`、`internal/ai/executor/`）。仅 `llm/type.go` 中 `Provider` 接口在实现侧定义，属于例外
+- **依赖注入**：显式构造函数注入，无 DI 框架。完整依赖树在 `routes.NewRouter()` 中组装：`executor.Init()` → `agent.Init()` → `llm.InitRegistry()` + `rag.NewLazyService()` + `mcp.NewManager()` + `skill.NewManager()` + `confirm.NewStore()` + `prompt.New()`，链为 `executor → agentservice → agenthandler`
 - **配置通过 `conf.GetConfig()` 全局获取**，不在函数间层层传递
 - **DTO 按模块分 request/response 子目录**（如 `dto/request/agentreq/`、`dto/response/agentresp/`）
 - **RAG 使用懒加载 + 工具闭包注入**：`LazyService` 在首次工具调用时才建立 Qdrant 连接
@@ -150,11 +164,11 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
       "errors"
       "io"
 
+      "github.com/cloudwego/eino/schema"
+
       "mifer/internal/ai/callback"
       "mifer/internal/domain"
       "mifer/pkg/errorer"
-
-      "github.com/cloudwego/eino/schema"
   )
   ```
 - **带别名的内部包**放在内部组：
@@ -235,11 +249,13 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 
 ### SSE 流处理约定
 
-- **8 种 SSE 事件类型**：
+- **10 种 SSE 事件类型**：
   `agent_start`、`agent_end` — Agent 子任务切换 |
   `tool_start`、`tool_end`、`tool_error` — 工具调用生命周期 |
   `tool_confirm` — 需用户确认的工具调用 |
-  `response` — 内容 token 流 | `token` — Token 统计
+  `response` — 内容 token 流 | `token` — Token 统计 |
+  `thinking` — 模型思考状态流（推理内容） |
+  `system` — 系统通知（如上下文压缩状态）
 - **特殊信号**：`[DONE]` 表示正常流结束，`[ERROR] <message>` 表示流错误，均作为 `response` 事件的 `data` 负载发送
 - **换行转义**：服务端将 content 中的 `\n` 替换为 `\\n` 以保护 SSE 行格式；客户端在 `response` 事件中反向处理（`tool_confirm` 事件为 JSON，跳过去转义）
 - **`\x00` 分隔符**：工具名与参数用 null 字节分隔：`"tool_name\x00{json_args}"`（`tool_start`）、`"tool_name\x00{error_text}"`（`tool_error`）
@@ -256,20 +272,22 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 | 名称 | 含义 | 位置 |
 |------|------|------|
 | **Prompty** | 系统提示词管理器 | `internal/ai/prompt/` |
-| **Humen** | 用户 Agent 聚合结构体 | `internal/ai/agent/init.go` |
+| **Humen** | 用户 Agent 聚合结构体（含 Agent、Prompt、Registry、MCPManager、SkillManager、ConfirmStore） | `internal/ai/agent/init.go` |
 | **Clier** | CLI 实例 | `cmd/bootstrap/app_type.go` |
 | **MiEditer** | 文件编辑子 Agent | `internal/ai/agent/chatediter.go` |
 | **excmem** | 交换记忆（Exchange Memory） | `cli/client/excmemhandler/`、`internal/ai/executor/excmem.go` |
+| **Mifer** | Orchestrator 编排 Agent | `internal/ai/agent/init.go` |
 
 ## 新增功能指南
 
 ### 新增 Agent
 1. 在 `internal/ai/agent/` 创建子 Agent 定义（参考 `planner.go`、`auditor.go` 等），接收 `model.BaseChatModel` 及可选的 `model.ToolCallingChatModel` 参数
 2. 在 Orchestrator（`agent/init.go`）的 `deep.New` 配置中注册新子 Agent，通过 `registry.Get("<backend>")` 分配模型
-3. 如需新工具，在 `internal/ai/tools/` 定义
+3. 如需新工具，在 `internal/ai/tools/` 下新建子目录定义
+4. 在 `tools.go` 中添加对应的工具工厂函数
 
 ### 新增 LLM Provider
-1. 在 `internal/ai/llm/providers.go` 定义新的 provider 结构体，实现 `Provider` 接口的 `Name()` 和 `InitModel()` 方法
+1. 在 `internal/ai/llm/` 下新建文件定义 provider 结构体，实现 `Provider` 接口的 `Name()` 和 `InitModel()` 方法
 2. 在 `internal/ai/llm/type.go` 的 `NewRegistry()` 中调用 `r.RegisterProvider(&newProvider{})` 注册
 3. `go get` 对应的 eino-ext 包
 

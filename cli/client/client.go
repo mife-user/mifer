@@ -3,6 +3,7 @@ package client
 import (
 	"net/http"
 
+	"mifer/cli/client/agentshandler"
 	"mifer/cli/client/chathandler"
 	"mifer/cli/client/clearhandler"
 	"mifer/cli/client/compactorhandler"
@@ -29,21 +30,23 @@ const (
 	APIPlanPath    = "/api/plan"
 	APIMCPPath     = "/api/mcp"
 	APISkillPath   = "/api/skill"
+	APIAgentsPath  = "/api/agents"
 )
 
 // Client HTTP API客户端，按服务聚合各Handler
 type Client struct {
-	Chat       *chathandler.ChatHandler
-	Memory     *memhandler.MemHandler
-	Excmem     *excmemhandler.ExcmemHandler
-	Clear      *clearhandler.ClearHandler
-	Compact    *compactorhandler.CompactHandler
-	Reback     *rebackhandler.RebackHandler
-	Prompt     *prompthandler.PromptHandler
-	Reload     *reloadhandler.ReloadHandler
-	Plan       *planhandler.PlanHandler
-	MCP        *mcphandler.MCPHandler
-	Skill      *skillhandler.SkillHandler
+	Chat         *chathandler.ChatHandler
+	Memory       *memhandler.MemHandler
+	Excmem       *excmemhandler.ExcmemHandler
+	Clear        *clearhandler.ClearHandler
+	Compact      *compactorhandler.CompactHandler
+	Reback       *rebackhandler.RebackHandler
+	Prompt       *prompthandler.PromptHandler
+	Reload       *reloadhandler.ReloadHandler
+	Plan         *planhandler.PlanHandler
+	MCP          *mcphandler.MCPHandler
+	Skill        *skillhandler.SkillHandler
+	Agents       *agentshandler.AgentsHandler
 	ToolConfirm  *toolconfirmhandler.ConfirmHandler
 	AllowlistAdd *toolconfirmhandler.AllowlistHandler
 }
@@ -63,6 +66,7 @@ func New(baseURL string) *Client {
 		Plan:         planhandler.New(httpClient, baseURL+APIPlanPath),
 		MCP:          mcphandler.New(httpClient, baseURL+APIMCPPath+"/status"),
 		Skill:        skillhandler.New(httpClient, baseURL+APISkillPath+"/list"),
+		Agents:       agentshandler.New(httpClient, baseURL+APIAgentsPath),
 		ToolConfirm:  toolconfirmhandler.New(httpClient, baseURL),
 		AllowlistAdd: toolconfirmhandler.NewAllowlist(httpClient, baseURL),
 	}

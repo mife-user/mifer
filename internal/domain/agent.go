@@ -86,6 +86,21 @@ type PlanLoadResp struct {
 	Content string // 文件内容
 }
 
+// AgentInfo agent 基础信息
+type AgentInfo struct {
+	Name         string   // agent 名称
+	ModelBackend string   // 模型后端 key（如 "sonnet", "opus"）
+	Provider     string   // 模型提供商（如 "openai", "claude"）
+	Model        string   // 具体模型名（如 "deepseek-v4-pro"）
+	Description  string   // agent 描述
+	Tools        []string // 工具名称列表
+}
+
+// AgentListResp agent 列表响应
+type AgentListResp struct {
+	Agents []AgentInfo
+}
+
 // CompactResp 上下文压缩结果
 type CompactResp struct {
 	Message string // 结果描述消息

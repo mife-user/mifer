@@ -235,6 +235,8 @@ cli:
         description: "显示MCP Server状态"
       - command: "/skill"
         description: "显示已加载的技能列表"
+      - command: "/agents"
+        description: "显示已配置的Agent列表"
       - command: "/compact"
         description: "手动压缩当前对话上下文"
     content_margin: 4                # 内容区域水平边距

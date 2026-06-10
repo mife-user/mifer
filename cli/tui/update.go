@@ -538,6 +538,15 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		m.needsAutoScroll = true
 		return m, skillListCmd(m.client)
 
+	case input == "/agents":
+		// /agents — 显示 Agent 列表
+		m.messages = append(m.messages, message{
+			role:    "user",
+			content: input,
+		})
+		m.needsAutoScroll = true
+		return m, agentsCmd(m.client)
+
 	case strings.HasPrefix(input, "/plan"):
 		args := strings.TrimSpace(strings.TrimPrefix(input, "/plan"))
 		if args != "" {

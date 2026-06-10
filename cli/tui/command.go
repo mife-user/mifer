@@ -106,6 +106,17 @@ func mcpStatusCmd(client *client.Client) tea.Cmd {
 	}
 }
 
+// agentsCmd 异步获取 Agent 列表
+func agentsCmd(client *client.Client) tea.Cmd {
+	return func() tea.Msg {
+		result, err := client.Agents.List()
+		if err != nil {
+			return systemMsg{err: err}
+		}
+		return systemMsg{content: result}
+	}
+}
+
 // reloadCmd 异步请求服务端重载配置
 func reloadCmd(client *client.Client) tea.Cmd {
 	return func() tea.Msg {

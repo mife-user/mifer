@@ -81,11 +81,11 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
-            - [x] 重构技能管理：技能类型定义移至 DTO 层，Manager 改用 RWMutex 保护并发安全
-            - [x] 新增上下文自动压缩：PromptTokens 超过 Length×Threshold 时自动调用 haiku 模型生成摘要替换早期记忆，压缩失败降级为移除最早轮次
-            - [x] 新增 /compact 命令：支持手动触发上下文压缩，Tab 补全，system 样式显示结果
-            - [x] DTO 层重构：domain 类型移除 json 标签，handler 改用 agentresp DTO 类型返回 JSON 响应
-            - [x] SSE 新增 system 事件类型：TUI 侧边栏与对话框同步显示系统通知
+            - [x] 新增 /agents 命令：展示已配置 Agent 的名称、模型与工具列表，完整 API + CLI + TUI 流程
+            - [x] 新增自定义 Agent 配置支持：通过 agents 字段动态注册子 Agent，更新工具管理逻辑
+            - [x] 重构 AgentHandler 结构：移除冗余代码，整理类型定义，提升代码可维护性
+            - [x] 新增思考状态管理：命令处理中增加加载指示器，提升交互体验
+            - [x] 简化命令白名单写入逻辑：移除冗余配置写入，统一命令添加流程
           files: artifacts/**/*
           draft: false
           prerelease: false

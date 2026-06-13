@@ -4,6 +4,7 @@ import (
 	"context"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
+	"mifer/pkg/logger"
 
 	qdrantindexer "github.com/cloudwego/eino-ext/components/indexer/qdrant"
 	qdrantretriever "github.com/cloudwego/eino-ext/components/retriever/qdrant"
@@ -30,6 +31,7 @@ func NewIndexer(ctx context.Context, client *qdrant.Client, emb embedding.Embedd
 		Embedding:  emb,
 	})
 	if err != nil {
+		logger.Error("创建Qdrant索引器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrCreateIndexFailed, err)
 	}
 	return idx, nil
@@ -53,6 +55,7 @@ func NewRetriever(ctx context.Context, client *qdrant.Client, emb embedding.Embe
 		Embedding:  emb,
 	})
 	if err != nil {
+		logger.Error("创建Qdrant检索器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrCreateRetrieverFailed, err)
 	}
 	return r, nil

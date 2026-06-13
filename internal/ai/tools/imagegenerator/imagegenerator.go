@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
 	"time"
@@ -105,6 +106,7 @@ func extractImage(msg *schema.Message) ([]byte, string, error) {
 			if part.Image.Base64Data != nil && *part.Image.Base64Data != "" {
 				data, err := base64.StdEncoding.DecodeString(*part.Image.Base64Data)
 				if err != nil {
+					logger.Warn("解码图片数据失败", logger.C(err))
 					return nil, "", fmt.Errorf("解码图片数据失败: %w", err)
 				}
 				return data, part.Image.MIMEType, nil

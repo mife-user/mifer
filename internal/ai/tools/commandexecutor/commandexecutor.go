@@ -236,10 +236,12 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 func resolveSandboxDir(workDir, projectDir string) (string, error) {
 	abs, err := filepath.Abs(filepath.Clean(workDir))
 	if err != nil {
+		logger.Error("解析沙箱工作目录失败", logger.C(err))
 		return "", err
 	}
 	absProject, err := filepath.Abs(filepath.Clean(projectDir))
 	if err != nil {
+		logger.Error("解析项目目录失败", logger.C(err))
 		return "", err
 	}
 	// 规范化路径分隔符比较

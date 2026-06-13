@@ -3,6 +3,7 @@ package prompt
 import (
 	"mifer/internal/ai/memory"
 	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,7 @@ func (p *Prompty) buildSystemPrompt() {
 func readMiferFile(path string) (string, bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
+		logger.Debug("未找到MIFER.md文件，跳过")
 		return "", false
 	}
 	content := strings.TrimSpace(string(data))

@@ -2,6 +2,7 @@ package agenthandler
 
 import (
 	agentres "mifer/internal/api/dto/response/agentresp"
+	"mifer/pkg/logger"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 func (h *AgentHandler) ListSkills(c *gin.Context) {
 	resp, err := h.getService().ListSkills(c.Request.Context())
 	if err != nil {
+		logger.Error("获取技能列表失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -17,6 +17,7 @@ func (m *Memory) GetCurrentID() string {
 func (m *Memory) SwitchSession(newID string) error {
 	// 先持久化当前会话（Save 内部加锁）
 	if err := m.Save(); err != nil {
+		logger.Error("切换会话时保存记忆失败", logger.C(err))
 		return err
 	}
 	m.mu.Lock()
@@ -24,6 +25,7 @@ func (m *Memory) SwitchSession(newID string) error {
 	m.Cfg.Id = newID
 	msgs, err := load(&m.Cfg)
 	if err != nil {
+		logger.Error("切换会话时加载记忆失败", logger.C(err))
 		return err
 	}
 	if msgs == nil {

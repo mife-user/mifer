@@ -18,11 +18,13 @@ type ConfirmReq struct {
 func (h *ToolHandler) Confirm(c *gin.Context) {
 	var req ConfirmReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("解析工具确认请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数: " + err.Error()})
 		return
 	}
 
 	if req.ID == "" {
+		logger.Warn("确认请求ID为空")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少确认ID"})
 		return
 	}
@@ -34,12 +36,14 @@ func (h *ToolHandler) Confirm(c *gin.Context) {
 	case "deny":
 		result = confirm.ConfirmResult{Approved: false, Action: "deny"}
 	default:
+		logger.Warn("无效的确认动作", logger.S("action", req.Action))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 action，应为 confirm/deny/allow"})
 		return
 	}
 
 	entry, ok := h.ConfirmStore.Get(req.ID)
 	if !ok {
+		logger.Warn("确认条目未找到或已过期", logger.S("id", req.ID))
 		c.JSON(http.StatusNotFound, gin.H{"error": "确认项未找到或已过期"})
 		return
 	}

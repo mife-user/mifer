@@ -33,6 +33,7 @@ func (h *AgentHandler) Reback(c *gin.Context) {
 	indexStr := c.Param("index")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil || index <= 0 {
+		logger.Warn("解析回退索引失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的轮次索引: " + indexStr})
 		return
 	}

@@ -32,10 +32,12 @@ func NewApplication(ctx context.Context) (*Application, error) {
 	// }
 
 	if err = app.initRouter(); err != nil {
+		logger.Error("初始化路由失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitRouterFailed, err)
 	}
 
 	if err = app.initCli(); err != nil {
+		logger.Error("初始化CLI失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitCLIFailed, err)
 	}
 	return app, nil
@@ -61,6 +63,7 @@ func (a *Application) Run() error {
 		}
 		return nil
 	}
+	logger.Error("所有端口均不可用，服务启动失败", logger.C(err))
 	return errorer.NewS(errorer.ErrServerRunFailed, err)
 }
 

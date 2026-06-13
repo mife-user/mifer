@@ -67,6 +67,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 
 		msgs, err := e.Humen.Prompt.Build(c, req.Content)
 		if err != nil {
+			logger.Error("构建提示词失败", logger.C(err))
 			return err
 		}
 		iter := e.Runner.Run(ctx, msgs)
@@ -199,6 +200,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		}
 		e.Humen.Prompt.Memory.AppendAssistant(lastMsg.String())
 		if err := e.Humen.Prompt.Memory.Save(); err != nil {
+			logger.Error("保存记忆失败", logger.C(err))
 			return err
 		}
 		return nil

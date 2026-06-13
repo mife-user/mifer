@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mifer/pkg/errorer"
+	"mifer/pkg/logger"
 	"sort"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 func (s *Service) RetrieveWithContext(ctx context.Context, query string, contextSize int) ([]*schema.Document, error) {
 	matched, err := s.retriever.Retrieve(ctx, query)
 	if err != nil {
+		logger.Error("初始检索失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrVectorRetrieveFailed, err)
 	}
 
@@ -68,6 +70,7 @@ func (s *Service) RetrieveWithContext(ctx context.Context, query string, context
 			retriever.WithTopK(contextSize*2+1),
 		)
 		if err != nil {
+			logger.Warn("邻居检索失败，跳过", logger.C(err))
 			continue // 单个文档的邻居查询失败不影响整体结果
 		}
 

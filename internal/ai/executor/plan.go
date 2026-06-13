@@ -45,10 +45,12 @@ func (e *Executor) LoadPlan(ctx context.Context, name string) (*domain.PlanLoadR
 	// 安全检查：确保文件在 plansDir 内
 	absPath, err := filepath.Abs(filepath.Clean(filePath))
 	if err != nil {
+		logger.Error("解析计划文件路径失败", logger.C(err))
 		return nil, err
 	}
 	absDir, err := filepath.Abs(filepath.Clean(plansDir))
 	if err != nil {
+		logger.Error("解析计划目录路径失败", logger.C(err))
 		return nil, err
 	}
 	if !strings.HasPrefix(filepath.ToSlash(absPath), filepath.ToSlash(absDir)+"/") {

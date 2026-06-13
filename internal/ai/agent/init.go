@@ -1,4 +1,4 @@
-﻿package agent
+package agent
 
 import (
 	"context"
@@ -119,6 +119,7 @@ func Init(c context.Context) (*Humen, error) {
 		var tool []tool.BaseTool
 		tool, err = tools.NewWithName(agentcfg.Tools, mmModel, ragSvc)
 		if err != nil {
+			logger.Error("创建自定义Agent工具失败", logger.S("agent", agentcfg.Name), logger.C(err))
 			return nil, err
 		}
 		extraAgent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
@@ -135,6 +136,7 @@ func Init(c context.Context) (*Humen, error) {
 			MaxIterations: 0,
 		})
 		if err != nil {
+			logger.Error("创建自定义Agent失败", logger.S("name", agentcfg.Name), logger.C(err))
 			return nil, err
 		}
 		subagents = append(subagents, extraAgent)

@@ -25,6 +25,7 @@ func (h *AgentHandler) GetPrompt(c *gin.Context) {
 func (h *AgentHandler) SetPrompt(c *gin.Context) {
 	var body agentreq.SetPromptReq
 	if err := c.ShouldBindJSON(&body); err != nil {
+		logger.Warn("解析提示词请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求体格式错误"})
 		return
 	}

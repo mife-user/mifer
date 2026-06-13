@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 )
 
 // NeedConfirm 返回一个函数，判断指定工具是否需要确认。
@@ -46,6 +47,7 @@ func NeedConfirm(store *Store) func(toolName, arguments, sessionID string) bool 
 func loadAllowlist() []string {
 	list, err := conf.LoadAllowList(conf.GetConfig().Path.Workdir)
 	if err != nil {
+		logger.Warn("加载白名单配置失败，使用空列表", logger.C(err))
 		return nil
 	}
 	return list

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mifer/pkg/errorer"
+	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
 
@@ -14,6 +15,7 @@ import (
 // load 从 JSONL 文件逐行加载记忆数据，文件不存在时返回空列表
 func load(cfg *MemCfg) ([]*schema.Message, error) {
 	if err := os.MkdirAll(cfg.MemPath, 0755); err != nil {
+		logger.Error("创建记忆目录失败", logger.C(err))
 		return nil, errorer.New(errorer.ErrPathCannotCreate)
 	}
 
@@ -23,6 +25,7 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+		logger.Error("打开记忆文件失败", logger.C(err))
 		return nil, errorer.New(errorer.ErrArgUnknowid)
 	}
 	defer f.Close()
@@ -36,11 +39,13 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		}
 		var msg schema.Message
 		if err := json.Unmarshal(line, &msg); err != nil {
+			logger.Error("解析记忆行失败", logger.C(err))
 			return nil, errorer.NewS(errorer.ErrParseLineFailed, err)
 		}
 		messages = append(messages, &msg)
 	}
 	if err := scanner.Err(); err != nil {
+		logger.Error("读取记忆文件失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrReadFileFailed, err)
 	}
 	return messages, nil

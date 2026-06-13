@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"mifer/pkg/errorer"
+	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/schema"
 )
@@ -34,6 +35,7 @@ func (m *Memory) ReplaceMessages(newMessages []*schema.Message) error {
 	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
 	f, err := os.Create(fileName)
 	if err != nil {
+		logger.Error("创建记忆文件失败", logger.C(err))
 		return errorer.NewS(errorer.ErrOpenFileFailed, err)
 	}
 	defer f.Close()
@@ -41,12 +43,15 @@ func (m *Memory) ReplaceMessages(newMessages []*schema.Message) error {
 	for _, msg := range m.Messages {
 		line, err := json.Marshal(msg)
 		if err != nil {
+			logger.Error("序列化记忆失败", logger.C(err))
 			return errorer.NewS(errorer.ErrSerializeJSONFailed, err)
 		}
 		if _, err := f.Write(line); err != nil {
+			logger.Error("写入记忆失败", logger.C(err))
 			return errorer.NewS(errorer.ErrWriteFileFailed, err)
 		}
 		if _, err := f.Write([]byte("\n")); err != nil {
+			logger.Error("写入记忆换行符失败", logger.C(err))
 			return errorer.NewS(errorer.ErrWriteNewlineFailed, err)
 		}
 	}

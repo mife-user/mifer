@@ -173,60 +173,70 @@ func NewWithName(name []string, mmModel model.BaseChatModel, ragSvc rag.RAGServi
 		case "file_reader":
 			fr, err := filereader.New()
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fr)
 		case "file_writer":
 			fw, err := filewriter.New()
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fw)
 		case "file_creator":
 			fc, err := filecreator.New()
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fc)
 		case "file_viewer":
 			fv, err := fileviewer.New(mmModel)
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fv)
 		case "image_generator":
 			ig, err := imagegenerator.New(mmModel)
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ig)
 		case "command_executor":
 			ce, err := commandexecutor.New()
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ce)
 		case "knowledge_search":
 			ks, err := knowledgesearch.New(ragSvc)
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ks)
 		case "knowledge_store":
 			kst, err := knowledgestore.New(ragSvc)
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, kst)
 		case "web_search":
 			ws, err := websearch.New()
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ws)
 		case "web_fetch":
 			wf, err := webfetch.New()
 			if err != nil {
+				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, wf)

@@ -18,6 +18,7 @@ import (
 func (h *AgentHandler) Chat(c *gin.Context) {
 	req := &agentreq.ChatReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
+		logger.Warn("解析聊天请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -48,18 +49,22 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 			return
 		}
 		logger.Error("chat失败", logger.C(err))
-		_ = sw.SendSync(func(w sse.FlushWriter) error {
+		if err := sw.SendSync(func(w sse.FlushWriter) error {
 			_, err := fmt.Fprintf(w, "event: response\ndata: [ERROR] %s\n\n", err.Error())
 			w.Flush()
 			return err
-		})
+		}); err != nil {
+			logger.Warn("发送错误消息失败", logger.C(err))
+		}
 		return
 	}
 
-	_ = sw.SendSync(func(w sse.FlushWriter) error {
+	if err := sw.SendSync(func(w sse.FlushWriter) error {
 		_, err := fmt.Fprintf(w, "event: response\ndata: [DONE]\n\n")
 		w.Flush()
 		return err
-	})
+	}); err != nil {
+		logger.Warn("发送完成消息失败", logger.C(err))
+	}
 	logger.Info("chat success")
 }

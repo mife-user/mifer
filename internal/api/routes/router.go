@@ -49,6 +49,8 @@ func (r *Router) Setup() *gin.Engine {
 	if err == nil {
 		gin.DefaultWriter = log
 		gin.DefaultErrorWriter = log
+	} else {
+		logger.Warn("创建Gin日志文件失败，使用标准输出", logger.C(err))
 	}
 
 	router := gin.Default()

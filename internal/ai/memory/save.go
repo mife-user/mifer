@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mifer/pkg/errorer"
+	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ func (m *Memory) Save() error {
 		return errorer.NewF(errorer.ErrIDIllegalChars, m.Cfg.Id)
 	}
 	if err := os.MkdirAll(m.Cfg.MemPath, 0755); err != nil {
+		logger.Error("创建记忆目录失败", logger.C(err))
 		return errorer.NewS(errorer.ErrCreateMemoryDirFailed, err)
 	}
 
@@ -29,6 +31,7 @@ func (m *Memory) Save() error {
 	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
+		logger.Error("打开记忆文件失败", logger.C(err))
 		return errorer.NewS(errorer.ErrOpenFileFailed, err)
 	}
 	defer f.Close()
@@ -36,12 +39,15 @@ func (m *Memory) Save() error {
 	for _, msg := range newMsgs {
 		line, err := json.Marshal(msg)
 		if err != nil {
+			logger.Error("序列化记忆失败", logger.C(err))
 			return errorer.NewS(errorer.ErrSerializeJSONFailed, err)
 		}
 		if _, err := f.Write(line); err != nil {
+			logger.Error("写入记忆失败", logger.C(err))
 			return errorer.NewS(errorer.ErrWriteFileFailed, err)
 		}
 		if _, err := f.Write([]byte("\n")); err != nil {
+			logger.Error("写入记忆换行符失败", logger.C(err))
 			return errorer.NewS(errorer.ErrWriteNewlineFailed, err)
 		}
 	}

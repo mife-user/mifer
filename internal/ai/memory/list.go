@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"mifer/pkg/logger"
 	"os"
 	"strings"
 )
@@ -12,6 +13,7 @@ func (m *Memory) ListIDs() ([]string, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+		logger.Error("读取记忆目录失败", logger.C(err))
 		return nil, err
 	}
 

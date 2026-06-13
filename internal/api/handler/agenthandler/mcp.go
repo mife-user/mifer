@@ -2,6 +2,7 @@ package agenthandler
 
 import (
 	"mifer/internal/api/dto/response/agentresp"
+	"mifer/pkg/logger"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 func (h *AgentHandler) MCPStatus(c *gin.Context) {
 	resp, err := h.getService().MCPStatus(c.Request.Context())
 	if err != nil {
+		logger.Error("获取MCP状态失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

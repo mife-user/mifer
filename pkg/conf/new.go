@@ -17,7 +17,7 @@ func newDefaultCfg(s string) error {
 		if err != nil {
 			return errorer.NewS(errorer.ErrGetHomeDirFailed, err)
 		}
-		path = filepath.Join(home, "/mifer/config")
+		path = filepath.Join(home, "/.mifer/config")
 		fileName = "prod.yaml"
 	}
 	// 创建默认配置文件（仅在文件不存在时创建，避免覆盖用户修改）
@@ -63,7 +63,7 @@ allow_list:
 
 const defaultConfig = `
 # ── 运行环境 ──
-env: dev                             # 运行环境：dev / prod
+env: prod                      # 运行环境：dev / prod
 
 # ── 日志 ──
 log:
@@ -74,6 +74,10 @@ log:
 # ── JWT ──
 jwt:
   secret: "123456"                   # JWT 签名密钥
+
+# ── 路径与快照 ──
+path:
+  snapshot_enabled: true          # 是否启用文件快照（每轮对话后自动保存，reback 时恢复）
 
 # ── RAG 检索增强 ──
 rag:

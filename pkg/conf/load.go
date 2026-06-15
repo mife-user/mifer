@@ -15,8 +15,8 @@ func LoadConfig() (*Config, error) {
 	var cfgPath string
 	var err error
 	v := viper.New()
-	//设置默认环境为dev
-	v.SetDefault("env", "dev")
+	//设置默认环境为prod
+	v.SetDefault("env", "prod")
 	// 手动应用环境变量覆盖（Viper 的 Unmarshal 不经过 BindEnv，需显式覆盖）
 	applyEnvOverrides(v)
 	//主要配置文件目录
@@ -33,8 +33,8 @@ func LoadConfig() (*Config, error) {
 		if err != nil {
 			return nil, errorer.NewS(errorer.ErrGetHomeDirFailed, err)
 		}
-		path = filepath.Join(home, "/mifer/config")
-		cfgPath = filepath.Join(home, "/mifer")
+		path = filepath.Join(home, "/.mifer/config")
+		cfgPath = filepath.Join(home, "/.mifer")
 		fileName = "prod"
 	}
 	//设置默认路径

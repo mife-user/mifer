@@ -10,10 +10,10 @@ import (
 // Compact 手动触发上下文压缩，通过 REST 接口暴露给 CLI /compact 命令
 func (e *Executor) Compact(ctx context.Context) (*domain.CompactResp, error) {
 	// 重置自动压缩标记（手动压缩后无需再次自动压缩）
-	e.needsCompression = false
+	e.compress.needsCompression = false
 
 	// 调用压缩器，callback 为空操作（非流式场景无需通知 TUI）
-	err := e.Compressor.Compress(
+	err := e.compress.compressor.Compress(
 		ctx,
 		e.Humen.Prompt.Memory,
 		e.Humen.Prompt.SystemPrompt,

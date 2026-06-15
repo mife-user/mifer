@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
 )
@@ -26,10 +27,23 @@ func (e *Executor) ListRebackEntries(c context.Context) (*domain.RebackListResp,
 
 // Reback 回退到指定轮次之前
 func (e *Executor) Reback(c context.Context, req *domain.RebackReq) (*domain.RebackResp, error) {
+	// 回退前获取当前总轮次数（用于后续快照计算）
+	totalRounds := e.Humen.Prompt.Memory.CountUserMessages()
 	summary, content, err := e.Humen.Prompt.Memory.Reback(req.Index)
 	if err != nil {
 		logger.Error("执行回退失败", logger.C(err))
 		return nil, err
+	}
+	// 从文件快照恢复（需在配置中启用 snapshot_enabled）
+	if e.Snapshot != nil {
+		targetRound := req.Index - 1 // 恢复到目标轮次之前的状态
+		if err := e.Snapshot.RestoreToRound(targetRound); err != nil {
+			logger.Warn("从快照恢复文件失败", logger.C(err))
+		}
+		// 删除被回退的后续快照
+		for i := req.Index; i <= totalRounds; i++ {
+			e.Snapshot.RemoveRound(i)
+		}
 	}
 	return &domain.RebackResp{
 		Summary: summary,

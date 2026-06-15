@@ -27,11 +27,7 @@ func Init() error {
 	if config.Env == "dev" {
 		logDir = "./logs"
 	} else {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		logDir = filepath.Join(home, "/mifer/logs")
+		logDir = filepath.Join(config.Path.CfgPath, "/logs")
 	}
 
 	if err := os.MkdirAll(logDir, 0755); err != nil {

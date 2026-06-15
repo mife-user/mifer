@@ -20,15 +20,11 @@ func NewManager(cfg conf.SkillConfig) (*Manager, error) {
 	// 解析技能目录路径
 	m.skillsDir = cfg.Path
 	if m.skillsDir == "" {
-		wd := conf.GetConfig().Path.Workdir
 		if conf.GetConfig().Env == "prod" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return nil, fmt.Errorf("获取用户目录失败: %w", err)
-			}
-			wd = home
+			m.skillsDir = filepath.Join(conf.GetConfig().Path.CfgPath, "skills")
+		} else {
+			m.skillsDir = filepath.Join(conf.GetConfig().Path.Workdir, ".mifer", "skills")
 		}
-		m.skillsDir = filepath.Join(wd, ".mifer", "skills")
 	}
 
 	if !cfg.Enabled {

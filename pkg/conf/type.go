@@ -75,8 +75,9 @@ type Colorlip struct {
 
 // 路径配置结构体
 type PathConfig struct {
-	Workdir string `mapstructure:"workdir"`
-	CfgPath string `mapstructure:"cfg_path"`
+	Workdir         string `mapstructure:"workdir"`
+	CfgPath         string `mapstructure:"cfg_path"`
+	SnapshotEnabled bool   `mapstructure:"snapshot_enabled"` // 是否启用文件快照（每轮对话后自动保存，reback 时恢复）
 }
 
 // 日志配置结构体

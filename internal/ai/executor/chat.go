@@ -25,14 +25,14 @@ const maxRetries = 3
 // 网络临时错误（TLS 超时等）自动重试最多 maxRetries 次。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
 	// 检查是否需要压缩上下文（上一轮结束时已标记）
-	if e.needsCompression {
-		if err := e.Compressor.Compress(
+	if e.compress.needsCompression {
+		if err := e.compress.compressor.Compress(
 			c, e.Humen.Prompt.Memory, e.Humen.Prompt.SystemPrompt,
-			e.lastPromptTokens, callback,
+			e.compress.lastPromptTokens, callback,
 		); err != nil {
 			logger.Error("上下文压缩失败", logger.C(err))
 		}
-		e.needsCompression = false
+		e.compress.needsCompression = false
 	}
 
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
@@ -203,6 +203,13 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			logger.Error("保存记忆失败", logger.C(err))
 			return err
 		}
+		// 轮次结束后保存文件快照（需在配置中启用 snapshot_enabled）
+		if e.Snapshot != nil {
+			round := e.Humen.Prompt.Memory.CountUserMessages()
+			if err := e.Snapshot.SaveRound(round); err != nil {
+				logger.Warn("保存文件快照失败（不中断对话流程）", logger.C(err), logger.I("round", round))
+			}
+		}
 		return nil
 	}
 
@@ -212,7 +219,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 // checkCompressionThreshold 检查当前 PromptTokens 是否超过压缩阈值
 // 超过时设置 needsCompression 标记，供下一轮对话开始时压缩
 func (e *Executor) checkCompressionThreshold() {
-	if e.needsCompression {
+	if e.compress.needsCompression {
 		return
 	}
 	ctxCfg := conf.GetConfig().Ai.Context
@@ -221,8 +228,8 @@ func (e *Executor) checkCompressionThreshold() {
 	}
 	thresholdTokens := int(float64(ctxCfg.Length) * ctxCfg.Threshold)
 	if e.Token.Prompt >= thresholdTokens {
-		e.needsCompression = true
-		e.lastPromptTokens = e.Token.Prompt
+		e.compress.needsCompression = true
+		e.compress.lastPromptTokens = e.Token.Prompt
 		logger.Warn("上下文超过压缩阈值",
 			logger.I("prompt_tokens", e.Token.Prompt),
 			logger.I("threshold", thresholdTokens),

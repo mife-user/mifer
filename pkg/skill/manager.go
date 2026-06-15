@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"mifer/pkg/conf"
-	"mifer/pkg/logger"
 )
 
 // NewManager 创建技能管理器，扫描指定目录加载所有技能
@@ -28,23 +27,19 @@ func NewManager(cfg conf.SkillConfig) (*Manager, error) {
 	}
 
 	if !cfg.Enabled {
-		logger.Info("技能系统已禁用")
 		return m, nil
 	}
 
 	// 首次初始化示例技能
 	if err := m.ensureInit(); err != nil {
-		logger.Error("初始化技能目录失败", logger.C(err))
 		return m, nil // 不阻塞启动
 	}
 
 	// 扫描加载技能
 	if err := m.reload(); err != nil {
-		logger.Error("加载技能失败", logger.C(err))
 		return m, nil // 不阻塞启动
 	}
 
-	logger.Info(fmt.Sprintf("技能系统已启动，加载 %d 个技能", len(m.skills)))
 	return m, nil
 }
 
@@ -84,11 +79,7 @@ description: 示例技能，演示技能系统的基本用法
 你可以在此文件中编写更详细的技能指令，LLM 在调用此技能时会读取并遵循这些指令。
 `
 	skillFile := filepath.Join(sampleDir, "SKILL.md")
-	if err := os.WriteFile(skillFile, []byte(sampleContent), 0644); err != nil {
-		return err
-	}
-	logger.Info("已创建示例技能: hello-world")
-	return nil
+	return os.WriteFile(skillFile, []byte(sampleContent), 0644)
 }
 
 // reload 扫描技能目录，加载所有 SKILL.md
@@ -105,7 +96,6 @@ func (m *Manager) reload() error {
 		}
 		skill, err := m.loadSkill(entry.Name())
 		if err != nil {
-			logger.Error("加载技能失败: "+entry.Name(), logger.C(err))
 			continue // 跳过失败的技能
 		}
 		m.skills[entry.Name()] = skill

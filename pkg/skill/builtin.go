@@ -3,8 +3,6 @@ package skill
 import (
 	"os"
 	"path/filepath"
-
-	"mifer/pkg/logger"
 )
 
 // builtinContextSummarizer 内置技能：对话历史压缩总结的 SKILL.md 完整内容
@@ -45,9 +43,5 @@ func (m *Manager) copyBuiltinSkills() error {
 		return err
 	}
 	skillFile := filepath.Join(dir, "SKILL.md")
-	if err := os.WriteFile(skillFile, []byte(builtinContextSummarizer), 0644); err != nil {
-		return err
-	}
-	logger.Info("已创建内置技能: context-summarizer")
-	return nil
+	return os.WriteFile(skillFile, []byte(builtinContextSummarizer), 0644)
 }

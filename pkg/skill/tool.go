@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"mifer/pkg/logger"
-
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
@@ -101,7 +99,6 @@ func (s *SkillTool) runForkMode(ctx context.Context, skill *Skill) (string, erro
 	agent, err := s.agentHub.Get(skill.Agent)
 	if err != nil {
 		// Agent 不存在，降级为 inline
-		logger.Warn(fmt.Sprintf("技能 [%s] fork 模式 Agent [%s] 不存在，降级为 inline", skill.Name, skill.Agent))
 		return s.runInlineMode(skill), nil
 	}
 
@@ -125,7 +122,6 @@ func (s *SkillTool) runForkMode(ctx context.Context, skill *Skill) (string, erro
 			break
 		}
 		if event.Err != nil {
-			logger.Error(fmt.Sprintf("技能 [%s] fork 执行错误", skill.Name), logger.C(event.Err))
 			continue
 		}
 		if event.Output != nil && event.Output.MessageOutput != nil {

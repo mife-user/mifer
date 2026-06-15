@@ -2,11 +2,9 @@ package mcp
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"mifer/pkg/conf"
-	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/mark3labs/mcp-go/client"
@@ -62,7 +60,6 @@ func (m *Manager) startServer(cfg conf.MCPServerConfig) {
 	if err != nil {
 		inst.Status = StatusError
 		inst.ErrMsg = "创建客户端失败: " + err.Error()
-		logger.Error("MCP Server 启动失败: "+cfg.Name, logger.C(err))
 		m.servers[cfg.Name] = inst
 		return
 	}
@@ -80,7 +77,6 @@ func (m *Manager) startServer(cfg conf.MCPServerConfig) {
 	if err != nil {
 		inst.Status = StatusError
 		inst.ErrMsg = "握手失败: " + err.Error()
-		logger.Error("MCP Server 握手失败: "+cfg.Name, logger.C(err))
 		m.servers[cfg.Name] = inst
 		return
 	}
@@ -90,7 +86,6 @@ func (m *Manager) startServer(cfg conf.MCPServerConfig) {
 	if err != nil {
 		inst.Status = StatusError
 		inst.ErrMsg = "获取工具列表失败: " + err.Error()
-		logger.Error("MCP Server 获取工具列表失败: "+cfg.Name, logger.C(err))
 		m.servers[cfg.Name] = inst
 		return
 	}
@@ -101,7 +96,6 @@ func (m *Manager) startServer(cfg conf.MCPServerConfig) {
 		inst.Tools = append(inst.Tools, adapter)
 	}
 
-	logger.Info(fmt.Sprintf("MCP Server [%s] 连接成功，加载 %d 个工具", cfg.Name, len(inst.Tools)))
 	m.servers[cfg.Name] = inst
 }
 
@@ -118,7 +112,6 @@ func (m *Manager) stopServer(name string) {
 		inst.Client.Close()
 	}
 	inst.Status = StatusDisconnected
-	logger.Info("MCP Server 已断开: " + name)
 }
 
 

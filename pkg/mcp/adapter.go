@@ -3,8 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-
-	"mifer/pkg/logger"
+	"fmt"
 
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
@@ -43,14 +42,12 @@ func (a *MCPToolAdapter) Info(ctx context.Context) (*schema.ToolInfo, error) {
 		// 通过 JSON 序列化/反序列化将 MCP Schema 转为 Eino jsonschema.Schema
 		rawJSON, err := json.Marshal(a.mcpTool.InputSchema)
 		if err != nil {
-			logger.Error("MCP工具 Schema 序列化失败: "+a.fullName, logger.C(err))
-			return info, nil
+			return nil, fmt.Errorf("MCP工具 Schema 序列化失败 %s: %w", a.fullName, err)
 		}
 
 		var einoSchema jsonschema.Schema
 		if err := json.Unmarshal(rawJSON, &einoSchema); err != nil {
-			logger.Error("MCP工具 Schema 转换失败: "+a.fullName, logger.C(err))
-			return info, nil
+			return nil, fmt.Errorf("MCP工具 Schema 转换失败 %s: %w", a.fullName, err)
 		}
 
 		info.ParamsOneOf = schema.NewParamsOneOfByJSONSchema(&einoSchema)
@@ -65,8 +62,7 @@ func (a *MCPToolAdapter) InvokableRun(ctx context.Context, argumentsInJSON strin
 	var args map[string]any
 	if argumentsInJSON != "" {
 		if err := json.Unmarshal([]byte(argumentsInJSON), &args); err != nil {
-			logger.Error("MCP工具参数解析失败: "+a.fullName, logger.C(err))
-			return "参数解析失败: " + err.Error(), nil
+			return "", fmt.Errorf("MCP工具参数解析失败 %s: %w", a.fullName, err)
 		}
 	}
 
@@ -78,8 +74,7 @@ func (a *MCPToolAdapter) InvokableRun(ctx context.Context, argumentsInJSON strin
 	// 调用 MCP Server
 	result, err := a.mcpClient.CallTool(ctx, req)
 	if err != nil {
-		logger.Error("MCP工具调用失败: "+a.fullName, logger.C(err))
-		return "工具调用失败: " + err.Error(), nil
+		return "", fmt.Errorf("MCP工具调用失败 %s: %w", a.fullName, err)
 	}
 
 	// 提取文本内容

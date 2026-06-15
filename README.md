@@ -75,6 +75,27 @@ func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
 
 支持将对话回退到历史任意轮次后重新生成。底层在 JSONL 文件中按索引截断，`AgentService.Reback(ctx, index)` 统一接口，同时清理内存中的 Agent 状态，保证回退后对话连续性。
 
+### 文件快照（Snapshot）
+
+基于内容寻址 + SHA256 哈希的增量文件快照系统，在每轮对话后自动保存项目文件状态，支持对话回退时恢复文件。
+
+**存储模型**：
+```
+_snapshots/
+├── objects/{前2位sha256}/{完整sha256}   ← 文件内容仓库（去重）
+├── r0/manifest.json                    ← 路径→hash 索引
+├── r1/manifest.json
+└── ...
+```
+
+**关键设计**：
+- **增量快照** — `SaveRound` 通过 size + mtime 快速判断未变更文件（复用旧哈希），仅对变更文件计算 SHA256 并写入 objects 池，未变更文件零 IO
+- **内容去重** — 相同内容的文件在 objects 池中仅存一份，多轮快照通过 manifest 共享引用
+- **回退恢复** — Reback 时按目标轮次的 manifest 从 objects 池恢复文件，并清理工作目录中不在清单的多余文件
+- **孤儿 GC** — `RemoveRound` 自动扫描所有剩余 manifest，清理无引用的孤儿 objects 文件
+- **旧格式兼容** — `InitBaseline` 自动检测并迁移旧版全量快照目录
+- **零依赖纯库** — `pkg/snapshot/` 不依赖项目内任何包，仅通过返回 error 与上层通信
+
 ### 配置热重载
 
 `/reload` 命令或 `POST /api/admin/reload` 接口触发，运行时重新加载 YAML 配置、命令白名单和 MCP Server 配置，无需重启服务。适用于动态切换模型、调整参数等场景。
@@ -443,6 +464,7 @@ mifer/
 │   ├── qdrant/                   #   Qdrant gRPC 客户端初始化
 │   ├── res/                      #   统一 HTTP 响应格式
 │   ├── skill/                    #   技能系统（Manager + Tool + AgentHub）
+│   ├── snapshot/                 #   文件快照（增量 + 内容寻址 + GC）
 │   ├── sse/                      #   SSE 流式响应工具
 │   ├── task/                     #   异步任务管理
 │   └── utils/                    #   通用工具（hash / random）

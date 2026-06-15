@@ -81,6 +81,11 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             # 更新：
+            - [x] 新增文件快照系统：基于内容寻址 + SHA256 哈希的增量快照，每轮对话后自动保存项目文件状态，回退时恢复
+            - [x] 增量存储机制：manifest 索引 + objects 池去重，size/mtime 快速变更检测，未变更文件零 IO 复用
+            - [x] 快照 GC：RemoveRound 自动扫描引用并清理无引用孤儿 objects
+            - [x] 重构 MCP Manager：移除 Reload 方法，简化配置变更检查逻辑
+            - [x] 各组件增加错误处理日志，提升问题排查效率
             - [x] 新增 /agents 命令：展示已配置 Agent 的名称、模型与工具列表，完整 API + CLI + TUI 流程
             - [x] 新增自定义 Agent 配置支持：通过 agents 字段动态注册子 Agent，更新工具管理逻辑
             - [x] 重构 AgentHandler 结构：移除冗余代码，整理类型定义，提升代码可维护性

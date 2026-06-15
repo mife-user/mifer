@@ -83,6 +83,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 - **`pkg/skill/`** — 声明式技能系统。`Manager` 扫描 `.mifer/skills/` 目录下的 `SKILL.md` 文件（带 frontmatter 解析），按名称加载技能。`AgentHub` 收集所有子 Agent 并注册，供 `SkillTool` 在 fork 模式下路由到特定 Agent 执行。`SkillTool` 适配为 Eino 工具，支持 `inline`（当前上下文执行）和 `fork`（子 Agent 独立执行）两种模式。内置 `context-summarizer` 技能用于上下文压缩。
 - **`pkg/mcp/`** — MCP 协议支持。`Manager` 管理 MCP Server 的启动/停止/重载生命周期，按 Agent 分配工具。`MCPToolAdapter` 将 MCP 工具桥接为 Eino `tool.InvokableTool` 接口，使外部 MCP 工具无缝集成到子 Agent 的工具列表中。
 - **`pkg/sse/`** — SSE 写入器。由专用 goroutine + 缓冲 channel（buf=16）驱动，`SendSync()` 阻塞写入，`SendFire()` 即发即忘（用于心跳）。内置心跳保活机制。
+- **`pkg/snapshot/`** — 文件快照服务。基于内容寻址 + SHA256 哈希的增量快照，`SaveRound` 通过 size + mtime 快速变更检测（仅对变更文件计算哈希并写入 objects 池），`RestoreToRound` 按 manifest 从 objects 池恢复文件并清理多余文件，`RemoveRound` 自动 GC 无引用的孤儿 objects。纯库设计，不依赖项目内任何包。
 - **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。端口不足时自动递增回退（+=10，上限 18000）。
 - **`cmd/mcp-demo/`** — 独立 MCP Stdio 演示服务，包含 echo、get_time、calculator、random_number 四个示例工具。
 - **`cli/`** — CLI 客户端（Bubble Tea TUI）。通过 HTTP + SSE 调用服务端，核心组件：

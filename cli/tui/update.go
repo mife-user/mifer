@@ -320,13 +320,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ======================================================================
 	case questionMsg:
 		m.handleQuestion(msg)
+		if m.streamCh != nil {
+			return m, listenStreamCmd(m.streamCh)
+		}
 		return m, nil
 
 	// ======================================================================
 	// 4e. 提问回答完成
 	// ======================================================================
 	case questionDoneMsg:
-		return m.handleQuestionDone(msg)
+		result, _ := m.handleQuestionDone(msg)
+		if m.streamCh != nil {
+			return result, listenStreamCmd(m.streamCh)
+		}
+		return result, nil
 
 	// ======================================================================
 	// 5. AI 响应到达（回退场景）

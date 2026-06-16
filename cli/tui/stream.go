@@ -54,6 +54,13 @@ type streamDoneMsg struct {
 	err error
 }
 
+// questionMsg AI 向用户提问的事件，由 SSE ask_user 事件解析。
+type questionMsg struct {
+	ID       string   // 问题 UUID
+	Question string   // 问题文本
+	Options  []string // 答案选项（不含"补充"，TUI 自动追加）
+}
+
 // ============================================================================
 // Update() 中的流式消息处理器
 // ============================================================================
@@ -252,6 +259,15 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx c
 						ch <- toolConfirmMsg{prompt: &prompt}
 					} else {
 						logger.Error("tool_confirm JSON解析失败",
+							logger.C(err),
+							logger.S("chunk_preview", chunk[:min(len(chunk), 200)]))
+					}
+				case "ask_user":
+					var qm questionMsg
+					if err := exc.ExcJSONToFile(chunk, &qm); err == nil {
+						ch <- qm
+					} else {
+						logger.Error("ask_user JSON解析失败",
 							logger.C(err),
 							logger.S("chunk_preview", chunk[:min(len(chunk), 200)]))
 					}

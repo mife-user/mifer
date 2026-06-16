@@ -12,6 +12,7 @@ import (
 	"mifer/cli/client/memhandler"
 	"mifer/cli/client/planhandler"
 	"mifer/cli/client/prompthandler"
+	"mifer/cli/client/questionhandler"
 	"mifer/cli/client/rebackhandler"
 	"mifer/cli/client/reloadhandler"
 	"mifer/cli/client/skillhandler"
@@ -49,6 +50,7 @@ type Client struct {
 	Agents       *agentshandler.AgentsHandler
 	ToolConfirm  *toolconfirmhandler.ConfirmHandler
 	AllowlistAdd *toolconfirmhandler.AllowlistHandler
+	Question     *questionhandler.QuestionHandler
 }
 
 // New 创建API客户端实例
@@ -69,5 +71,6 @@ func New(baseURL string) *Client {
 		Agents:       agentshandler.New(httpClient, baseURL+APIAgentsPath),
 		ToolConfirm:  toolconfirmhandler.New(httpClient, baseURL),
 		AllowlistAdd: toolconfirmhandler.NewAllowlist(httpClient, baseURL),
+		Question:     questionhandler.New(httpClient, baseURL),
 	}
 }

@@ -68,6 +68,11 @@ func (m *Model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Top, title, sep, m.planViewport.View())
 	}
 
+	// 全屏问题查看模式
+	if m.showingQuestionView {
+		return m.renderQuestionView()
+	}
+
 	// ======================================================================
 	// 第 ② 步：门控检查
 	// ======================================================================

@@ -19,6 +19,7 @@ type AgentService interface {
 	ListSkills(ctx context.Context) (*SkillListResp, error)
 	Compact(ctx context.Context) (*CompactResp, error)
 	ListAgents(ctx context.Context) (*AgentListResp, error)
+	Answer(ctx context.Context, req *AnswerReq) (*AnswerResp, error)
 }
 
 type Agent interface {
@@ -38,4 +39,5 @@ type Agent interface {
 	ListSkills(ctx context.Context) (*SkillListResp, error)
 	Compact(ctx context.Context) (*CompactResp, error)
 	ListAgents(ctx context.Context) (*AgentListResp, error)
+	Answer(ctx context.Context, req *AnswerReq) (*AnswerResp, error)
 }

@@ -130,6 +130,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ---- 全屏问题查看模式：委托给 handleQuestionKey ----
+		if m.showingQuestionView {
+			return m.handleQuestionKey(msg)
+		}
+
 		// ---- 记忆选择模式：拦截按键，委托给 memoryList 或处理选择 ----
 		if m.selectingMem {
 			switch msg.String() {
@@ -309,6 +314,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ======================================================================
 	case streamDoneMsg:
 		return m.handleStreamDone(msg)
+
+	// ======================================================================
+	// 4d. AI 提问事件
+	// ======================================================================
+	case questionMsg:
+		m.handleQuestion(msg)
+		return m, nil
+
+	// ======================================================================
+	// 4e. 提问回答完成
+	// ======================================================================
+	case questionDoneMsg:
+		return m.handleQuestionDone(msg)
 
 	// ======================================================================
 	// 5. AI 响应到达（回退场景）

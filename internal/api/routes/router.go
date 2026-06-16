@@ -61,6 +61,7 @@ func (r *Router) Setup() *gin.Engine {
 		ai := api.Group("/ai")
 		{
 			ai.POST("/chat", r.agentHandler.Chat)
+				ai.POST("/answer", r.agentHandler.Answer)
 		}
 		memory := api.Group("/memory")
 		{

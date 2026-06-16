@@ -9,6 +9,7 @@ import (
 
 	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/confirm"
+	"mifer/internal/ai/question"
 	"mifer/internal/domain"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
@@ -49,8 +50,14 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	// 将会话 ID 注入 context，供 confirm 中间件使用
 	ctx = confirm.WithSessionID(ctx, sessionID)
 
-	// 确保对话结束时清理该 session 的所有待确认项
+	// 注入问题问答存储、回调和会话 ID 到 context，供 ask_user 工具使用
+	ctx = question.WithStore(ctx, e.Humen.QuestionStore)
+	ctx = question.WithCallback(ctx, question.ExecutorCallback(callback))
+	ctx = question.WithSessionID(ctx, sessionID)
+
+	// 确保对话结束时清理该 session 的所有待确认项和待回答问题
 	defer e.Humen.ConfirmStore.Cleanup(sessionID)
+	defer e.Humen.QuestionStore.Cleanup(sessionID)
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {

@@ -174,6 +174,15 @@ type Model struct {
 	currentConfirm   *ToolConfirmPrompt    // 当前正在确认的项（队首）
 	confirmList      list.Model            // bubbles/list 选择组件 [Yes | No | Allow]
 	sessionAllowed   map[string]bool       // 当前会话已 Allow 的工具名集合
+
+	// 需求澄清问题模式
+	showingQuestionView bool       // 是否处于全屏问题查看模式
+	questionID           string     // 当前问题 UUID
+	questionContent      string     // 问题文本
+	questionOptions      []string   // 选项列表（含 TUI 自动追加的"补充说明"）
+	questionList         list.Model // bubbles/list 选项选择组件
+	selectingSupplement  bool       // 是否进入补充输入模式
+	supplementInput      string     // 补充文本内容
 }
 
 // ============================================================================

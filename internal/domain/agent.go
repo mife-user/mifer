@@ -105,3 +105,16 @@ type AgentListResp struct {
 type CompactResp struct {
 	Message string // 结果描述消息
 }
+
+// AnswerReq 用户问答回复请求
+type AnswerReq struct {
+	ID           string // 问题 UUID
+	Answer       string // 用户选择的答案或补充内容
+	IsSupplement bool   // 是否为补充输入
+}
+
+// AnswerResp 问答回复响应
+type AnswerResp struct {
+	Resolved bool   // 是否成功解析
+	Message  string // 结果描述
+}

@@ -8,8 +8,10 @@ import (
 	"mifer/internal/ai/llm"
 	"mifer/internal/ai/memory"
 	"mifer/internal/ai/prompt"
+	"mifer/internal/ai/question"
 	"mifer/internal/ai/rag"
 	"mifer/internal/ai/tools"
+	"mifer/internal/ai/tools/askuser"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -26,13 +28,14 @@ import (
 var confirmMiddleware compose.ToolMiddleware
 
 type Humen struct {
-	Agent        adk.Agent
-	Prompt       *prompt.Prompty
-	Registry     *llm.Registry
-	MCPManager   *mcp.Manager
-	SkillManager *skill.Manager
-	ConfirmStore *confirm.Store // 工具确认存储
-	AgentInfos   []AgentInfo    // Agent 元数据列表
+	Agent         adk.Agent
+	Prompt        *prompt.Prompty
+	Registry      *llm.Registry
+	MCPManager    *mcp.Manager
+	SkillManager  *skill.Manager
+	ConfirmStore  *confirm.Store  // 工具确认存储
+	QuestionStore *question.Store // 问题问答存储
+	AgentInfos    []AgentInfo     // Agent 元数据列表
 }
 
 func Init(c context.Context) (*Humen, error) {
@@ -62,6 +65,8 @@ func Init(c context.Context) (*Humen, error) {
 		confirm.NeedConfirm(confirmStore),
 		time.Duration(confirmCfg.TimeoutSec)*time.Second,
 	)
+	// 初始化问题问答存储
+	questionStore := question.NewStore()
 	var subagents []adk.Agent
 	var agentInfos []AgentInfo
 	// 初始化文件编辑agent（sonnet — 均衡）
@@ -151,6 +156,13 @@ func Init(c context.Context) (*Humen, error) {
 	for _, t := range tools.WebTools() {
 		orchTools = append(orchTools, t)
 	}
+	// 注入需求澄清工具
+	askUserTool, err := askuser.New()
+	if err != nil {
+		logger.Error("创建 ask_user 工具失败", logger.C(err))
+	} else {
+		orchTools = append(orchTools, askUserTool)
+	}
 
 	// 初始化编排器agent（default — 调度主脑）
 	agent, err := deep.New(c, &deep.Config{
@@ -185,7 +197,7 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos}, nil
+	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, QuestionStore: questionStore, AgentInfos: agentInfos}, nil
 }
 
 // mcpToBaseTools 将 []tool.InvokableTool 转为 []tool.BaseTool

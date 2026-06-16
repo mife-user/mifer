@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Mifer — AI Agent Bot，蓝山最终考核项目。基于 CloudWeGo Eino 构建，支持多 Agent 编排、MCP 协议、技能系统、RAG 检索增强与 CLI/Web 双模交互。
+Mifer — AI Agent Bot，蓝山最终考核项目。基于 CloudWeGo Eino 构建，支持多 Agent 编排、MCP 协议、技能系统、RAG 检索增强与 CLI/Web 双模交互。项目提供 `.claude/skills/eino-reference/` 技能供 Claude Code 查询 Eino 框架 API（Agent 创建、工具定义、RAG 流水线、常见陷阱等）。
 
 ## Build / Run
 
@@ -16,9 +16,30 @@ go run ./cmd/main serve          # 仅启动 HTTP 服务
 go run ./cmd/main chat           # 仅启动 CLI（需先启动服务）
 go run ./cmd/main chat --<id>    # 指定会话 ID 启动 CLI
 MIFER_ENV=prod go run ./cmd/main # 生产模式
+.\build.bat                       # Windows 一键构建（生成 mifer.exe）
 ```
 
 无 Makefile 或 build scripts — 纯 Go tooling。Go 1.25.4，Eino v0.8.13。项目无测试文件。
+
+### Docker 基础设施
+
+本地开发依赖三个外部服务，通过 `docker-compose.yml` 管理：
+
+```bash
+docker-compose up -d              # 启动全部服务（Qdrant + SearXNG + Ollama）
+docker-compose up -d qdrant       # 仅启动 Qdrant
+docker-compose exec ollama ollama pull nomic-embed-text  # 拉取嵌入模型
+```
+
+| 服务 | 端口 | 用途 |
+|------|------|------|
+| Qdrant | localhost:6333 (HTTP) / 6334 (gRPC) | 向量数据库，RAG 知识库存储 |
+| SearXNG | localhost:18080 | 元搜索引擎，web_search 工具后端 |
+| Ollama | localhost:11434 | 本地嵌入模型（默认 `nomic-embed-text`），可选 GPU |
+
+### CI/CD
+
+GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动构建 Windows/Linux × amd64/arm64 四平台二进制文件，并发布 GitHub Release。
 
 ## Architecture
 
@@ -37,7 +58,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 
 ### 各层职责
 
-- **`pkg/conf/`** — Viper 配置管理。`LoadConfig()` 根据 `MIFER_ENV` 加载 `./config/dev.yaml` 或 `~/mifer/config/prod.yaml`。环境变量覆盖格式：`MIFER_AI_<BACKEND>_<FIELD>`（如 `MIFER_AI_DEFAULT_APIKEY`），支持的后端名：`DEFAULT`、`MULTI`（映射 `multi_modal`）、`HAIKU`、`SONNET`、`OPUS`；字段后缀：`APIKEY`、`BASE_URL`、`PROVIDER`、`MODEL`。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。
+- **`pkg/conf/`** — Viper 配置管理。首次运行自动生成 `./config/dev.yaml`（或 `~/mifer/config/prod.yaml`），无需手动创建配置文件。`LoadConfig()` 根据 `MIFER_ENV` 加载对应的 YAML 文件，环境变量覆盖格式：`MIFER_AI_<BACKEND>_<FIELD>`（如 `MIFER_AI_DEFAULT_APIKEY`），支持的后端名：`DEFAULT`、`MULTI`（映射 `multi_modal`）、`HAIKU`、`SONNET`、`OPUS`；字段后缀：`APIKEY`、`BASE_URL`、`PROVIDER`、`MODEL`。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。
 - **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），由 `lumberjack` 支持自动轮换，ConsoleEncoder 编码，dev 模式 Debug 级别，prod 模式 Info 级别。
 - **`pkg/auth/`** — JWT Token 生成与验证。
 - **`pkg/errorer/`** — 统一错误码与错误包装。
@@ -76,7 +97,7 @@ MIFER_ENV=prod go run ./cmd/main # 生产模式
 - **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。支持 openai/claude/gemini/ollama 四种 provider，按名称索引（default/haiku/sonnet/opus/multi_modal），缺失后端自动 fallback 到 default。provider 实现在各自文件中（`openai.go`、`claude.go`、`gemini.go`、`ollama.go`），`providers.go` 包含 `initBackend()` 工厂方法。
 - **`internal/ai/prompt/`** — 系统提示词管理。`build.go` 构建完整提示词（系统提示词 + 记忆上下文），支持模板格式 `{system_prompt}`、`{history}`、`{query}`，运行时可通过 API 动态修改。
 - **`internal/ai/memory/`** — JSONL 文件持久化对话历史。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。支持列表、加载、切换、清除、回退、按 ID 加载（不修改当前会话）。
-- **`internal/ai/tools/`** — 工具定义（Function Calling）。每个工具独立子目录，通过 `utils.InferTool` 创建。`tools.go` 提供按角色分组的工具工厂函数：`FileTools(mmModel)` — file_reader/file_writer/file_creator/file_viewer/image_generator；`CommandTools()` — command_executor；`AuditTools(mmModel)` — file_reader/file_viewer；`PlannerTools()` — file_creator/file_writer（限制目录）；`KnowledgeTools(ragSvc)` — knowledge_search/knowledge_store；`WebTools()` — web_search/web_fetch；`NewWithName(names, ...)` — 按名称构造自定义工具集。
+- **`internal/ai/tools/`** — 工具定义（Function Calling）。每个工具独立子目录（`filereader/`、`filewriter/`、`filecreator/`、`fileviewer/`、`imagegenerator/`、`commandexecutor/`、`knowledgesearch/`、`knowledgestore/`、`websearch/`、`webfetch/`），通过 `utils.InferTool` 创建。`tools.go` 提供按角色分组的工具工厂函数：`FileTools(mmModel)` — file_reader/file_writer/file_creator/file_viewer/image_generator；`CommandTools()` — command_executor；`AuditTools(mmModel)` — file_reader/file_viewer；`PlannerTools()` — file_creator/file_writer（限制目录）；`KnowledgeTools(ragSvc)` — knowledge_search/knowledge_store；`WebTools()` — web_search/web_fetch；`NewWithName(names, ...)` — 按名称构造自定义工具集。
 - **`internal/ai/rag/`** — RAG 检索增强。`LazyService` 懒加载模式：`Init()` 仅创建 embedder/loader/chunker（无网络调用），首次工具调用时才通过 `ensureReady()` 连接 Qdrant（Mutex 保护，失败可重试）。子目录：`chunker/`（递归分块，SHA256 去重）、`embedder/`（Ollama 嵌入，默认 `nomic-embed-text`）、`loader/`（文件加载，支持 PDF/Word/Text/Markdown）、`vectorstore/`（Qdrant 索引器 + 检索器）。
 - **`internal/ai/confirm/`** — 工具调用确认子系统。Actor 模式：`Store` 用专用 goroutine + channel 序列化所有状态访问，30s 心跳清理超时条目。`Middleware` 实现 Eino `compose.ToolMiddleware` 接口，拦截工具调用并阻塞等待用户确认，通过 SSE `tool_confirm` 事件与前端通信。`config.go` 管理确认规则（enable/exclude 列表、command_executor 白名单、会话 allow 列表）。
 - **`internal/ai/compressor/`** — 上下文自动压缩。当 prompt tokens 超过配置阈值时自动触发压缩：使用 `context-summarizer` 技能模板和配置的压缩模型（默认 haiku）对早期消息生成摘要，通过 `ReplaceMessages` 原子替换记忆。也支持手动 `/compact` 命令触发。降级策略：压缩失败时移除最早一轮对话。

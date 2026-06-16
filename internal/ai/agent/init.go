@@ -12,6 +12,7 @@ import (
 	"mifer/internal/ai/rag"
 	"mifer/internal/ai/tools"
 	"mifer/internal/ai/tools/askuser"
+	"mifer/internal/ai/tools/fixjson"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -135,7 +136,8 @@ func Init(c context.Context) (*Humen, error) {
 			ToolsConfig: adk.ToolsConfig{
 				ToolsNodeConfig: compose.ToolsNodeConfig{
 					Tools:               tool,
-					ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
+					ToolCallMiddlewares:  []compose.ToolMiddleware{confirmMiddleware},
+				ToolArgumentsHandler: fixjson.Handler(),
 				},
 			},
 			MaxIterations: 0,
@@ -173,8 +175,9 @@ func Init(c context.Context) (*Humen, error) {
 		ToolsConfig: adk.ToolsConfig{
 			EmitInternalEvents: true,
 			ToolsNodeConfig: compose.ToolsNodeConfig{
-				Tools:               orchTools,
-				ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
+				Tools:                 orchTools,
+				ToolCallMiddlewares:   []compose.ToolMiddleware{confirmMiddleware},
+				ToolArgumentsHandler:  fixjson.Handler(),
 			},
 		},
 		SubAgents:    subagents,

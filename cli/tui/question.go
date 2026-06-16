@@ -107,16 +107,19 @@ func (m *Model) handleQuestionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	default:
 		if m.selectingSupplement {
-			// 在补充模式下累积文本
-			switch msg.String() {
-			case "backspace":
+			key := tea.Key(msg)
+			switch key.Type {
+			case tea.KeyRunes:
+				// 可打印字符（含中文等多字节字符）
+				m.supplementInput += string(key.Runes)
+			case tea.KeyBackspace:
+				// 回退键删除最后一个字符（正确处理 Unicode）
 				if len(m.supplementInput) > 0 {
-					m.supplementInput = m.supplementInput[:len(m.supplementInput)-1]
+					runes := []rune(m.supplementInput)
+					m.supplementInput = string(runes[:len(runes)-1])
 				}
-			default:
-				if len(msg.String()) == 1 {
-					m.supplementInput += msg.String()
-				}
+			case tea.KeySpace:
+				m.supplementInput += " "
 			}
 		}
 	}

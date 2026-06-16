@@ -21,6 +21,11 @@ func NeedConfirm(store *Store) func(toolName, arguments, sessionID string) bool 
 			return false
 		}
 
+		// ask_user 是交互式提问工具，本身就需要用户参与，无需二次确认
+		if toolName == "ask_user" {
+			return false
+		}
+
 		// 检查排除列表
 		if slices.Contains(cfg.Exclude, toolName) {
 			return false

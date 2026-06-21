@@ -105,3 +105,27 @@ type AgentListResp struct {
 type CompactResp struct {
 	Message string // 结果描述消息
 }
+
+// ToolConfirmReq 工具确认请求（域类型，无 JSON 标签）
+type ToolConfirmReq struct {
+	ID     string // 确认项 UUID
+	Action string // "confirm" | "deny" | "allow"
+}
+
+// ToolConfirmResp 工具确认响应（域类型，无 JSON 标签）
+type ToolConfirmResp struct {
+	ID       string // 确认项 UUID
+	Resolved bool   // 是否已处理
+	Action   string // 执行的动作
+}
+
+// ToolAddAllowListReq 添加命令到白名单的请求（域类型，无 JSON 标签）
+type ToolAddAllowListReq struct {
+	Command string // 要加入白名单的命令
+}
+
+// ToolAddAllowListResp 添加命令白名单的响应（域类型，无 JSON 标签）
+type ToolAddAllowListResp struct {
+	Command string // 命令文本
+	Added   bool   // 是否实际添加（已存在时为 false）
+}

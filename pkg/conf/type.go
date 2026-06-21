@@ -2,6 +2,11 @@ package conf
 
 var globalConfig Config
 
+// allowListConfig 白名单配置文件内部结构体
+type allowListConfig struct {
+	AllowList []string `mapstructure:"allow_list"`
+}
+
 // 配置结构体
 type Config struct {
 	Env     string        `mapstructure:"env"`

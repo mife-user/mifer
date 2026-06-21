@@ -8,14 +8,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-// allowListConfig 白名单配置文件内部结构体
-type allowListConfig struct {
-	AllowList []string `mapstructure:"allow_list"`
-}
-
 // LoadAllowList 从工作目录下的 .mifer/allowlist.yaml 加载命令白名单
 // 文件不存在时返回空列表（不报错），表示不启用白名单检查
-func LoadAllowList(workdir string) ([]string, error) {
+func LoadAllowList() ([]string, error) {
+	workdir := globalConfig.Path.Workdir
 	path := filepath.Join(workdir, ".mifer", "allowlist.yaml")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, nil
@@ -46,7 +42,7 @@ func AddToAllowList(workdir, command string) error {
 	path := filepath.Join(miferDir, "allowlist.yaml")
 
 	// 读取现有列表
-	existing, _ := LoadAllowList(workdir)
+	existing, _ := LoadAllowList()
 
 	// 检查命令是否已存在
 	if slices.Contains(existing, command) {

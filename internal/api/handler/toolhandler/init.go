@@ -3,19 +3,33 @@
 package toolhandler
 
 import (
-	"mifer/internal/ai/confirm"
+	"mifer/internal/domain"
+	"sync"
 )
 
 // ToolHandler 工具确认 API 处理器。
 type ToolHandler struct {
-	ConfirmStore *confirm.Store
-	Workdir      string // 项目工作目录，用于 allowlist 文件路径
+	toolService domain.ToolService
+	mu          sync.RWMutex
 }
 
 // NewToolHandler 创建工具确认处理器。
-func NewToolHandler(store *confirm.Store, workdir string) *ToolHandler {
-	return &ToolHandler{
-		ConfirmStore: store,
-		Workdir:      workdir,
-	}
+func NewToolHandler(toolService domain.ToolService) *ToolHandler {
+	return &ToolHandler{toolService: toolService}
+}
+
+// getService 安全获取当前服务实例
+func (h *ToolHandler) getService() domain.ToolService {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.toolService
+}
+
+// SwapService 原子替换当前服务实例，返回旧服务
+func (h *ToolHandler) SwapService(svc domain.ToolService) domain.ToolService {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	old := h.toolService
+	h.toolService = svc
+	return old
 }

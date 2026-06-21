@@ -45,7 +45,7 @@ func NeedConfirm(store *Store) func(toolName, arguments, sessionID string) bool 
 
 // loadAllowlist 加载命令白名单，静默处理文件不存在。
 func loadAllowlist() []string {
-	list, err := conf.LoadAllowList(conf.GetConfig().Path.Workdir)
+	list, err := conf.LoadAllowList()
 	if err != nil {
 		logger.Warn("加载白名单配置失败，使用空列表", logger.C(err))
 		return nil

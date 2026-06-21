@@ -1,22 +1,18 @@
 package toolhandler
 
 import (
-	"mifer/internal/ai/confirm"
+	"mifer/internal/api/dto/request/agentreq"
+	"mifer/internal/api/dto/response/agentresp"
+	"mifer/internal/domain"
 	"mifer/pkg/logger"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// ConfirmReq 工具确认请求体。
-type ConfirmReq struct {
-	ID     string `json:"id" binding:"required"`
-	Action string `json:"action" binding:"required"` // "confirm" | "deny" | "allow"
-}
-
 // Confirm 处理工具确认 POST /api/tool/confirm 请求。
 func (h *ToolHandler) Confirm(c *gin.Context) {
-	var req ConfirmReq
+	var req agentreq.ConfirmReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("解析工具确认请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数: " + err.Error()})
@@ -29,35 +25,31 @@ func (h *ToolHandler) Confirm(c *gin.Context) {
 		return
 	}
 
-	var result confirm.ConfirmResult
-	switch req.Action {
-	case "confirm", "allow":
-		result = confirm.ConfirmResult{Approved: true, Action: req.Action}
-	case "deny":
-		result = confirm.ConfirmResult{Approved: false, Action: "deny"}
-	default:
+	if req.Action != "confirm" && req.Action != "deny" && req.Action != "allow" {
 		logger.Warn("无效的确认动作", logger.S("action", req.Action))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 action，应为 confirm/deny/allow"})
 		return
 	}
 
-	entry, ok := h.ConfirmStore.Get(req.ID)
-	if !ok {
+	resp, err := h.getService().Confirm(c.Request.Context(), &domain.ToolConfirmReq{
+		ID:     req.ID,
+		Action: req.Action,
+	})
+	if err != nil {
+		logger.Error("处理工具确认失败", logger.C(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !resp.Resolved {
 		logger.Warn("确认条目未找到或已过期", logger.S("id", req.ID))
 		c.JSON(http.StatusNotFound, gin.H{"error": "确认项未找到或已过期"})
 		return
 	}
 
-	h.ConfirmStore.Resolve(req.ID, result)
-
-	logger.Info("工具确认已处理",
-		logger.S("id", req.ID),
-		logger.S("action", req.Action),
-		logger.S("tool", entry.ToolName))
-
-	c.JSON(http.StatusOK, gin.H{
-		"id":       req.ID,
-		"resolved": true,
-		"action":   req.Action,
+	c.JSON(http.StatusOK, agentres.ConfirmRes{
+		ID:       resp.ID,
+		Resolved: resp.Resolved,
+		Action:   resp.Action,
 	})
 }

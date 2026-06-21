@@ -39,3 +39,10 @@ type Agent interface {
 	Compact(ctx context.Context) (*CompactResp, error)
 	ListAgents(ctx context.Context) (*AgentListResp, error)
 }
+
+// ToolService 工具操作服务接口，按 Handler → Service → Executor 三层架构定义。
+// 实现方放在 internal/service/toolservice/ 包中。
+type ToolService interface {
+	Confirm(ctx context.Context, req *ToolConfirmReq) (*ToolConfirmResp, error)
+	AddAllowList(ctx context.Context, req *ToolAddAllowListReq) (*ToolAddAllowListResp, error)
+}

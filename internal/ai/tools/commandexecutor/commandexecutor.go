@@ -117,7 +117,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 	}
 
 	// 2. 白名单检查（若配置了白名单）
-	allowList, err := conf.LoadAllowList(cfg.Path.Workdir)
+	allowList, err := conf.LoadAllowList()
 	if err != nil {
 		logger.Warn("加载白名单失败", logger.C(err))
 	}

@@ -7,6 +7,7 @@ import (
 	"mifer/internal/api/handler/toolhandler"
 	"mifer/internal/api/middlewares"
 	"mifer/internal/service/agentservice"
+	"mifer/internal/service/toolservice"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"path/filepath"
@@ -34,7 +35,8 @@ func (r *Router) NewRouter(c context.Context) error {
 	}
 	service := agentservice.NewAgentService(exec)
 	r.agentHandler = agenthandler.NewAgentHandler(service)
-	r.toolHandler = toolhandler.NewToolHandler(exec.Humen.ConfirmStore, conf.GetConfig().Path.Workdir)
+	toolSvc := toolservice.NewToolService(exec.Humen.ConfirmStore, conf.GetConfig().Path.Workdir)
+	r.toolHandler = toolhandler.NewToolHandler(toolSvc)
 	r.appCtx = c
 
 	return nil

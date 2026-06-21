@@ -6,6 +6,7 @@ import (
 	"mifer/internal/ai/executor"
 	"mifer/internal/api/dto/response/adminresp"
 	"mifer/internal/service/agentservice"
+	"mifer/internal/service/toolservice"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
@@ -60,6 +61,10 @@ func (r *Router) Reload(ctx context.Context) (*adminresp.ReloadResp, error) {
 	// 原子替换服务
 	oldSvc := r.agentHandler.SwapService(agentservice.NewAgentService(newExec))
 	_ = oldSvc
+
+	// 原子替换工具服务
+	oldToolSvc := r.toolHandler.SwapService(toolservice.NewToolService(newExec.Humen.ConfirmStore, conf.GetConfig().Path.Workdir))
+	_ = oldToolSvc
 
 	logger.Info("配置重载成功", logger.S("backends", fmt.Sprintf("%v", newExec.Humen.Registry.Keys())))
 	return resp, nil

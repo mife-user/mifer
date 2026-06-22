@@ -11,6 +11,12 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+// Manager 管理所有 MCP Server 连接的生命周期
+type Manager struct {
+	mu      sync.RWMutex
+	servers map[string]*ServerInstance // name → 实例
+}
+
 // ServerInstance 表示单个 MCP Server 的连接实例
 type ServerInstance struct {
 	Config conf.MCPServerConfig
@@ -19,12 +25,6 @@ type ServerInstance struct {
 	Status string // connected / disabled / error / disconnected
 	ErrMsg string
 	cancel context.CancelFunc
-}
-
-// Manager 管理所有 MCP Server 连接的生命周期
-type Manager struct {
-	mu      sync.RWMutex
-	servers map[string]*ServerInstance // name → 实例
 }
 
 // NewManager 根据配置创建 MCP 连接管理器并启动所有已启用的 Server
@@ -113,8 +113,6 @@ func (m *Manager) stopServer(name string) {
 	}
 	inst.Status = StatusDisconnected
 }
-
-
 
 // GetToolsForAgent 获取分配给指定 Agent 的所有 MCP 工具
 func (m *Manager) GetToolsForAgent(agentName string) []tool.InvokableTool {

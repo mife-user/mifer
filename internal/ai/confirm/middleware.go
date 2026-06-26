@@ -148,13 +148,15 @@ func awaitConfirmation(ctx context.Context, store *Store,
 	}
 
 	// 阻塞等待确认
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case r := <-entry.ResultCh:
 		if !r.Approved {
 			return r, fmt.Errorf("工具调用被用户拒绝: %s", r.Action)
 		}
 		return r, nil
-	case <-time.After(timeout):
+	case <-timer.C:
 		return ConfirmResult{Approved: false, Action: "timeout"},
 			errors.New("工具确认超时")
 	case <-ctx.Done():

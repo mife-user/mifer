@@ -301,6 +301,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ======================================================================
 	// 4c. 流式内容片段
 	// ======================================================================
+	case streamThinkingMsg:
+		return m.handleStreamThinking(msg)
+
 	case streamContentMsg:
 		return m.handleStreamContent(msg)
 
@@ -559,6 +562,11 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 			m.thinking = true
 			m.needsAutoScroll = true
 			m.accBuf = &strings.Builder{}
+			m.thinkingBuf = &strings.Builder{}
+			// 取消旧流（若有），避免 goroutine 泄露
+			if m.cancel != nil {
+				m.cancel()
+			}
 			m.streamCh = make(chan tea.Msg, 32)
 			m.sidebar = SidebarState{}
 			ctx, cancel := context.WithCancel(context.Background())
@@ -583,6 +591,11 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		m.thinking = true
 		m.needsAutoScroll = true
 		m.accBuf = &strings.Builder{}
+		m.thinkingBuf = &strings.Builder{}
+		// 取消旧流（若有），避免 goroutine 泄露
+		if m.cancel != nil {
+			m.cancel()
+		}
 		m.streamCh = make(chan tea.Msg, 32)
 		m.sidebar = SidebarState{}
 		ctx, cancel := context.WithCancel(context.Background())

@@ -66,10 +66,11 @@ func NewService(ctx context.Context) (*Service, error) {
 	)
 
 	return &Service{
-		embedder:  emb,
-		loader:    fileLoader,
-		chunker:   chunk,
-		indexer:   idx,
-		retriever: ret,
+		embedder:     emb,
+		loader:       fileLoader,
+		chunker:      chunk,
+		indexer:      idx,
+		retriever:    ret,
+		qdrantClient: qdrantClient,
 	}, nil
 }

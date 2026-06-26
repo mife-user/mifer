@@ -58,10 +58,12 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				logger.I("attempt", attempt+1),
 				logger.I("maxRetries", maxRetries))
 			// 递增等待：1s / 2s / 3s
+			timer := time.NewTimer(time.Duration(attempt) * time.Second)
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 				return ctx.Err()
-			case <-time.After(time.Duration(attempt) * time.Second):
+			case <-timer.C:
 			}
 		}
 

@@ -92,7 +92,12 @@ func New(ctx context.Context, w FlushWriter, heartbeat time.Duration, cancel con
 // 若写入失败，内部自动调用 cancel；调用方应检查返回值并返回 context.Canceled。
 func (sw *Writer) SendSync(write func(w FlushWriter) error) error {
 	errCh := make(chan error, 1)
-	sw.msgCh <- sseMsg{write: write, errCh: errCh}
+	select {
+	case sw.msgCh <- sseMsg{write: write, errCh: errCh}:
+	default:
+		// channel 满说明 writer goroutine 卡死（如 TCP 半开连接），不应阻塞调用方
+		return context.Canceled
+	}
 	if err := <-errCh; err != nil {
 		sw.cancel()
 		return context.Canceled

@@ -87,11 +87,12 @@ func (s *LazyService) ensureReady(ctx context.Context) error {
 	}
 
 	s.svc = &Service{
-		embedder:  s.embedder,
-		loader:    s.loader,
-		chunker:   s.chunker,
-		indexer:   idx,
-		retriever: ret,
+		embedder:     s.embedder,
+		loader:       s.loader,
+		chunker:      s.chunker,
+		indexer:      idx,
+		retriever:    ret,
+		qdrantClient: qdrantClient,
 	}
 	s.initErr = nil
 	logger.Info("RAG知识库服务已就绪")

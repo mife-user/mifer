@@ -14,8 +14,9 @@ type Style struct {
 	Base *lipgloss.Style // 基础样式：仅 Bold，不设置背景色和边框
 	User *lipgloss.Style // 用户消息 "You: ..." 整行样式
 	AI   *lipgloss.Style // AI 助手消息边框/前缀样式
-	Think *lipgloss.Style // 思考动画 "⠋ Thinking..." 样式
-	Err  *lipgloss.Style // 错误消息样式
+	Think        *lipgloss.Style // 思考动画 "⠋ Thinking..." 样式
+	ThinkingText *lipgloss.Style // thinking 流式内容（灰色，不突出）
+	Err          *lipgloss.Style // 错误消息样式
 	Sys  *lipgloss.Style // 系统消息样式
 	Scroll *lipgloss.Style // 滚动指示器 "... N 行 ..." 样式
 	Separator *lipgloss.Style // 分隔线样式

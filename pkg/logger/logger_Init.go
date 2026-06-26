@@ -118,3 +118,11 @@ func Init() error {
 	loggerInstance = zap.New(tee, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 	return nil
 }
+
+// Sync 刷新日志缓冲区，确保所有待写入的日志落盘。
+// rotatingFile 由 Init() 创建，进程退出时由 OS 回收文件句柄。
+func Sync() {
+	if loggerInstance != nil {
+		_ = loggerInstance.Sync()
+	}
+}

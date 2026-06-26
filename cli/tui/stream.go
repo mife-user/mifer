@@ -44,6 +44,11 @@ type streamStatusMsg struct {
 	tokenUsage *TokenUsageData // token 事件时的数据（nil 表示非 token 事件）
 }
 
+// streamThinkingMsg AI流式响应中的 thinking（推理过程）内容片段
+type streamThinkingMsg struct {
+	content string
+}
+
 // streamContentMsg AI流式响应中的内容片段
 type streamContentMsg struct {
 	content string
@@ -121,6 +126,17 @@ func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleStreamThinking 处理流式 thinking（推理过程）内容片段，累积到 thinkingBuf
+func (m *Model) handleStreamThinking(msg streamThinkingMsg) (tea.Model, tea.Cmd) {
+	if m.thinkingBuf != nil {
+		m.thinkingBuf.WriteString(msg.content)
+	}
+	if m.streamCh != nil {
+		return m, listenStreamCmd(m.streamCh)
+	}
+	return m, nil
+}
+
 // handleStreamContent 处理流式内容片段，累积到 accBuf
 func (m *Model) handleStreamContent(msg streamContentMsg) (tea.Model, tea.Cmd) {
 	if m.accBuf != nil {
@@ -136,6 +152,7 @@ func (m *Model) handleStreamContent(msg streamContentMsg) (tea.Model, tea.Cmd) {
 // 大部分内容已在 agent_end 时增量渲染，此处仅处理最后残留的尾部内容
 func (m *Model) handleStreamDone(msg streamDoneMsg) (tea.Model, tea.Cmd) {
 	m.thinking = false
+	m.thinkingBuf = nil
 	m.streamCh = nil
 
 	if msg.err != nil {
@@ -258,7 +275,7 @@ func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx c
 				case "system":
 					ch <- streamStatusMsg{event: "system", name: chunk}
 				case "thinking":
-					// 跳过 thinking 事件
+					ch <- streamThinkingMsg{content: chunk}
 				case "response":
 					ch <- streamContentMsg{content: chunk}
 				}

@@ -22,11 +22,12 @@ type RAGService interface {
 
 // Service RAG 顶层服务，编排嵌入、加载、分块、向量存储、检索全流程
 type Service struct {
-	embedder  *ollamaembed.Embedder
-	loader    document.Loader
-	chunker   document.Transformer
-	indexer   *qdrantindexer.Indexer
-	retriever *qdrantretriever.Retriever
+	embedder     *ollamaembed.Embedder
+	loader       document.Loader
+	chunker      document.Transformer
+	indexer      *qdrantindexer.Indexer
+	retriever    *qdrantretriever.Retriever
+	qdrantClient interface{ Close() error } // Qdrant gRPC 连接，Close 时释放
 }
 
 // LazyService RAG 懒加载服务，构造时仅初始化无网络组件，首次调用时延迟连接 Qdrant

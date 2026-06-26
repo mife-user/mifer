@@ -32,7 +32,13 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	defer cancel()
 
 	// sse.Writer 接管所有 SSE 写入 + 心跳
-	sw := sse.New(ctx, c.Writer.(sse.FlushWriter), 10*time.Second, cancel)
+	fw, ok := c.Writer.(sse.FlushWriter)
+	if !ok {
+		logger.Error("ResponseWriter不支持Flush接口")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "server streaming not supported"})
+		return
+	}
+	sw := sse.New(ctx, fw, 10*time.Second, cancel)
 
 	err := h.getService().Chat(ctx, &domain.TalkReq{
 		Content: req.Content,

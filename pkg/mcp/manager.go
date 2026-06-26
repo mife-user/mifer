@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"sync"
+	"time"
 
 	"mifer/pkg/conf"
 
@@ -53,7 +54,7 @@ func (m *Manager) startServer(cfg conf.MCPServerConfig) {
 	}
 
 	// 创建 stdio MCP 客户端
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	inst.cancel = cancel
 
 	cli, err := client.NewStdioMCPClient(cfg.Command, cfg.Env, cfg.Args...)

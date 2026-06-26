@@ -34,6 +34,7 @@ func (s *Store) runActor(state *storeState) {
 		case cmd := <-s.cmdCh:
 			if cmd == nil {
 				// nil 命令为停止信号（由 Close() 发送）
+				close(s.done)
 				return
 			}
 			cmd(state)

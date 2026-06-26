@@ -58,8 +58,8 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 
 ### 各层职责
 
-- **`pkg/conf/`** — Viper 配置管理。首次运行自动生成 `./config/dev.yaml`（或 `~/mifer/config/prod.yaml`），无需手动创建配置文件。`LoadConfig()` 根据 `MIFER_ENV` 加载对应的 YAML 文件，环境变量覆盖格式：`MIFER_AI_<BACKEND>_<FIELD>`（如 `MIFER_AI_DEFAULT_APIKEY`），支持的后端名：`DEFAULT`、`MULTI`（映射 `multi_modal`）、`HAIKU`、`SONNET`、`OPUS`；字段后缀：`APIKEY`、`BASE_URL`、`PROVIDER`、`MODEL`。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。
-- **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），由 `lumberjack` 支持自动轮换，ConsoleEncoder 编码，dev 模式 Debug 级别，prod 模式 Info 级别。
+- **`pkg/conf/`** — Viper 配置管理。首次运行自动生成 `./config/dev.yaml`（或 `~/mifer/config/prod.yaml`），无需手动创建配置文件。`LoadConfig()` 根据 `MIFER_ENV` 加载对应的 YAML 文件，环境变量覆盖格式：`MIFER_AI_<BACKEND>_<FIELD>`（如 `MIFER_AI_DEFAULT_APIKEY`），支持的后端名：`DEFAULT`、`MULTI`（映射 `multi_modal`）、`HAIKU`、`SONNET`、`OPUS`；字段后缀：`APIKEY`、`BASE_URL`、`PROVIDER`、`MODEL`。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。`PathConfig` 包含 `Workdir`（工作目录，用于 plans/allowlist 定位）、`CfgPath`（配置文件路径，日志和 Gin 日志输出目录）、`SnapshotEnabled`（文件快照开关）。
+- **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），由自定义 `rotatingFile` 实现按文件大小自动轮换和备份淘汰，ConsoleEncoder 编码，dev 模式 Debug 级别，prod 模式 Info 级别。
 - **`pkg/auth/`** — JWT Token 生成与验证。
 - **`pkg/errorer/`** — 统一错误码与错误包装。
 - **`pkg/task/`** — 异步任务管理，`task.Do(ctx, fn)` 提供 context 感知的任务执行。
@@ -68,7 +68,7 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **`pkg/res/`** — Redis 客户端工厂。初始化代码已注释，尚未启用。
 - **`pkg/utils/`** — 通用工具函数（hash、random 等）。
 - **`pkg/exc/`** — 类型转换与 JSON 编组工具函数（`StrToUint`、`UintToStr`、`IsUint`、`IsString` 等）。
-- **`internal/domain/`** — 核心接口定义。`agent.go` 定义 DTO（`TalkReq`, `MemoryReq/Resp`, `RebackReq/Resp` 等）和 `Agent` 接口（executor 层），`bridge.go` 定义 `AgentService` 接口（service 层），两个接口方法签名完全相同，实现 service ↔ executor 解耦。
+- **`internal/domain/`** — 核心接口定义。`agent.go` 定义 DTO（`TalkReq`, `MemoryReq/Resp`, `RebackReq/Resp` 等）和 `Agent` 接口（executor 层），`bridge.go` 定义 `AgentService` 和 `ToolService` 接口（service 层），`AgentService` 与 `Agent` 方法签名完全相同（含 `ListAgents`），实现 service ↔ executor 解耦。
 - **`internal/api/routes/`** — Gin 路由注册。完整路由表：
   - `POST /api/ai/chat` — 流式对话（SSE）
   - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear`, `POST /api/memory/compact` — 记忆管理与手动压缩
@@ -77,13 +77,15 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
   - `GET /api/plan`, `GET /api/plan/:name` — 计划文件管理
   - `GET /api/mcp/status` — MCP 服务状态
   - `GET /api/skill/list` — 技能列表
+  - `GET /api/agents` — Agent 列表（含自定义 Agent 配置信息）
   - `POST /api/tool/confirm`, `POST /api/tool/allowlist/add` — 工具确认与白名单
   - `POST /api/admin/reload` — 配置热重载
-- **`internal/api/handler/agenthandler/`** — HTTP Handler，按功能拆分文件（chat/prompt/memory/reback/plan/mcp/skill/compact 等）。
-- **`internal/api/handler/toolhandler/`** — 工具确认与白名单管理 Handler。
+- **`internal/api/handler/agenthandler/`** — HTTP Handler，按功能拆分文件（chat/prompt/memory/reback/plan/mcp/skill/compact/agents 等）。
+- **`internal/api/handler/toolhandler/`** — 工具确认与白名单管理 Handler，委托给 `domain.ToolService`。
 - **`internal/api/dto/request/` / `response/`** — 请求/响应 DTO，按模块分子目录（`agentreq/`, `agentresp/`, `adminresp/`）。
 - **`internal/api/middlewares/`** — JWT 认证 + CORS 中间件。
 - **`internal/service/agentservice/`** — Agent 服务层，实现 `domain.AgentService`，每个方法 1:1 委托给 executor，`Chat` 通过 `task.Do` 包装调用。
+- **`internal/service/toolservice/`** — 工具操作服务层，实现 `domain.ToolService`。`Confirm` 调用确认存储检查/更新确认状态，`AddAllowList` 管理命令白名单，依赖 `confirm.Store` 和 `PathConfig.Workdir`。
 - **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。5 个子 Agent 加上 Orchestrator，加上通过 `conf.GetConfig().Agents` 配置的自定义 Agent，按任务复杂度模型分级：
   - **MiEditer** (sonnet) — 文件读取、写入、创建、查看、图片生成（注入 `FileTools` + MCP 工具）
   - **MiSummarizer** (sonnet) — 文档摘要 + 知识库工具（注入 `KnowledgeTools`）
@@ -102,7 +104,7 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **`internal/ai/confirm/`** — 工具调用确认子系统。Actor 模式：`Store` 用专用 goroutine + channel 序列化所有状态访问，30s 心跳清理超时条目。`Middleware` 实现 Eino `compose.ToolMiddleware` 接口，拦截工具调用并阻塞等待用户确认，通过 SSE `tool_confirm` 事件与前端通信。`config.go` 管理确认规则（enable/exclude 列表、command_executor 白名单、会话 allow 列表）。
 - **`internal/ai/compressor/`** — 上下文自动压缩。当 prompt tokens 超过配置阈值时自动触发压缩：使用 `context-summarizer` 技能模板和配置的压缩模型（默认 haiku）对早期消息生成摘要，通过 `ReplaceMessages` 原子替换记忆。也支持手动 `/compact` 命令触发。降级策略：压缩失败时移除最早一轮对话。
 - **`pkg/skill/`** — 声明式技能系统。`Manager` 扫描 `.mifer/skills/` 目录下的 `SKILL.md` 文件（带 frontmatter 解析），按名称加载技能。`AgentHub` 收集所有子 Agent 并注册，供 `SkillTool` 在 fork 模式下路由到特定 Agent 执行。`SkillTool` 适配为 Eino 工具，支持 `inline`（当前上下文执行）和 `fork`（子 Agent 独立执行）两种模式。内置 `context-summarizer` 技能用于上下文压缩。
-- **`pkg/mcp/`** — MCP 协议支持。`Manager` 管理 MCP Server 的启动/停止/重载生命周期，按 Agent 分配工具。`MCPToolAdapter` 将 MCP 工具桥接为 Eino `tool.InvokableTool` 接口，使外部 MCP 工具无缝集成到子 Agent 的工具列表中。
+- **`pkg/mcp/`** — MCP 协议支持。`Manager` 管理 MCP Server 的启动/停止/重载生命周期，按 Agent 分配工具。`MCPServerConfig` 支持 `Name`/`Command`/`Args`/`Env`/`Agents`/`Enabled` 字段，`Env` 可为每个 MCP Server 设置环境变量（如 `["GITHUB_TOKEN=xxx"]`）。`MCPToolAdapter` 将 MCP 工具桥接为 Eino `tool.InvokableTool` 接口，使外部 MCP 工具无缝集成到子 Agent 的工具列表中。
 - **`pkg/sse/`** — SSE 写入器。由专用 goroutine + 缓冲 channel（buf=16）驱动，`SendSync()` 阻塞写入，`SendFire()` 即发即忘（用于心跳）。内置心跳保活机制。
 - **`pkg/snapshot/`** — 文件快照服务。基于内容寻址 + SHA256 哈希的增量快照，`SaveRound` 通过 size + mtime 快速变更检测（仅对变更文件计算哈希并写入 objects 池），`RestoreToRound` 按 manifest 从 objects 池恢复文件并清理多余文件，`RemoveRound` 自动 GC 无引用的孤儿 objects。纯库设计，不依赖项目内任何包。
 - **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。端口不足时自动递增回退（+=10，上限 18000）。
@@ -171,8 +173,8 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
       // ...
   }
   ```
-- **接口定义在消费侧**（`internal/domain/bridge.go` 定义 `AgentService`，`agent.go` 定义 `Agent`），实现方放在各自包内（`internal/service/agentservice/`、`internal/ai/executor/`）。仅 `llm/type.go` 中 `Provider` 接口在实现侧定义，属于例外
-- **依赖注入**：显式构造函数注入，无 DI 框架。完整依赖树在 `routes.NewRouter()` 中组装：`executor.Init()` → `agent.Init()` → `llm.InitRegistry()` + `rag.NewLazyService()` + `mcp.NewManager()` + `skill.NewManager()` + `confirm.NewStore()` + `prompt.New()`，链为 `executor → agentservice → agenthandler`
+- **接口定义在消费侧**（`internal/domain/bridge.go` 定义 `AgentService`、`ToolService`，`agent.go` 定义 `Agent`），实现方放在各自包内（`internal/service/agentservice/`、`internal/service/toolservice/`、`internal/ai/executor/`）。仅 `llm/type.go` 中 `Provider` 接口在实现侧定义，属于例外
+- **依赖注入**：显式构造函数注入，无 DI 框架。完整依赖树在 `routes.NewRouter()` 中组装：`executor.Init()` → `agent.Init()` → `llm.InitRegistry()` + `rag.NewLazyService()` + `mcp.NewManager()` + `skill.NewManager()` + `confirm.NewStore()` + `prompt.New()`，链为 `executor → agentservice → agenthandler`，`toolservice.NewToolService(confirmStore, workdir)` → `toolhandler`
 - **配置通过 `conf.GetConfig()` 全局获取**，不在函数间层层传递
 - **DTO 按模块分 request/response 子目录**（如 `dto/request/agentreq/`、`dto/response/agentresp/`）
 - **RAG 使用懒加载 + 工具闭包注入**：`LazyService` 在首次工具调用时才建立 Qdrant 连接
@@ -315,10 +317,10 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 
 ### 新增 HTTP 接口
 1. 在 `internal/api/dto/request/` 和 `response/` 定义 DTO
-2. 在 `internal/api/handler/agenthandler/` 添加 Handler 方法
+2. 在 `internal/api/handler/agenthandler/`（或 `toolhandler/` 用于工具相关接口）添加 Handler 方法
 3. 在 `internal/api/routes/router.go` 注册路由
-4. 业务逻辑放在 `internal/service/agentservice/` 对应服务层
-5. 底层实现放在 `internal/ai/executor/`
+4. 业务逻辑放在 `internal/service/agentservice/`（或 `toolservice/` 用于工具操作）对应服务层
+5. Agent 相关底层实现放在 `internal/ai/executor/`，工具操作直接依赖 `confirm.Store`
 
 ### 新增 CLI 功能
 1. 在 `cli/client/` 添加 HTTP 调用 handler

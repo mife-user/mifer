@@ -43,6 +43,11 @@ func Init() *Style {
 		Bold(false).
 		Italic(true)
 
+	thinkingText := lipgloss.NewStyle().
+		Foreground(getFg("", "#888888")).
+		Bold(false).
+		Italic(true)
+
 	errStyle := base.
 		Foreground(getFg(config.Cli.Lip.Err.Foreground, "#FF5555")).
 		Bold(false)
@@ -92,8 +97,9 @@ func Init() *Style {
 		Base:          &base,
 		User:          &user,
 		AI:            &ai,
-		Think:         &think,
-		Err:           &errStyle,
+		Think:        &think,
+		ThinkingText: &thinkingText,
+		Err:          &errStyle,
 		Sys:           &sys,
 		Scroll:        &scroll,
 		Separator:     &separatorStyle,

@@ -114,11 +114,37 @@ func (m *Model) View() string {
 	}
 
 	// ======================================================================
-	// 第 ④ 步：追加 thinking 旋转动画行
+	// 第 ④ 步：追加 thinking 内容（推理过程，灰色斜体，最多 3 行）
+	//   布局：分隔线 ─→ thinking 内容 (≤3行) ─→ spinner 动画
 	// ======================================================================
-	if m.thinking {
-		thinkLine := fmt.Sprintf("%s Thinking...", m.spinner.View())
-		msgLines = append(msgLines, m.lip.Think.Render(thinkLine))
+	if m.thinking && m.thinkingBuf != nil {
+		content := strings.TrimRight(m.thinkingBuf.String(), "\n")
+		if content != "" {
+			wrapWidth := m.viewport.Width - 2 // 扣除 viewport 左右各 1 的 padding
+			if wrapWidth < 20 {
+				wrapWidth = 20
+			}
+			// 先按 \n 拆行，再对每行按 wrapWidth 硬换行
+			rawLines := strings.Split(content, "\n")
+			var allLines []string
+			for _, line := range rawLines {
+				allLines = append(allLines, wrapLine(line, wrapWidth)...)
+			}
+			// 取最后 3 行
+			start := len(allLines) - 3
+			if start < 0 {
+				start = 0
+			}
+			// 分隔线
+			msgLines = append(msgLines, m.lip.SidebarSeparator.Render(strings.Repeat("─", wrapWidth)))
+			// thinking 内容
+			for _, line := range allLines[start:] {
+				msgLines = append(msgLines, m.lip.ThinkingText.Render(line))
+			}
+			// spinner 动画
+			thinkLine := fmt.Sprintf("%s Thinking...", m.spinner.View())
+			msgLines = append(msgLines, m.lip.Think.Render(thinkLine))
+		}
 	}
 
 	// ======================================================================
@@ -280,4 +306,26 @@ func (m *Model) renderCompletionList() string {
 	}
 	list := strings.Join(lines, "\n")
 	return m.lip.SidebarContainer.Render(list)
+}
+
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+// wrapLine 按指定宽度硬换行（字符级），用于 thinking 内容显示。
+// 参数 maxWidth 为 rune 宽度，<=0 时返回原行。
+func wrapLine(line string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{line}
+	}
+	var result []string
+	runes := []rune(line)
+	for len(runes) > maxWidth {
+		result = append(result, string(runes[:maxWidth]))
+		runes = runes[maxWidth:]
+	}
+	if len(runes) > 0 {
+		result = append(result, string(runes))
+	}
+	return result
 }

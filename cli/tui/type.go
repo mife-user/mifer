@@ -143,6 +143,7 @@ type Model struct {
 	cancel            context.CancelFunc // 用于取消正在进行的 SSE 流（非 nil 表示可取消）
 	streamCh          chan tea.Msg     // 流式消息通道（非nil时表示正在流式传输中）
 	accBuf            *strings.Builder // 累积AI响应内容的缓冲区
+	thinkingBuf       *strings.Builder // 累积 thinking（推理过程）内容的缓冲区
 	agentContentStart int              // accBuf 中当前 agent 内容的起始字节偏移
 
 	// 记忆选择模式

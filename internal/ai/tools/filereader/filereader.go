@@ -54,13 +54,10 @@ func readFile(_ context.Context, input FileReaderInput) (FileReaderOutput, error
 		messages = append(messages, "读取行数超过上限500，已自动调整为500行")
 	}
 
+	// filepath.Abs 内部调用 Clean，已解析所有 .. 和多余分隔符
 	absPath, err := filepath.Abs(filepath.Clean(input.FilePath))
 	if err != nil {
 		return FileReaderOutput{Error: "路径解析失败: " + err.Error()}, nil
-	}
-	if strings.Contains(filepath.ToSlash(absPath), "..") {
-		// filepath.Clean 之后仍有 .. 说明路径不安全
-		absPath, _ = filepath.Abs(filepath.Clean(strings.ReplaceAll(input.FilePath, "..", "")))
 	}
 
 	f, err := os.Open(absPath)

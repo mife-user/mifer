@@ -5,12 +5,12 @@ import (
 	"mifer/pkg/errorer"
 )
 
-// initRouter 初始化路由
+// initRouter 初始化路由，router 在 Shutdown 时由 Application 统一释放。
 func (a *Application) initRouter() error {
-	a.Router = routes.GetRouter()
-	if err := a.Router.NewRouter(a.Context); err != nil {
+	a.router = routes.GetRouter()
+	if err := a.router.NewRouter(a.Context); err != nil {
 		return errorer.NewS(errorer.ErrCreateRouterFailed, err)
 	}
-	a.Engine = a.Router.Setup()
+	a.Engine = a.router.Setup()
 	return nil
 }

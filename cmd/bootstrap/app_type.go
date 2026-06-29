@@ -10,10 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Application 应用实例，统一管理所有顶层资源。
+// 初始化顺序：loadConfig → initontext → initLogger → initRouter → initCli。
 type Application struct {
 	Context context.Context
 	Engine  *gin.Engine
 	Clier   *cli.Cli
 	server  *http.Server
-	Router  *routes.Router
+	router  *routes.Router
 }

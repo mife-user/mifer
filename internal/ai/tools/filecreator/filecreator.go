@@ -41,12 +41,10 @@ func createFile(_ context.Context, input FileCreatorInput, baseDir string) (File
 		return FileCreatorOutput{Error: "文件路径不能为空"}, nil
 	}
 
+	// filepath.Abs 内部调用 Clean，已解析所有 .. 和多余分隔符
 	absPath, err := filepath.Abs(filepath.Clean(input.FilePath))
 	if err != nil {
 		return FileCreatorOutput{Error: "路径解析失败: " + err.Error()}, nil
-	}
-	if strings.Contains(filepath.ToSlash(absPath), "..") {
-		absPath, _ = filepath.Abs(filepath.Clean(strings.ReplaceAll(input.FilePath, "..", "")))
 	}
 
 	// 路径限制校验：仅允许在 baseDir 目录下创建文件

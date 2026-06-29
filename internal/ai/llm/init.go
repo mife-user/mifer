@@ -29,8 +29,14 @@ func InitRegistry(ctx context.Context) (*Registry, error) {
 		}
 		chatModel, err := registry.initBackend(ctx, key, backendCfg)
 		if err != nil {
-			// default 后端初始化失败为致命错误
+			// default 后端因 api_key 缺失导致初始化失败时，不阻止启动
+			// 程序将在运行时通过 /api/admin/status 提示用户配置
 			if key == "default" {
+				if backendCfg.APIKey == "" {
+					logger.Warn("默认后端api_key未配置，AI对话功能暂不可用，请在/config中设置api_key",
+						logger.S("provider", backendCfg.Provider))
+					continue
+				}
 				return nil, err
 			}
 			logger.Info("初始化后端失败，跳过", logger.S("backend", key), logger.C(err))

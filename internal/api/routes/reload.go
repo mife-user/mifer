@@ -88,6 +88,9 @@ func buildReloadResp(exec *executor.Executor) *adminresp.ReloadResp {
 		status := adminresp.BackendStatus{Name: key, Model: cfg.Model}
 		if loadedSet[key] {
 			status.Status = "ok"
+		} else if key == "default" && cfg.APIKey == "" {
+			status.Status = "failed"
+			status.Error = "api_key 未配置，请在 /config 中设置后重载"
 		} else {
 			status.Status = "failed"
 			status.Error = "后端初始化失败，请检查provider、base_url、api_key配置"

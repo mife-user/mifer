@@ -128,6 +128,18 @@ func reloadCmd(client *client.Client) tea.Cmd {
 	}
 }
 
+// checkBackendStatusCmd 启动时查询后端就绪状态，未配置 api_key 时在 TUI 显示警告
+func checkBackendStatusCmd(client *client.Client) tea.Cmd {
+	return func() tea.Msg {
+		status, err := client.Status.Query()
+		if err != nil {
+			// 查询失败不阻塞启动（可能服务尚未就绪），静默忽略
+			return backendStatusMsg{ready: false, warnings: nil}
+		}
+		return backendStatusMsg{ready: status.Ready, warnings: status.Warnings}
+	}
+}
+
 // configFilePath 根据环境返回配置文件的绝对路径。
 // dev → <Workdir>/config/dev.yaml
 // prod → <CfgPath>/config/prod.yaml

@@ -34,6 +34,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// backendStatusMsg 由 checkBackendStatusCmd 在查询后端状态后发出。
+// 用于启动时检测 API Key 是否已配置，未配置时设置 backendWarning。
+type backendStatusMsg struct {
+	ready    bool
+	warnings []string
+}
+
 // chatRespMsg 由 sendChatCmd 在 SSE 流全部积累完成后发出。
 //
 // 异步流程：
@@ -168,6 +175,9 @@ type Model struct {
 	showingPlanView bool           // 是否处于全屏计划查看模式
 	planViewContent string         // 计划文件内容
 	planViewport    viewport.Model // 独立的 viewport 用于全屏计划查看
+
+	// 后端状态
+	backendWarning string // 后端未就绪时的警告文本（如 api_key 未配置）
 
 	// 工具确认
 	selectingConfirm bool                  // 是否处于确认选择模式

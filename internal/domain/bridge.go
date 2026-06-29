@@ -19,6 +19,7 @@ type AgentService interface {
 	ListSkills(ctx context.Context) (*SkillListResp, error)
 	Compact(ctx context.Context) (*CompactResp, error)
 	ListAgents(ctx context.Context) (*AgentListResp, error)
+	BackendStatus(ctx context.Context) (*BackendStatusResp, error)
 }
 
 type Agent interface {
@@ -38,6 +39,7 @@ type Agent interface {
 	ListSkills(ctx context.Context) (*SkillListResp, error)
 	Compact(ctx context.Context) (*CompactResp, error)
 	ListAgents(ctx context.Context) (*AgentListResp, error)
+	BackendStatus(ctx context.Context) (*BackendStatusResp, error)
 }
 
 // ToolService 工具操作服务接口，按 Handler → Service → Executor 三层架构定义。

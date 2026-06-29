@@ -53,9 +53,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.sidebarVP.Width < 10 {
 			m.sidebarVP.Width = 10
 		}
-		m.memoryList.SetSize(sidebarW-4, 8)
-		m.rebackList.SetSize(sidebarW-4, 8)
-		m.confirmList.SetSize(sidebarW-4, 5)
+		m.memoryList.SetSize(sidebarW-4, 8)  // 记忆列表高度固定为 8 行
+		m.rebackList.SetSize(sidebarW-4, 8)  // 回退列表高度固定为 8 行
+		m.confirmList.SetSize(sidebarW-4, 8) // 工具确认列表高度固定为 8 行
 		m.memoryViewport.Width = m.width - 4
 		m.memoryViewport.Height = m.height - 2
 		m.planViewport.Width = m.width - 4
@@ -314,7 +314,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleStreamDone(msg)
 
 	// ======================================================================
-	// 5. AI 响应到达（回退场景）
+	// 5. 后端状态查询结果（启动时检查 api_key 是否配置）
+	// ======================================================================
+	case backendStatusMsg:
+		if !msg.ready && len(msg.warnings) > 0 {
+			m.backendWarning = "⚠ " + msg.warnings[0] + "（使用 /config 编辑配置）"
+		}
+		return m, nil
+
+	// ======================================================================
+	// 6. AI 响应到达（回退场景）
 	// ======================================================================
 	case chatRespMsg:
 		m.thinking = false

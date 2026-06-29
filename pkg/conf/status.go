@@ -19,8 +19,6 @@ func StatusConfig() error {
 	if defaultBackend.Model == "" {
 		return errorer.New(errorer.ErrAIModelNotConfigured)
 	}
-	if defaultBackend.APIKey == "" {
-		return errorer.New(errorer.ErrAIApiKeyNotConfigured)
-	}
+	// api_key 为空时不再阻止启动，运行时通过 /api/admin/status 提示用户配置
 	return nil
 }

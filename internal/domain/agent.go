@@ -106,6 +106,21 @@ type CompactResp struct {
 	Message string // 结果描述消息
 }
 
+// BackendStatusEntry 单个后端的加载状态
+type BackendStatusEntry struct {
+	Name   string // 后端名称（如 "default", "sonnet"）
+	Status string // "ok" | "failed" | "not_configured"
+	Model  string // 模型名
+	Error  string // 错误信息（失败时）
+}
+
+// BackendStatusResp 后端状态查询响应
+type BackendStatusResp struct {
+	Ready    bool                 // default 后端是否就绪
+	Backends []BackendStatusEntry // 各后端状态
+	Warnings []string             // 警告信息（如 api_key 未配置）
+}
+
 // ToolConfirmReq 工具确认请求（域类型，无 JSON 标签）
 type ToolConfirmReq struct {
 	ID     string // 确认项 UUID

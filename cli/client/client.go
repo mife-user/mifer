@@ -15,6 +15,7 @@ import (
 	"mifer/cli/client/rebackhandler"
 	"mifer/cli/client/reloadhandler"
 	"mifer/cli/client/skillhandler"
+	"mifer/cli/client/statushandler"
 	"mifer/cli/client/toolconfirmhandler"
 )
 
@@ -47,6 +48,7 @@ type Client struct {
 	MCP          *mcphandler.MCPHandler
 	Skill        *skillhandler.SkillHandler
 	Agents       *agentshandler.AgentsHandler
+	Status       *statushandler.StatusHandler
 	ToolConfirm  *toolconfirmhandler.ConfirmHandler
 	AllowlistAdd *toolconfirmhandler.AllowlistHandler
 }
@@ -67,6 +69,7 @@ func New(baseURL string) *Client {
 		MCP:          mcphandler.New(httpClient, baseURL+APIMCPPath+"/status"),
 		Skill:        skillhandler.New(httpClient, baseURL+APISkillPath+"/list"),
 		Agents:       agentshandler.New(httpClient, baseURL+APIAgentsPath),
+		Status:       statushandler.New(httpClient, baseURL),
 		ToolConfirm:  toolconfirmhandler.New(httpClient, baseURL),
 		AllowlistAdd: toolconfirmhandler.NewAllowlist(httpClient, baseURL),
 	}

@@ -91,6 +91,14 @@ func (m *Model) View() string {
 	// 第 ③ 步：构建消息行列表
 	// ======================================================================
 	var msgLines []string
+
+	// 后端未就绪警告（api_key 未配置时显示）
+	if m.backendWarning != "" {
+		warnStyle := m.lip.Think.Bold(true)
+		msgLines = append(msgLines, warnStyle.Render(m.backendWarning))
+		msgLines = append(msgLines, m.lip.SidebarSeparator.Render(strings.Repeat("─", m.width-sidebarWidth-4)))
+	}
+
 	for _, msg := range m.messages {
 		switch msg.role {
 		case "user":
@@ -250,7 +258,7 @@ func (m *Model) renderSidebar(width int) string {
 		m.planList.SetWidth(width - 4)
 		lines = append(lines, m.planList.View())
 	} else if m.selectingConfirm {
-		lines = append(lines, m.lip.SidebarActive.Render(" 确认执行"))
+		lines = append(lines, m.lip.SidebarActive.Render(" 确认执行↑↓选择"))
 		lines = append(lines, m.lip.SidebarSeparator.Render(strings.Repeat("─", width-3)))
 		m.confirmList.SetWidth(width - 4)
 		lines = append(lines, m.confirmList.View())

@@ -47,6 +47,17 @@ func (r *Registry) Get(name string) model.BaseChatModel {
 	return r.models["default"]
 }
 
+// Has 检查指定名称的后端是否已加载
+func (r *Registry) Has(name string) bool {
+	_, ok := r.models[name]
+	return ok
+}
+
+// IsReady 检查 default 后端是否已加载（即 AI 对话功能是否可用）
+func (r *Registry) IsReady() bool {
+	return r.Has("default")
+}
+
 // Keys 返回所有已注册的后端名称
 func (r *Registry) Keys() []string {
 	keys := make([]string, 0, len(r.models))

@@ -84,7 +84,8 @@ func (r *Router) Setup() *gin.Engine {
 		admin := api.Group("/admin")
 		{
 			admin.POST("/reload", r.ReloadHandler)
-		}
+				admin.GET("/status", r.agentHandler.Status)
+			}
 		plan := api.Group("/plan")
 		{
 			plan.GET("", r.agentHandler.ListPlans)

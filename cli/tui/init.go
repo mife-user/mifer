@@ -54,6 +54,9 @@ func NewModel(client *client.Client) *Model {
 		viewport: vp,
 		thinking: false,
 
+		// 后端状态
+		backendWarning: "",
+
 		// 输入历史
 		history:      make([]string, 0, conf.GetConfig().Cli.Tui.MaxHistory),
 		historyIdx:   -1,
@@ -95,5 +98,8 @@ func NewModel(client *client.Client) *Model {
 
 // Init Bubble Tea 生命周期入口
 func (m *Model) Init() tea.Cmd {
-	return textarea.Blink
+	return tea.Batch(
+		textarea.Blink,
+		checkBackendStatusCmd(m.client),
+	)
 }

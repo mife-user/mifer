@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	neturl "net/url"
 	"strings"
@@ -54,6 +55,11 @@ func webFetch(ctx context.Context, input WebFetchInput) (WebFetchOutput, error) 
 		return WebFetchOutput{Error: fmt.Sprintf("无效的 URL: %s（仅支持 http/https 协议）", input.URL)}, nil
 	}
 
+	// 防止 SSRF：拒绝内网地址
+	if isPrivateHost(parsedURL.Hostname()) {
+		return WebFetchOutput{Error: fmt.Sprintf("拒绝访问内网地址: %s", parsedURL.Hostname())}, nil
+	}
+
 	maxLen := input.MaxContentLen
 	if maxLen <= 0 {
 		maxLen = 5000
@@ -75,6 +81,10 @@ func webFetch(ctx context.Context, input WebFetchInput) (WebFetchOutput, error) 
 			if len(via) >= 3 {
 				return fmt.Errorf("重定向次数过多")
 			}
+			// 防止 SSRF：拒绝重定向到内网地址
+			if isPrivateHost(req.URL.Hostname()) {
+				return fmt.Errorf("拒绝重定向到内网地址: %s", req.URL.Hostname())
+			}
 			return nil
 		},
 	}
@@ -95,9 +105,9 @@ func webFetch(ctx context.Context, input WebFetchInput) (WebFetchOutput, error) 
 		return WebFetchOutput{Error: fmt.Sprintf("网页返回错误状态码: %d", resp.StatusCode)}, nil
 	}
 
-	// 检查 Content-Type
+	// 检查 Content-Type（缺失时也拒绝，防止二进制内容被误解析）
 	contentType := resp.Header.Get("Content-Type")
-	if contentType != "" && !strings.Contains(strings.ToLower(contentType), "text/html") {
+	if contentType == "" || !strings.Contains(strings.ToLower(contentType), "text/html") {
 		return WebFetchOutput{Error: fmt.Sprintf("不支持的内容类型: %s（仅支持 text/html）", contentType)}, nil
 	}
 
@@ -212,6 +222,27 @@ func extractText(htmlContent string) (title string, text string) {
 	text = collapseWhitespace(textBuilder.String())
 
 	return title, text
+}
+
+// isPrivateHost 检查主机名是否为内网地址（防止 SSRF）。
+func isPrivateHost(host string) bool {
+	// 去除端口号
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	// localhost / 回环地址
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return true
+	}
+	// 简单检查常见内网前缀
+	if strings.HasPrefix(host, "10.") ||
+		strings.HasPrefix(host, "172.16.") ||
+		strings.HasPrefix(host, "192.168.") ||
+		host == "169.254.169.254" || // AWS/云元数据
+		host == "metadata.google.internal" {
+		return true
+	}
+	return false
 }
 
 // collapseWhitespace 压缩连续空白字符

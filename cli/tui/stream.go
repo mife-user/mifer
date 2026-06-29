@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -238,7 +239,12 @@ func formatToolArgs(rawJSON string) string {
 func startSSECmd(client *client.Client, content string, ch chan<- tea.Msg, ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
 		go func() {
-			defer close(ch)
+			defer close(ch) // 确保 channel 始终关闭，防止 listenStreamCmd 永久阻塞
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error("SSE goroutine panic", logger.S("panic", fmt.Sprintf("%v", r)))
+				}
+			}()
 			err := client.Chat.Send(ctx, content, func(event, chunk string) error {
 				switch event {
 				case "agent_start", "agent_end":

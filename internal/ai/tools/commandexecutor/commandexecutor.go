@@ -116,20 +116,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 		return CommandExecutorOutput{Error: "命令不能为空"}, nil
 	}
 
-	// 2. 白名单检查（若配置了白名单）
-	allowList, err := conf.LoadAllowList()
-	if err != nil {
-		logger.Warn("加载白名单失败", logger.C(err))
-	}
-	if len(allowList) > 0 {
-		if !isAllowed(input.Command, allowList) {
-			return CommandExecutorOutput{
-				Error: "命令不在白名单中，已拒绝执行。允许的命令: " + strings.Join(allowList, ", "),
-			}, nil
-		}
-	}
-
-	// 3. 危险命令检测
+	// 2. 危险命令检测
 	for _, pattern := range dangerousPatterns {
 		if pattern.MatchString(input.Command) {
 			logger.Warn("拦截危险命令", logger.S("command", input.Command), logger.S("pattern", pattern.String()))
@@ -251,17 +238,4 @@ func resolveSandboxDir(workDir, projectDir string) (string, error) {
 	return abs, nil
 }
 
-// isAllowed 检查命令是否在白名单中（支持 * 通配符前缀匹配）
-func isAllowed(command string, allowList []string) bool {
-	trimmed := strings.TrimSpace(command)
-	for _, allowed := range allowList {
-		if prefix, ok := strings.CutSuffix(allowed, "*"); ok {
-			if strings.HasPrefix(trimmed, prefix) {
-				return true
-			}
-		} else if trimmed == allowed {
-			return true
-		}
-	}
-	return false
-}
+

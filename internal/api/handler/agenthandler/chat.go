@@ -23,10 +23,16 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		return
 	}
 
+	// 限制输入长度，防止内存压力
+	const maxContentLen = 200 * 1024 // 200KB
+	if len(req.Content) > maxContentLen {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("消息内容过长（最大%dKB）", maxContentLen/1024)})
+		return
+	}
+
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.WriteHeader(http.StatusOK)
 
 	ctx, cancel := context.WithCancel(c.Request.Context())
 	defer cancel()
@@ -38,6 +44,8 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "server streaming not supported"})
 		return
 	}
+
+	c.Writer.WriteHeader(http.StatusOK)
 	sw := sse.New(ctx, fw, 10*time.Second, cancel)
 
 	err := h.getService().Chat(ctx, &domain.TalkReq{

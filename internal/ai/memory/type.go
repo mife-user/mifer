@@ -15,9 +15,24 @@ import (
 
 type Memory struct {
 	mu         sync.Mutex
-	Messages   []*schema.Message
-	savedCount int // 已持久化到文件的消息数量
+	messages   []*schema.Message // 未导出，外部必须通过 Messages() 访问以防止 data race
+	savedCount int               // 已持久化到文件的消息数量
 	Cfg        MemCfg
+}
+
+// Messages 返回当前记忆消息切片的只读引用（持有锁）。
+// 调用方不得修改返回的切片内容；所有修改操作必须通过 AppendUser/AppendAssistant 等方法。
+func (m *Memory) Messages() []*schema.Message {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.messages
+}
+
+// Len 返回当前记忆中的消息数量（持有锁）。
+func (m *Memory) Len() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.messages)
 }
 
 type MemCfg struct {
@@ -30,7 +45,7 @@ func (m *Memory) ReplaceMessages(newMessages []*schema.Message) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.Messages = newMessages
+	m.messages = newMessages
 
 	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
 	f, err := os.Create(fileName)
@@ -40,7 +55,7 @@ func (m *Memory) ReplaceMessages(newMessages []*schema.Message) error {
 	}
 	defer f.Close()
 
-	for _, msg := range m.Messages {
+	for _, msg := range m.messages {
 		line, err := json.Marshal(msg)
 		if err != nil {
 			logger.Error("序列化记忆失败", logger.C(err))
@@ -55,6 +70,6 @@ func (m *Memory) ReplaceMessages(newMessages []*schema.Message) error {
 			return errorer.NewS(errorer.ErrWriteNewlineFailed, err)
 		}
 	}
-	m.savedCount = len(m.Messages)
+	m.savedCount = len(m.messages)
 	return nil
 }

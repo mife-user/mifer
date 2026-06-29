@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -29,6 +30,23 @@ func LoadAllowList() ([]string, error) {
 		return nil, err
 	}
 	return cfg.AllowList, nil
+}
+
+// MatchAllowList 检查命令是否匹配白名单中的任一条目。
+// 支持 * 通配符前缀匹配：如 "git*" 匹配 "git status"、"git diff" 等。
+// allowList 为空时返回 false（无白名单，不跳过确认）。
+func MatchAllowList(command string, allowList []string) bool {
+	trimmed := strings.TrimSpace(command)
+	for _, allowed := range allowList {
+		if prefix, ok := strings.CutSuffix(allowed, "*"); ok {
+			if strings.HasPrefix(trimmed, prefix) {
+				return true
+			}
+		} else if trimmed == allowed {
+			return true
+		}
+	}
+	return false
 }
 
 // AddToAllowList 添加命令到 .mifer/allowlist.yaml 白名单文件。

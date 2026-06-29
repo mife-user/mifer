@@ -8,12 +8,18 @@ import (
 	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/cloudwego/eino/schema"
 )
 
 // load 从 JSONL 文件逐行加载记忆数据，文件不存在时返回空列表
 func load(cfg *MemCfg) ([]*schema.Message, error) {
+	// 防止路径遍历：ID 不能包含路径分隔符或上级目录标记
+	if strings.Contains(cfg.Id, "..") || strings.Contains(cfg.Id, "/") || strings.Contains(cfg.Id, "\\") {
+		return nil, errorer.NewF(errorer.ErrIDIllegalChars, cfg.Id)
+	}
+
 	if err := os.MkdirAll(cfg.MemPath, 0755); err != nil {
 		logger.Error("创建记忆目录失败", logger.C(err))
 		return nil, errorer.New(errorer.ErrPathCannotCreate)

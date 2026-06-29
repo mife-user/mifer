@@ -31,7 +31,7 @@ func (m *Memory) SwitchSession(newID string) error {
 	if msgs == nil {
 		msgs = []*schema.Message{}
 	}
-	m.Messages = msgs
+	m.messages = msgs
 	m.savedCount = len(msgs)
 	return nil
 }
@@ -50,7 +50,7 @@ func Init(id string) (*Memory, error) {
 	if msgs == nil {
 		msgs = []*schema.Message{}
 	}
-	memory.Messages = msgs
+	memory.messages = msgs
 	memory.savedCount = len(msgs)
 	return &memory, nil
 }

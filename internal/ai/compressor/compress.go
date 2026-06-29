@@ -47,9 +47,15 @@ func (c *Compressor) Compress(
 	}
 
 	// 4. 切分消息：需总结的部分 vs 保留的最近轮次
-	recentMsgs := extractRecentRounds(mem.Messages, ctxCfg.RecentRounds)
-	oldMsgs := make([]*schema.Message, len(mem.Messages)-len(recentMsgs))
-	copy(oldMsgs, mem.Messages[:len(mem.Messages)-len(recentMsgs)])
+	allMsgs := mem.Messages()
+	recentMsgs := extractRecentRounds(allMsgs, ctxCfg.RecentRounds)
+	if len(allMsgs)-len(recentMsgs) <= 0 {
+		// 没有需要压缩的旧消息（消息总数不足），跳过压缩
+		logger.Debug("上下文消息不足，跳过压缩")
+		return nil
+	}
+	oldMsgs := make([]*schema.Message, len(allMsgs)-len(recentMsgs))
+	copy(oldMsgs, allMsgs[:len(allMsgs)-len(recentMsgs)])
 
 	// 5. 调用压缩模型生成摘要
 	summary, err := c.generateSummary(ctx, chatModel, skill.Content, oldMsgs)
@@ -91,8 +97,18 @@ func (c *Compressor) generateSummary(
 	for _, msg := range messages {
 		content := msg.Content
 		// 截断过长的消息内容，避免摘要请求自身超限
-		if len(content) > 8000 {
-			content = content[:8000] + "...（内容过长已截断）"
+		// 使用 rune 边界截断，防止 UTF-8 多字节字符被切断
+		const maxBytes = 8000
+		if len(content) > maxBytes {
+			// 向前搜索最近的合法 UTF-8 起始字节，避免截断多字节字符
+			cut := maxBytes
+			for cut > 0 && cut > maxBytes-4 {
+				if content[cut]&0xC0 != 0x80 {
+					break
+				}
+				cut--
+			}
+			content = content[:cut] + "...（内容过长已截断）"
 		}
 		convBuilder.WriteString(fmt.Sprintf("[%s]: %s\n", msg.Role, content))
 	}
@@ -141,7 +157,7 @@ func (c *Compressor) fallbackRemoveEarliestRound(
 ) error {
 	// 找到第一个用户消息的位置
 	firstUserIdx := -1
-	msgs := mem.Messages
+	msgs := mem.Messages()
 	for i, msg := range msgs {
 		if msg.Role == schema.User {
 			firstUserIdx = i

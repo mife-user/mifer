@@ -80,17 +80,56 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
-            # 更新：
-            - [x] 新增文件快照系统：基于内容寻址 + SHA256 哈希的增量快照，每轮对话后自动保存项目文件状态，回退时恢复
-            - [x] 增量存储机制：manifest 索引 + objects 池去重，size/mtime 快速变更检测，未变更文件零 IO 复用
-            - [x] 快照 GC：RemoveRound 自动扫描引用并清理无引用孤儿 objects
-            - [x] 重构 MCP Manager：移除 Reload 方法，简化配置变更检查逻辑
-            - [x] 各组件增加错误处理日志，提升问题排查效率
-            - [x] 新增 /agents 命令：展示已配置 Agent 的名称、模型与工具列表，完整 API + CLI + TUI 流程
-            - [x] 新增自定义 Agent 配置支持：通过 agents 字段动态注册子 Agent，更新工具管理逻辑
-            - [x] 重构 AgentHandler 结构：移除冗余代码，整理类型定义，提升代码可维护性
-            - [x] 新增思考状态管理：命令处理中增加加载指示器，提升交互体验
-            - [x] 简化命令白名单写入逻辑：移除冗余配置写入，统一命令添加流程
+            ## 🚀 新功能
+            - 后端状态检测：CLI/TUI 启动时自动检查 API Key 等后端配置状态，未配置时显示友好提示
+            - 思考内容流式显示：实时展示 AI 推理过程（thinking），提升交互透明度
+            - 工具确认超时处理优化：超时自动拒绝，心跳保活机制防死锁
+            - 命令白名单与确认功能：支持 `*` 通配符匹配，session 级别 Allow，完善安全审计链路
+
+            ## 🐛 Bug 修复（40+ 项）
+            **并发安全（3 项高危）：**
+            - 修复 Memory.Messages 数据竞争：字段改为未导出，新增线程安全访问器
+            - 修复 SSE Writer 死锁：writer goroutine 退出后 SendSync 不再永久阻塞
+            - 修复并发 Chat 调用竞态：添加 Executor 级别互斥锁
+
+            **资源泄漏（3 项高危）：**
+            - 修复 MCP 子进程泄漏：初始化握手失败时正确关闭已创建的子进程
+            - 修复应用关闭资源未释放：Shutdown 链路完整关闭 MCP/RAG/ConfirmStore
+            - 修复配置热重载旧实例泄漏：SwapService 后释放旧 Executor 持有的子进程和 actor
+
+            **数据安全（1 项高危）：**
+            - 修复快照服务大面积吞没错误：SaveRound/RestoreToRound/RemoveRound 所有错误路径均上报
+
+            **安全加固（6 项）：**
+            - web_fetch 新增 SSRF 防护：拒绝内网地址和云元数据端点，重定向目标也做检查
+            - 文件读取工具路径安全检查完善
+            - 记忆加载新增路径遍历防护（与保存逻辑对齐）
+            - Content-Type 空白绕过修复
+            - 聊天消息长度限制（200KB）
+            - 会话 ID 熵值提升（18→64 bit）
+
+            **逻辑修复（8 项）：**
+            - 修复 MaxIteration:0 被 Eino 框架识别为默认值 20 的问题（改为 100）
+            - 修复 SSE Chat handler WriteHeader 在错误检查之前调用
+            - 修复压缩器在消息不足时浪费 API 调用的问题
+            - 修复 SearXNG 默认端口错误（8080→18080）
+            - 修复 UTF-8 多字节字符截断问题
+            - 修复 web_fetch Content-Type 空值绕过检查
+            - 修复 RAG 检索文档计数未使用的问题
+            - 修复技能管理器初始化错误被静默忽略
+
+            ## 🎨 Windows 专项优化
+            - **系统提示词全面优化**：所有 6 个 Agent（Mifer/MiEditer/MiCommander/MiPlanner/MiSummarizer/MiAuditor）均增加 Windows 环境适配
+            - **MiCommander 重大升级**：新增 Bash→PowerShell 正确写法速查表（18 个对照项），明确列出 PS 5.1 八大关键限制（&&/||/2>&1/rm -rf/find 等不可用）
+            - **文件操作铁律**：写入前必须先调用 file_reader 确认文件状态，禁止未读即写
+            - **职责分离**：明确 MiEditer 负责文件读取，MiCommander 仅执行命令行工具，杜绝用 cat/type 读文件
+
+            ## 🔧 代码质量
+            - 重构命令白名单匹配逻辑：抽取公共 MatchAllowList 函数，支持通配符统一处理
+            - 删除 command_executor 中冗余的白名单硬封锁（确认中间件统一管理）
+            - SSE Writer 心跳机制优化
+            - 多项 defer 资源关闭完善
+            - Manager 结构体定义优化
           files: artifacts/**/*
           draft: false
           prerelease: false

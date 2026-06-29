@@ -24,7 +24,7 @@ func (m *Memory) ListRebackEntries() ([]RebackEntry, error) {
 
 	var entries []RebackEntry
 	userIdx := 0
-	for _, msg := range m.Messages {
+	for _, msg := range m.messages {
 		if msg.Role == schema.User {
 			userIdx++
 			entries = append(entries, RebackEntry{
@@ -48,7 +48,7 @@ func (m *Memory) Reback(userMsgIndex int) (string, string, error) {
 	// 定位第 userMsgIndex 个用户消息（1-based）
 	userCount := 0
 	targetIdx := -1
-	for i, msg := range m.Messages {
+	for i, msg := range m.messages {
 		if msg.Role == schema.User {
 			userCount++
 			if userCount == userMsgIndex {
@@ -64,11 +64,11 @@ func (m *Memory) Reback(userMsgIndex int) (string, string, error) {
 		return "", "", errorer.NewF(errorer.ErrIndexOutOfRange, fmt.Sprintf("超过最大轮次: %d（共%d轮对话）", userMsgIndex, userCount))
 	}
 
-	summary := buildSummary(m.Messages[targetIdx].Content)
-	fullContent := m.Messages[targetIdx].Content
+	summary := buildSummary(m.messages[targetIdx].Content)
+	fullContent := m.messages[targetIdx].Content
 
 	// 截断到第N条用户消息之前（不保留该用户消息，避免重发时上下文重复）
-	m.Messages = m.Messages[:targetIdx]
+	m.messages = m.messages[:targetIdx]
 
 	// 覆盖重写 JSONL 文件
 	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
@@ -78,7 +78,7 @@ func (m *Memory) Reback(userMsgIndex int) (string, string, error) {
 	}
 	defer f.Close()
 
-	for _, msg := range m.Messages {
+	for _, msg := range m.messages {
 		line, err := json.Marshal(msg)
 		if err != nil {
 			return "", "", errorer.NewS(errorer.ErrSerializeJSONFailed, err)
@@ -90,7 +90,7 @@ func (m *Memory) Reback(userMsgIndex int) (string, string, error) {
 			return "", "", errorer.NewS(errorer.ErrWriteNewlineFailed, err)
 		}
 	}
-	m.savedCount = len(m.Messages)
+	m.savedCount = len(m.messages)
 	return summary, fullContent, nil
 }
 

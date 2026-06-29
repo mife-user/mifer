@@ -84,7 +84,7 @@ func webSearch(ctx context.Context, input WebSearchInput) (WebSearchOutput, erro
 func searxngSearch(ctx context.Context, query string, maxResults int, timeoutSec int, cfg conf.SearchConfig) (WebSearchOutput, error) {
 	baseURL := cfg.BaseURL
 	if baseURL == "" {
-		baseURL = "http://localhost:8080"
+		baseURL = "http://localhost:18080"
 	}
 
 	reqURL := fmt.Sprintf("%s/search?q=%s&format=json&categories=general&language=zh-CN",

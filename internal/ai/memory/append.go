@@ -8,14 +8,14 @@ import (
 func (m *Memory) AppendUser(content string) []*schema.Message {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.Messages = append(m.Messages, schema.UserMessage(content))
-	return m.Messages
+	m.messages = append(m.messages, schema.UserMessage(content))
+	return m.messages
 }
 
 // AppendAssistant 添加一条助手消息到记忆中
 func (m *Memory) AppendAssistant(content string) []*schema.Message {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.Messages = append(m.Messages, schema.AssistantMessage(content, nil))
-	return m.Messages
+	m.messages = append(m.messages, schema.AssistantMessage(content, nil))
+	return m.messages
 }

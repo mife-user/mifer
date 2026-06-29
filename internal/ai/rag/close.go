@@ -13,3 +13,14 @@ func (s *Service) Close() error {
 	}
 	return nil
 }
+
+// Close 释放 RAG 服务资源（懒加载版本）。
+// 若底层 Service 尚未初始化（Qdrant 从未连接），直接返回 nil。
+func (s *LazyService) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.svc != nil {
+		return s.svc.Close()
+	}
+	return nil
+}

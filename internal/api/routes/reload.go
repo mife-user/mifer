@@ -58,9 +58,11 @@ func (r *Router) Reload(ctx context.Context) (*adminresp.ReloadResp, error) {
 	// 构建各后端状态报告
 	resp := buildReloadResp(newExec)
 
-	// 原子替换服务
+	// 原子替换服务，并释放旧实例持有的资源（MCP 子进程、确认存储 actor）
 	oldSvc := r.agentHandler.SwapService(agentservice.NewAgentService(newExec))
-	_ = oldSvc
+	if oldAgentSvc, ok := oldSvc.(*agentservice.AgentService); ok {
+		oldAgentSvc.CloseExecutor()
+	}
 
 	// 原子替换工具服务
 	oldToolSvc := r.toolHandler.SwapService(toolservice.NewToolService(newExec.Humen.ConfirmStore, conf.GetConfig().Path.Workdir))

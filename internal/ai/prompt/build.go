@@ -16,18 +16,19 @@ func (p *Prompty) Build(ctx context.Context, query string) ([]*schema.Message, e
 
 	return p.Template.Format(ctx, map[string]any{
 		"system_prompt": p.SystemPrompt,
-		"history":       p.Memory.Messages,
+		"history":       p.Memory.Messages(),
 		"query":         query,
 	})
 }
 
 // buildLegacy 手工拼接消息，用于模板不可用时的回退路径
 func (p *Prompty) buildLegacy(query string) []*schema.Message {
-	msgs := make([]*schema.Message, 0, len(p.Memory.Messages)+2)
+	memMsgs := p.Memory.Messages()
+	msgs := make([]*schema.Message, 0, len(memMsgs)+2)
 	if p.SystemPrompt != "" {
 		msgs = append(msgs, schema.SystemMessage(p.SystemPrompt))
 	}
-	msgs = append(msgs, p.Memory.Messages...)
+	msgs = append(msgs, memMsgs...)
 	msgs = append(msgs, schema.UserMessage(query))
 	return msgs
 }

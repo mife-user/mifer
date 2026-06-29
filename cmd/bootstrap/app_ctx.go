@@ -12,8 +12,8 @@ func (a *Application) initontext(ctx context.Context) error {
 		a.Context = ctx
 		return nil
 	}
-	// 生成随机字符串
-	random, err := utils.RandomStr(3)
+	// 生成随机字符串（8 字节 = 64 bit 熵，足以防止会话 ID 碰撞）
+	random, err := utils.RandomStr(8)
 	if err != nil {
 		return err
 	}

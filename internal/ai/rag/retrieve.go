@@ -113,12 +113,11 @@ func (s *Service) FormatDocs(docs []*schema.Document) string {
 		if srcDoc != currentDoc {
 			currentDoc = srcDoc
 			docNum++
-			sb.WriteString(fmt.Sprintf("\n## %s\n", srcDoc))
+			sb.WriteString(fmt.Sprintf("\n## %d. %s\n", docNum, srcDoc))
 		}
 		chunkIdx, _ := toInt(doc.MetaData["chunk_index"])
 		sb.WriteString(fmt.Sprintf("【片段%d】%s\n", chunkIdx, doc.Content))
 	}
-	_ = docNum
 	return sb.String()
 }
 

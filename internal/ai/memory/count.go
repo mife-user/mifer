@@ -8,7 +8,7 @@ func (m *Memory) CountUserMessages() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	count := 0
-	for _, msg := range m.Messages {
+	for _, msg := range m.messages {
 		if msg.Role == schema.User {
 			count++
 		}

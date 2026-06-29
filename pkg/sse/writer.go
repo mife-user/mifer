@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,6 +30,7 @@ type Writer struct {
 	w      FlushWriter
 	cancel context.CancelFunc
 	msgCh  chan sseMsg
+	closed atomic.Bool // writer goroutine 退出后置为 true，防止 SendSync 死锁
 }
 
 // New 创建 Writer 并启动 writer goroutine 和心跳 goroutine。
@@ -42,6 +44,7 @@ func New(ctx context.Context, w FlushWriter, heartbeat time.Duration, cancel con
 
 	// writer goroutine：独占 FlushWriter，串行执行所有写入
 	go func() {
+		defer sw.closed.Store(true)
 		for {
 			select {
 			case <-ctx.Done():
@@ -89,8 +92,13 @@ func New(ctx context.Context, w FlushWriter, heartbeat time.Duration, cancel con
 }
 
 // SendSync 提交同步写入任务，阻塞等待 writer goroutine 完成并返回错误。
-// 若写入失败，内部自动调用 cancel；调用方应检查返回值并返回 context.Canceled。
+// 若写入失败或 writer 已退出，返回 context.Canceled。
 func (sw *Writer) SendSync(write func(w FlushWriter) error) error {
+	// writer goroutine 已退出时直接返回，防止死锁
+	if sw.closed.Load() {
+		return context.Canceled
+	}
+
 	errCh := make(chan error, 1)
 	select {
 	case sw.msgCh <- sseMsg{write: write, errCh: errCh}:
@@ -98,6 +106,12 @@ func (sw *Writer) SendSync(write func(w FlushWriter) error) error {
 		// channel 满说明 writer goroutine 卡死（如 TCP 半开连接），不应阻塞调用方
 		return context.Canceled
 	}
+
+	// writer goroutine 可能在入队后退出，需二次检查防止死锁
+	if sw.closed.Load() {
+		return context.Canceled
+	}
+
 	if err := <-errCh; err != nil {
 		sw.cancel()
 		return context.Canceled
@@ -105,8 +119,11 @@ func (sw *Writer) SendSync(write func(w FlushWriter) error) error {
 	return nil
 }
 
-// SendFire 提交 fire-and-forget 写入任务。channel 满时静默丢弃（writer 繁忙说明数据流活跃，无需心跳）。
+// SendFire 提交 fire-and-forget 写入任务。writer 退出或 channel 满时静默丢弃。
 func (sw *Writer) SendFire(write func(w FlushWriter) error) {
+	if sw.closed.Load() {
+		return
+	}
 	select {
 	case sw.msgCh <- sseMsg{write: write, errCh: nil}:
 	default:

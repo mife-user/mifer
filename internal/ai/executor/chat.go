@@ -24,6 +24,10 @@ const maxRetries = 3
 // 此处仅处理对话内容（response、thinking）、Agent 切换和 token 统计。
 // 网络临时错误（TLS 超时等）自动重试最多 maxRetries 次。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
+	// 防止并发 Chat 调用导致 Memory 数据竞争
+	e.chatMu.Lock()
+	defer e.chatMu.Unlock()
+
 	// 检查模型是否可用（api_key 未配置时 Runner 为 nil）
 	if e.Runner == nil {
 		callback("response", "当前apikey未配置，AI对话功能暂不可用。请使用 /config 命令编辑配置文件，在 ai.backends.default.api_key 填入您的API Key后重载配置。")

@@ -14,7 +14,7 @@ func (e *Executor) LoadMemory(c context.Context, req *domain.MemoryReq) (*domain
 	// 根据请求ID决定数据源：当前会话走内存缓存，其他会话从磁盘加载
 	var msgs []*schema.Message
 	if req.ID == e.Humen.Prompt.Memory.GetCurrentID() {
-		msgs = e.Humen.Prompt.Memory.Messages
+		msgs = e.Humen.Prompt.Memory.Messages()
 	} else {
 		var err error
 		msgs, err = e.Humen.Prompt.Memory.LoadByID(req.ID)

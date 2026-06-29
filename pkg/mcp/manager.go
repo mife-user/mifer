@@ -66,6 +66,13 @@ func (m *Manager) startServer(cfg conf.MCPServerConfig) {
 	}
 	inst.Client = cli
 
+	// 确保初始化失败时关闭客户端，防止子进程泄漏
+	defer func() {
+		if inst.Status == StatusError {
+			cli.Close()
+		}
+	}()
+
 	// 握手初始化
 	initReq := mcp.InitializeRequest{}
 	initReq.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION

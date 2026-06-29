@@ -53,7 +53,10 @@ func Init(c context.Context) (*Humen, error) {
 	mcpManager := mcp.NewManager(conf.GetConfig().Mcp.Servers)
 
 	// 初始化技能管理器
-	skillMgr, _ := skill.NewManager(conf.GetConfig().Skill)
+	skillMgr, err := skill.NewManager(conf.GetConfig().Skill)
+	if err != nil {
+		logger.Warn("技能管理器初始化失败，技能功能不可用", logger.C(err))
+	}
 	skillHub := skill.NewAgentHub()
 
 	// 初始化工具确认存储与中间件
@@ -140,7 +143,7 @@ func Init(c context.Context) (*Humen, error) {
 						ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 					},
 				},
-				MaxIterations: 0,
+				MaxIterations: 100,
 			})
 			if err != nil {
 				logger.Error("创建自定义Agent失败", logger.S("name", agentcfg.Name), logger.C(err))
@@ -163,7 +166,7 @@ func Init(c context.Context) (*Humen, error) {
 		agent, err = deep.New(c, &deep.Config{
 			Name:        "Mifer",
 			Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务",
-			Instruction: " 你是Mifer智能助手的管理员，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令\n- MiAuditor：代码与配置安全审计\n\n你自身具备以下工具：\n- web_search：搜索互联网获取最新信息（基于 SearXNG 元搜索引擎，聚合 Google/Bing/百度等多家结果）\n- web_fetch：抓取指定网页URL的文本内容\n- skill：调用预定义的技能\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent或工具\n2. 涉及实时信息、新闻、最新资料时使用 web_search 搜索\n3. 需要阅读具体网页内容时使用 web_fetch 抓取\n4. 复杂任务可串联多个Agent协作完成\n5. 涉及安全操作时优先咨询MiAuditor\n6. 回复用户时使用中文，简洁清晰\n7. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示",
+			Instruction: " 你是Mifer智能助手的管理员，运行于Windows环境，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建、查看、图片生成（不要用MiCommander读文件）\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令（仅用于运行程序/构建/安装等命令行操作，不要用于读取文件）\n- MiAuditor：代码与配置安全审计\n\n你自身具备以下工具：\n- web_search：搜索互联网获取最新信息（基于 SearXNG 元搜索引擎，聚合 Google/Bing/百度等多家结果）\n- web_fetch：抓取指定网页URL的文本内容\n- skill：调用预定义的技能\n\nWindows 环境须知：\n- 文件路径使用反斜杠（如 C:\\Users\\xxx\\file.txt）或正斜杠均可\n- 工作目录为当前项目根目录，所有相对路径基于此目录\n- 读取文件内容始终委派给 MiEditer（使用 file_reader），不要委派给 MiCommander\n- MiCommander 仅用于执行构建、运行、安装等命令行工具\n\n文件操作铁律（必须遵守）：\n1. 写入文件前必须先调用 file_reader 确认文件当前状态（是否存在、内容是什么）\n2. 创建文件前必须先确认文件不存在（可用 file_reader 探测，文件不存在会返回明确错误）\n3. 修改文件前必须先读取原始内容，基于实际内容修改，不要凭空猜测\n4. 禁止在未读取文件的情况下直接写入或创建文件\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent或工具\n2. 涉及实时信息、新闻、最新资料时使用 web_search 搜索\n3. 需要阅读具体网页内容时使用 web_fetch 抓取\n4. 复杂任务可串联多个Agent协作完成\n5. 涉及安全操作时优先咨询MiAuditor\n6. 回复用户时使用中文，简洁清晰\n7. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示\n8. 读取文件用MiEditer，运行命令用MiCommander，不要混淆两者职责",
 			ChatModel:   reg.Get("default"),
 			ToolsConfig: adk.ToolsConfig{
 				EmitInternalEvents: true,
@@ -173,7 +176,7 @@ func Init(c context.Context) (*Humen, error) {
 				},
 			},
 			SubAgents:    subagents,
-			MaxIteration: 0,
+			MaxIteration: 100,
 		})
 		if err != nil {
 			logger.Error("init agent failed", logger.C(err))

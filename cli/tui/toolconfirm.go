@@ -15,6 +15,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"mifer/cli/client"
 
@@ -155,9 +156,17 @@ func (m *Model) handleConfirmSelect() (tea.Model, tea.Cmd) {
 			// 命令工具：解析命令并加入白名单文件
 			cmd_ := parseCommandForAllowlist(prompt.Arguments)
 			if cmd_ != "" {
-				// 异步添加到 allowlist（不阻塞返回值）
+				// 异步添加到 allowlist，带超时防止 goroutine 泄漏
 				go func() {
-					_ = m.client.AllowlistAdd.Add(cmd_)
+					done := make(chan struct{}, 1)
+					go func() {
+						_ = m.client.AllowlistAdd.Add(cmd_)
+						done <- struct{}{}
+					}()
+					select {
+					case <-done:
+					case <-time.After(10 * time.Second):
+					}
 				}()
 			}
 		}

@@ -26,10 +26,10 @@ func NeedConfirm(store *Store) func(toolName, arguments, sessionID string) bool 
 			return false
 		}
 
-		// 命令行工具：检查全局 allowlist
+		// 命令行工具：检查全局 allowlist（支持 * 通配符前缀匹配）
 		if toolName == "command_executor" {
 			cmd := parseCommandFromArgs(arguments)
-			if slices.Contains(allowlist, cmd) {
+			if conf.MatchAllowList(cmd, allowlist) {
 				return false
 			}
 		}

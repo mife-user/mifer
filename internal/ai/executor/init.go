@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"path/filepath"
+	"sync"
 
 	"mifer/internal/ai/agent"
 	aicallback "mifer/internal/ai/callback"
@@ -28,6 +29,7 @@ type Executor struct {
 	Token    *TokenUsage       // token 累计用量统计
 	compress compressState     // 上下文压缩状态
 	Snapshot *snapshot.Service // 文件快照服务
+	chatMu   sync.Mutex        // 防止并发 Chat 调用导致 Memory 数据竞争
 }
 
 func Init(c context.Context) (*Executor, error) {

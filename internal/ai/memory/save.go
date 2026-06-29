@@ -23,7 +23,7 @@ func (m *Memory) Save() error {
 		return errorer.NewS(errorer.ErrCreateMemoryDirFailed, err)
 	}
 
-	newMsgs := m.Messages[m.savedCount:]
+	newMsgs := m.messages[m.savedCount:]
 	if len(newMsgs) == 0 {
 		return nil
 	}
@@ -51,6 +51,6 @@ func (m *Memory) Save() error {
 			return errorer.NewS(errorer.ErrWriteNewlineFailed, err)
 		}
 	}
-	m.savedCount = len(m.Messages)
+	m.savedCount = len(m.messages)
 	return nil
 }

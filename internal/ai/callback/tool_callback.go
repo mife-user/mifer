@@ -14,21 +14,14 @@ import (
 	"github.com/cloudwego/eino/components/tool"
 )
 
-// ExecutorCallback executor 层向上传递事件的标准回调签名。
-// event: "tool_start" | "tool_end" | "tool_error"
-// content: 工具名，或 "工具名\x00参数JSON"（tool_start），或 "工具名\x00错误消息"（tool_error）
-type ExecutorCallback func(event, content string) error
-
-type ctxKey struct{}
-
 // WithExecutorCallback 将 executor 回调函数注入 context，供 Eino callback handler 使用。
-func WithExecutorCallback(ctx context.Context, cb ExecutorCallback) context.Context {
+func WithExecutorCallback(ctx context.Context, cb executorCallback) context.Context {
 	return context.WithValue(ctx, ctxKey{}, cb)
 }
 
 // getExecutorCallback 从 context 中取出 executor 回调，若不存在则返回 nil。
-func getExecutorCallback(ctx context.Context) ExecutorCallback {
-	if cb, ok := ctx.Value(ctxKey{}).(ExecutorCallback); ok {
+func getExecutorCallback(ctx context.Context) executorCallback {
+	if cb, ok := ctx.Value(ctxKey{}).(executorCallback); ok {
 		return cb
 	}
 	return nil

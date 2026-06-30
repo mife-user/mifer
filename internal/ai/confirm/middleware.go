@@ -3,10 +3,10 @@ package confirm
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
+	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/compose"
@@ -47,8 +47,8 @@ func NewConfirmMiddleware(store *Store,
 	timeout time.Duration) compose.ToolMiddleware {
 
 	return compose.ToolMiddleware{
-		Invokable:    createInvokableMiddleware(store, needConfirmFn, timeout),
-		Streamable:   createStreamableMiddleware(store, needConfirmFn, timeout),
+		Invokable:  createInvokableMiddleware(store, needConfirmFn, timeout),
+		Streamable: createStreamableMiddleware(store, needConfirmFn, timeout),
 	}
 }
 
@@ -64,7 +64,8 @@ func createInvokableMiddleware(store *Store,
 				return next(ctx, input)
 			}
 
-			result, err := awaitConfirmation(ctx, store, input.Name, input.Arguments, input.CallID, sessionID, timeout)
+			cb := getCallback(ctx)
+			result, err := awaitConfirmation(ctx, cb, store, input.Name, input.Arguments, input.CallID, sessionID, timeout)
 			if err != nil {
 				return nil, err
 			}
@@ -91,7 +92,8 @@ func createStreamableMiddleware(store *Store,
 				return next(ctx, input)
 			}
 
-			result, err := awaitConfirmation(ctx, store, input.Name, input.Arguments, input.CallID, sessionID, timeout)
+			cb := getCallback(ctx)
+			result, err := awaitConfirmation(ctx, cb, store, input.Name, input.Arguments, input.CallID, sessionID, timeout)
 			if err != nil {
 				return nil, err
 			}
@@ -105,8 +107,28 @@ func createStreamableMiddleware(store *Store,
 	}
 }
 
+// sendConfirmEvent 发送 tool_confirm SSE 事件，失败仅记录日志。
+func sendConfirmEvent(cb ExecutorCallback, id, toolName, arguments string) {
+	eventData, err := json.Marshal(ConfirmEvent{
+		ID: id, ToolName: toolName, Arguments: arguments,
+	})
+	if err != nil {
+		logger.Error("序列化 tool_confirm 事件失败", logger.C(err))
+		return
+	}
+
+	logger.Info("发送 tool_confirm SSE 事件",
+		logger.S("id", id), logger.S("tool", toolName),
+		logger.I("argsLen", len(arguments)))
+
+	if sendErr := cb("tool_confirm", string(eventData)); sendErr != nil {
+		logger.Error("发送 tool_confirm SSE 事件失败",
+			logger.S("tool", toolName), logger.C(sendErr))
+	}
+}
+
 // awaitConfirmation 生成确认项、发送 SSE 事件、阻塞等待确认结果。
-func awaitConfirmation(ctx context.Context, store *Store,
+func awaitConfirmation(ctx context.Context, cb ExecutorCallback, store *Store,
 	toolName, arguments, callID, sessionID string, timeout time.Duration) (ConfirmResult, error) {
 
 	id := uuid.New().String()
@@ -122,34 +144,16 @@ func awaitConfirmation(ctx context.Context, store *Store,
 	store.Add(entry)
 	defer store.Remove(id)
 
-	// 发送 SSE "tool_confirm" 事件
-	if cb := getCallback(ctx); cb != nil {
-		eventData, err := json.Marshal(ConfirmEvent{
-			ID:        id,
-			ToolName:  toolName,
-			Arguments: arguments,
-		})
-		if err == nil {
-			logger.Info("发送 tool_confirm SSE 事件",
-				logger.S("id", id),
-				logger.S("tool", toolName),
-				logger.I("argsLen", len(arguments)))
-			if sendErr := cb("tool_confirm", string(eventData)); sendErr != nil {
-				logger.Error("发送 tool_confirm SSE 事件失败",
-					logger.S("tool", toolName), logger.C(sendErr))
-			}
-		} else {
-			logger.Error("序列化 tool_confirm 事件失败", logger.C(err))
-		}
+	if cb != nil {
+		sendConfirmEvent(cb, id, toolName, arguments)
 	} else {
 		logger.Warn("tool_confirm 无法发送：callback 为 nil",
-			logger.S("tool", toolName),
-			logger.S("id", id))
+			logger.S("tool", toolName), logger.S("id", id))
 	}
 
-	// 阻塞等待确认
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
+
 	select {
 	case r := <-entry.ResultCh:
 		if !r.Approved {
@@ -157,10 +161,8 @@ func awaitConfirmation(ctx context.Context, store *Store,
 		}
 		return r, nil
 	case <-timer.C:
-		return ConfirmResult{Approved: false, Action: "timeout"},
-			errors.New("工具确认超时")
+		return ConfirmResult{Action: "timeout"}, errorer.New(errorer.ErrConfirmTimeout)
 	case <-ctx.Done():
-		return ConfirmResult{Approved: false, Action: "canceled"},
-			ctx.Err()
+		return ConfirmResult{Action: "canceled"}, errorer.New(errorer.ErrConfirmDone)
 	}
 }

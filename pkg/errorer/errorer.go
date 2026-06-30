@@ -85,6 +85,10 @@ const (
 	ErrTokenInvalid = "token无效"
 	// tools
 	ErrToolUnknown = "未知工具错误"
+
+	// Confirm
+	ErrConfirmTimeout = "工具确认超时"
+	ErrConfirmDone    = "工具确认已取消"
 	// 配置
 	ErrGetWorkDirFailed              = "获取当前工作目录失败"
 	ErrGetHomeDirFailed              = "获取用户主目录失败"

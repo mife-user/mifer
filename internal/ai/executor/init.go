@@ -6,14 +6,12 @@ import (
 	"sync"
 
 	"mifer/internal/ai/agent"
-	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/compressor"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"mifer/pkg/snapshot"
 
 	"github.com/cloudwego/eino/adk"
-	"github.com/cloudwego/eino/callbacks"
 )
 
 // compressState 上下文压缩相关状态
@@ -33,8 +31,7 @@ type Executor struct {
 }
 
 func Init(c context.Context) (*Executor, error) {
-	// 注册全局 Tool 回调处理器，捕获所有 Tool 组件的 OnStart/OnEnd/OnError
-	callbacks.AppendGlobalHandlers(aicallback.ToolCallbackHandler)
+	// Tool 回调处理器改为 per-invocation 方式，在 Chat 中通过 adk.WithCallbacks 注入
 
 	ag, err := agent.Init(c)
 	if err != nil {

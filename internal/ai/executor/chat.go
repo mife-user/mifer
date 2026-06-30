@@ -14,13 +14,14 @@ import (
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 
+	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/schema"
 )
 
 const maxRetries = 3
 
 // Chat 执行一次对话，通过 callback 将事件实时传递到上层。
-// tool_start / tool_end / tool_error 已由 aicallback.ToolCallbackHandler 统一拦截，
+// tool_start / tool_end / tool_error 由 aicallback.NewHandler 通过 adk.WithCallbacks 按调用注入，
 // 此处仅处理对话内容（response、thinking）、Agent 切换和 token 统计。
 // 网络临时错误（TLS 超时等）自动重试最多 maxRetries 次。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
@@ -50,11 +51,11 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	// 获取会话 ID 用于工具确认和清理
 	sessionID, _ := c.Value("id").(string)
 
-	// 将 executor 回调注入 context，供 Eino callback handler 捕获 Tool 调用
-	ctx := aicallback.WithExecutorCallback(c, callback)
+	// 构建 per-invocation Tool 回调处理器，将 callback 通过闭包注入
+	toolCBHandler := aicallback.NewHandler(callback)
 
 	// 将 executor 回调注入 confirm 中间件的 context key
-	ctx = confirm.WithCallback(ctx, confirm.ExecutorCallback(callback))
+	ctx := confirm.WithCallback(c, confirm.ExecutorCallback(callback))
 
 	// 将会话 ID 注入 context，供 confirm 中间件使用
 	ctx = confirm.WithSessionID(ctx, sessionID)
@@ -82,7 +83,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			logger.Error("构建提示词失败", logger.C(err))
 			return err
 		}
-		iter := e.Runner.Run(ctx, msgs)
+		iter := e.Runner.Run(ctx, msgs, adk.WithCallbacks(toolCBHandler))
 
 		lastMsg := &strings.Builder{}
 		eventCount := 0

@@ -3,21 +3,17 @@ package memory
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/cloudwego/eino/schema"
 )
 
 // load 从 JSONL 文件逐行加载记忆数据，文件不存在时返回空列表
 func load(cfg *MemCfg) ([]*schema.Message, error) {
-	// 防止路径遍历：ID 不能包含路径分隔符或上级目录标记
-	if strings.Contains(cfg.Id, "..") || strings.Contains(cfg.Id, "/") || strings.Contains(cfg.Id, "\\") {
-		return nil, errorer.NewF(errorer.ErrIDIllegalChars, cfg.Id)
+	if err := validateID(cfg.Id); err != nil {
+		return nil, err
 	}
 
 	if err := os.MkdirAll(cfg.MemPath, 0755); err != nil {
@@ -25,7 +21,10 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		return nil, errorer.New(errorer.ErrPathCannotCreate)
 	}
 
-	fileName := filepath.Join(cfg.MemPath, fmt.Sprintf("%s.jsonl", cfg.Id))
+	fileName, err := buildFilePath(cfg.MemPath, cfg.Id)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Open(fileName)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"mifer/pkg/errorer"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/cloudwego/eino/schema"
@@ -71,7 +70,10 @@ func (m *Memory) Reback(userMsgIndex int) (string, string, error) {
 	m.messages = m.messages[:targetIdx]
 
 	// 覆盖重写 JSONL 文件
-	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
+	fileName, err := buildFilePath(m.Cfg.MemPath, m.Cfg.Id)
+	if err != nil {
+		return "", "", err
+	}
 	f, err := os.Create(fileName)
 	if err != nil {
 		return "", "", errorer.NewS(errorer.ErrOpenFileFailed, err)

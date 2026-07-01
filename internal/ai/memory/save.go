@@ -2,12 +2,9 @@ package memory
 
 import (
 	"encoding/json"
-	"fmt"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
 // Save 将未持久化的新消息追加写入 JSONL 文件（每行一条 JSON）
@@ -15,8 +12,8 @@ func (m *Memory) Save() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if strings.Contains(m.Cfg.Id, "..") || strings.Contains(m.Cfg.Id, "/") || strings.Contains(m.Cfg.Id, "\\") {
-		return errorer.NewF(errorer.ErrIDIllegalChars, m.Cfg.Id)
+	if err := validateID(m.Cfg.Id); err != nil {
+		return err
 	}
 	if err := os.MkdirAll(m.Cfg.MemPath, 0755); err != nil {
 		logger.Error("创建记忆目录失败", logger.C(err))
@@ -28,7 +25,10 @@ func (m *Memory) Save() error {
 		return nil
 	}
 
-	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
+	fileName, err := buildFilePath(m.Cfg.MemPath, m.Cfg.Id)
+	if err != nil {
+		return err
+	}
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logger.Error("打开记忆文件失败", logger.C(err))

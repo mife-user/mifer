@@ -2,9 +2,7 @@ package memory
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"mifer/pkg/errorer"
@@ -47,7 +45,10 @@ func (m *Memory) ReplaceMessages(newMessages []*schema.Message) error {
 
 	m.messages = newMessages
 
-	fileName := filepath.Join(m.Cfg.MemPath, fmt.Sprintf("%s.jsonl", m.Cfg.Id))
+	fileName, err := buildFilePath(m.Cfg.MemPath, m.Cfg.Id)
+	if err != nil {
+		return err
+	}
 	f, err := os.Create(fileName)
 	if err != nil {
 		logger.Error("创建记忆文件失败", logger.C(err))

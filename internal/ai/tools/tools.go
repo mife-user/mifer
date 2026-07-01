@@ -12,6 +12,7 @@ import (
 	"mifer/internal/ai/tools/imagegenerator"
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
+	qqtools "mifer/internal/ai/tools/qq"
 	"mifer/internal/ai/tools/webfetch"
 	"mifer/internal/ai/tools/websearch"
 	"mifer/pkg/conf"
@@ -161,6 +162,21 @@ func WebTools() []tool.BaseTool {
 		logger.Error("创建 web_fetch 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, wf)
+	}
+
+	return tools
+}
+
+// QQTools 返回 QQ 消息相关工具（发送消息等）。
+// 调用前需由 bootstrap 注入 qq.Sender，否则工具调用返回提示错误。
+func QQTools() []tool.BaseTool {
+	var tools []tool.BaseTool
+
+	qs, err := qqtools.New()
+	if err != nil {
+		logger.Error("创建 qq_send_message 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, qs)
 	}
 
 	return tools

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	"mifer/pkg/logger"
@@ -11,7 +12,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// wsClient SnowLuma / NapCat WebSocket 事件读取器。
+// wsClient NapCat / SnowLuma WebSocket 客户端。
+// 同时处理事件读取（readPump）和动作写入（WriteJSON）。
 type wsClient struct {
 	url     string
 	token   string
@@ -19,6 +21,10 @@ type wsClient struct {
 	dialer  *websocket.Dialer
 	ctx     context.Context
 	cancel  context.CancelFunc
+
+	// 写保护：同一连接不能并发写入
+	conn   *websocket.Conn
+	writeMu sync.Mutex
 }
 
 // newWSClient 创建 WebSocket 客户端。
@@ -38,6 +44,17 @@ func newWSClient(rawURL, token string) *wsClient {
 		eventCh: make(chan *oneBotEvent, 64),
 		dialer:  websocket.DefaultDialer,
 	}
+}
+
+// WriteJSON 向 WebSocket 连接写入 JSON 消息（如 OneBot action）。
+// 线程安全，可与 readPump 并发使用。
+func (w *wsClient) WriteJSON(v interface{}) error {
+	w.writeMu.Lock()
+	defer w.writeMu.Unlock()
+	if w.conn == nil {
+		return nil // 静默失败，等待重连
+	}
+	return w.conn.WriteJSON(v)
 }
 
 // connect 连接到 OneBot WebSocket 服务端，阻塞读取事件。
@@ -75,9 +92,19 @@ func (w *wsClient) connect() error {
 		logger.Info("QQ WebSocket 已连接", logger.S("url", w.url))
 		delay = 1 * time.Second
 
-		w.readPump(conn)
-		conn.Close()
+		// 保存连接引用，供 onebotClient 发送消息
+		w.writeMu.Lock()
+		w.conn = conn
+		w.writeMu.Unlock()
 
+		w.readPump(conn)
+
+		// 连接断开
+		w.writeMu.Lock()
+		w.conn = nil
+		w.writeMu.Unlock()
+
+		conn.Close()
 		logger.Warn("QQ WebSocket 断开，将重连", logger.S("delay", delay.String()))
 		select {
 		case <-w.ctx.Done():
@@ -101,16 +128,20 @@ func (w *wsClient) readPump(conn *websocket.Conn) {
 			return
 		}
 
-		// 打印原始 JSON，便于排查格式问题
-		logger.Info("QQ WS 原始消息", logger.S("raw", string(raw)))
+		logger.Debug("QQ WS 原始消息", logger.I("len", len(raw)))
 
 		var event oneBotEvent
 		if err := json.Unmarshal(raw, &event); err != nil {
-			logger.Warn("QQ WS JSON 解析失败", logger.C(err), logger.S("raw", string(raw)))
+			logger.Warn("QQ WS JSON 解析失败", logger.C(err))
 			continue
 		}
 
 		if event.PostType == "meta_event" {
+			continue
+		}
+
+		// 只推送 post_type=message 的事件，notice 静默消费
+		if event.PostType != "message" {
 			continue
 		}
 

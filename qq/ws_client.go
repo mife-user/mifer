@@ -3,6 +3,7 @@ package qq
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"mifer/pkg/logger"
@@ -21,10 +22,18 @@ type wsClient struct {
 }
 
 // newWSClient 创建 WebSocket 客户端。
-func newWSClient(url, token string) *wsClient {
-	logger.Debug("QQ 创建 WS 客户端", logger.S("url", url))
+// 若 token 非空，拼接到 URL 查询参数 ?access_token=xxx。
+func newWSClient(rawURL, token string) *wsClient {
+	if token != "" {
+		if strings.Contains(rawURL, "?") {
+			rawURL += "&access_token=" + token
+		} else {
+			rawURL += "?access_token=" + token
+		}
+	}
+	logger.Debug("QQ 创建 WS 客户端", logger.S("url", rawURL))
 	return &wsClient{
-		url:     url,
+		url:     rawURL,
 		token:   token,
 		eventCh: make(chan *oneBotEvent, 64),
 		dialer:  websocket.DefaultDialer,

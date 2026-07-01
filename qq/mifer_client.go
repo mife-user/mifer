@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mifer/pkg/logger"
@@ -21,9 +22,10 @@ type miferClient struct {
 
 // exchangeMemory 切换到指定记忆会话。
 // POST {baseURL}/api/memory/exchange/{sessionID}
+// sessionID 中的 "/" 会被 URL-encode 为 %%2F，Gin 自动解码还原。
 func (c *miferClient) exchangeMemory(sessionID string) error {
-	url := fmt.Sprintf("%s/api/memory/exchange/%s", c.baseURL, sessionID)
-	resp, err := httpClient.Post(url, "application/json", nil)
+	reqURL := fmt.Sprintf("%s/api/memory/exchange/%s", c.baseURL, url.PathEscape(sessionID))
+	resp, err := httpClient.Post(reqURL, "application/json", nil)
 	if err != nil {
 		logger.Error("QQ切换记忆会话失败", logger.S("session", sessionID), logger.C(err))
 		return err

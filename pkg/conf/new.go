@@ -160,7 +160,7 @@ confirm:
 # ── QQ Bot ──
 # QQ 机器人功能，通过 SnowLuma（OneBot v11 协议桥）收发 QQ 消息
 qq:
-  enabled: false                      # true=启用 QQ Bot，需先启动 SnowLuma 并登录 QQ
+  enabled: true                      # true=启用 QQ Bot，需先启动 SnowLuma 并登录 QQ
   onebot:
     ws_url: "ws://127.0.0.1:3001"    # SnowLuma WebSocket 地址
     http_url: "http://127.0.0.1:3001" # SnowLuma HTTP API 地址

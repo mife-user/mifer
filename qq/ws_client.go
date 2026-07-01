@@ -2,6 +2,7 @@ package qq
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"mifer/pkg/logger"
@@ -85,10 +86,19 @@ func (w *wsClient) connect() error {
 func (w *wsClient) readPump(conn *websocket.Conn) {
 	logger.Debug("QQ WS readPump 启动")
 	for {
-		var event oneBotEvent
-		if err := conn.ReadJSON(&event); err != nil {
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
 			logger.Warn("QQ WebSocket 读取失败", logger.C(err))
 			return
+		}
+
+		// 打印原始 JSON，便于排查格式问题
+		logger.Info("QQ WS 原始消息", logger.S("raw", string(raw)))
+
+		var event oneBotEvent
+		if err := json.Unmarshal(raw, &event); err != nil {
+			logger.Warn("QQ WS JSON 解析失败", logger.C(err), logger.S("raw", string(raw)))
+			continue
 		}
 
 		if event.PostType == "meta_event" {

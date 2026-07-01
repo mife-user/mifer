@@ -5,13 +5,14 @@ import (
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 // LoadMemory 加载指定会话的记忆
 func (h *AgentHandler) LoadMemory(c *gin.Context) {
-	id := c.Param("id")
+	id := strings.TrimPrefix(c.Param("id"), "/")
 	req := &domain.MemoryReq{ID: id}
 	resp, err := h.getService().LoadMemory(c.Request.Context(), req)
 	if err != nil {

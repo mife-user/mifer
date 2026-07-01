@@ -24,31 +24,45 @@ func NewAdapter(cfg Config) *QQAdapter {
 }
 
 // Start 启动 adapter：连接 SnowLuma WebSocket 并进入事件循环。
-// 阻塞直到 Stop() 被调用或连接永久失败，应在 goroutine 中调用。
 func (a *QQAdapter) Start() error {
+	logger.Info("QQ 适配器启动",
+		logger.S("ws", a.cfg.WsURL),
+		logger.S("mifer", a.cfg.MiferURL),
+		logger.S("onebot", a.cfg.OnebotHttpURL),
+		logger.I("bot_qq", int(a.cfg.BotQQ)),
+		logger.S("group_mode", a.cfg.GroupReplyMode),
+	)
 	a.ws.ctx, a.ws.cancel = context.WithCancel(a.ctx)
 	go a.eventLoop()
 	return a.ws.connect()
 }
 
-// Stop 停止 adapter，关闭 WebSocket 连接和事件循环。
+// Stop 停止 adapter。
 func (a *QQAdapter) Stop() {
+	logger.Info("QQ 适配器停止")
 	a.cancel()
 	a.ws.stop()
 }
 
 // ─────────────────────────── 事件循环 ───────────────────────────
 
-// eventLoop 从 WebSocket 事件通道读取事件并处理。
 func (a *QQAdapter) eventLoop() {
+	logger.Info("QQ 事件循环已启动")
 	for {
 		select {
 		case <-a.ctx.Done():
+			logger.Info("QQ 事件循环退出")
 			return
 		case event, ok := <-a.ws.events():
 			if !ok {
+				logger.Warn("QQ 事件通道已关闭")
 				return
 			}
+			logger.Debug("QQ 收到事件",
+				logger.S("post_type", event.PostType),
+				logger.S("message_type", event.MessageType),
+				logger.I("user_id", int(event.UserID)),
+			)
 			a.handleMessage(event)
 		}
 	}
@@ -56,35 +70,53 @@ func (a *QQAdapter) eventLoop() {
 
 // ─────────────────────────── 消息分发 ───────────────────────────
 
-// handleMessage 按消息类型分发处理。
 func (a *QQAdapter) handleMessage(event *oneBotEvent) {
+	logger.Info("QQ 收到消息",
+		logger.S("type", event.MessageType),
+		logger.I("user", int(event.UserID)),
+		logger.S("nick", event.Sender.Nickname),
+		logger.S("raw", event.RawMessage),
+	)
+
 	switch event.MessageType {
 	case "private":
 		if !a.cfg.PrivateEnabled {
+			logger.Debug("QQ 私聊已禁用，跳过")
 			return
 		}
 		a.handlePrivate(event)
 	case "group":
-		if a.cfg.GroupReplyMode == "mention_only" && !isAtBot(event.Message, a.cfg.BotQQ) {
-			return
+		if a.cfg.GroupReplyMode == "mention_only" {
+			at := isAtBot(event.Message, a.cfg.BotQQ)
+			logger.Debug("QQ 群聊 @ 检测",
+				logger.I("group", int(event.GroupID)),
+				logger.I("bot_qq", int(a.cfg.BotQQ)),
+				logger.S("at_bot", fmt.Sprintf("%v", at)),
+			)
+			if !at {
+				return
+			}
 		}
 		a.handleGroup(event)
+	default:
+		logger.Debug("QQ 未知消息类型，跳过", logger.S("type", event.MessageType))
 	}
 }
 
-// handlePrivate 处理私聊消息。
 func (a *QQAdapter) handlePrivate(event *oneBotEvent) {
 	query := cleanCQ(event.Message)
+	logger.Debug("QQ 私聊清洗后", logger.S("query", query))
 	if query == "" {
 		return
 	}
 	sid := buildSessionID(event)
+	logger.Info("QQ 处理私聊", logger.S("session", sid), logger.S("query", query))
 	a.processAndReply(sid, event, query)
 }
 
-// handleGroup 处理群聊消息。
 func (a *QQAdapter) handleGroup(event *oneBotEvent) {
 	query := cleanCQ(event.Message)
+	logger.Debug("QQ 群聊清洗后", logger.S("query", query))
 	if query == "" {
 		return
 	}
@@ -92,24 +124,27 @@ func (a *QQAdapter) handleGroup(event *oneBotEvent) {
 	if nick == "" {
 		nick = fmt.Sprintf("%d", event.UserID)
 	}
-	context := fmt.Sprintf("[%s]: %s", nick, query)
+	ctx := fmt.Sprintf("[%s]: %s", nick, query)
 	sid := buildSessionID(event)
-	a.processAndReply(sid, event, context)
+	logger.Info("QQ 处理群聊", logger.S("session", sid), logger.S("context", ctx))
+	a.processAndReply(sid, event, ctx)
 }
 
 // ─────────────────────────── 核心流水线 ───────────────────────────
 
-// processAndReply 切换记忆 → Agent 对话 → 发送回复。
 func (a *QQAdapter) processAndReply(sessionID string, event *oneBotEvent, query string) {
 	// 1. 切换记忆会话
+	logger.Debug("QQ 切换记忆会话", logger.S("session", sessionID))
 	if err := a.mifer.exchangeMemory(sessionID); err != nil {
 		logger.Error("QQ切换记忆失败", logger.S("session", sessionID), logger.C(err))
 		return
 	}
 
-	// 2. SSE 对话，收集回复并自动处理工具确认
+	// 2. SSE 对话
+	logger.Info("QQ 开始对话", logger.S("session", sessionID), logger.S("query", query))
 	var replyBuf strings.Builder
 	err := a.mifer.chat(query, func(eventType, data string) error {
+		logger.Debug("QQ SSE事件", logger.S("type", eventType), logger.I("len", len(data)))
 		switch eventType {
 		case "response":
 			replyBuf.WriteString(data)
@@ -126,16 +161,17 @@ func (a *QQAdapter) processAndReply(sessionID string, event *oneBotEvent, query 
 
 	// 3. 发送回复
 	reply := strings.TrimSpace(replyBuf.String())
+	logger.Info("QQ 对话完成", logger.S("session", sessionID), logger.I("reply_len", len(reply)))
 	if reply != "" {
+		logger.Debug("QQ 发送回复", logger.S("reply", reply))
 		a.onebot.sendReply(event, reply)
+	} else {
+		logger.Warn("QQ 回复为空，不发送")
 	}
 }
 
 // ─────────────────────────── Session ID ───────────────────────────
 
-// buildSessionID 从 OneBot 事件构建记忆会话 ID。
-// 私聊：qq_private/{user_id}
-// 群聊：qq_group/{group_id}/{user_id}
 func buildSessionID(event *oneBotEvent) string {
 	if event.MessageType == "private" {
 		return fmt.Sprintf("qq_private/%d", event.UserID)

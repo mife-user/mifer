@@ -37,6 +37,11 @@ func (c *onebotClient) sendGroupMsg(groupID int64, message string) error {
 
 // sendReply 根据事件类型发送回复。
 func (c *onebotClient) sendReply(event *oneBotEvent, content string) {
+	logger.Info("QQ 发送回复",
+		logger.S("type", event.MessageType),
+		logger.I("target", int(event.UserID)),
+		logger.I("len", len(content)),
+	)
 	var err error
 	switch event.MessageType {
 	case "private":
@@ -49,6 +54,8 @@ func (c *onebotClient) sendReply(event *oneBotEvent, content string) {
 	}
 	if err != nil {
 		logger.Error("QQ发送消息失败", logger.C(err))
+	} else {
+		logger.Info("QQ 消息发送成功")
 	}
 }
 
@@ -57,6 +64,7 @@ func (c *onebotClient) sendReply(event *oneBotEvent, content string) {
 // callAPI 通用 OneBot HTTP API 调用。
 // POST {httpURL}/{action}
 func (c *onebotClient) callAPI(action string, params map[string]interface{}) error {
+	logger.Debug("QQ OneBot API 调用", logger.S("action", action), logger.S("url", c.httpURL))
 	body, err := json.Marshal(map[string]interface{}{
 		"action": action,
 		"params": params,

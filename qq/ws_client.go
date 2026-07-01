@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
-	"sync"
 	"time"
 
 	"mifer/pkg/logger"
@@ -13,22 +12,20 @@ import (
 )
 
 // wsClient NapCat / SnowLuma WebSocket 客户端。
-// 同时处理事件读取（readPump）和动作写入（WriteJSON）。
+// 读取：readPump goroutine → eventCh
+// 写入：writeCh → writePump goroutine → WebSocket
+// Go 原则：通过 channel 通信共享内存，不用锁。
 type wsClient struct {
 	url     string
 	token   string
-	eventCh chan *oneBotEvent
+	eventCh chan *oneBotEvent  // 读事件推送到此 channel
+	writeCh chan []byte        // 写数据发送到此 channel
 	dialer  *websocket.Dialer
 	ctx     context.Context
 	cancel  context.CancelFunc
-
-	// 写保护：同一连接不能并发写入
-	conn   *websocket.Conn
-	writeMu sync.Mutex
 }
 
 // newWSClient 创建 WebSocket 客户端。
-// 若 token 非空，拼接到 URL 查询参数 ?access_token=xxx。
 func newWSClient(rawURL, token string) *wsClient {
 	if token != "" {
 		if strings.Contains(rawURL, "?") {
@@ -42,22 +39,27 @@ func newWSClient(rawURL, token string) *wsClient {
 		url:     rawURL,
 		token:   token,
 		eventCh: make(chan *oneBotEvent, 64),
+		writeCh: make(chan []byte, 32),
 		dialer:  websocket.DefaultDialer,
 	}
 }
 
-// WriteJSON 向 WebSocket 连接写入 JSON 消息（如 OneBot action）。
-// 线程安全，可与 readPump 并发使用。
+// WriteJSON 将 v 序列化为 JSON 并发送到写入 channel。
+// 若 WS 未连接，数据暂存 channel（buf=32），连接恢复后自动发送。
 func (w *wsClient) WriteJSON(v interface{}) error {
-	w.writeMu.Lock()
-	defer w.writeMu.Unlock()
-	if w.conn == nil {
-		return nil // 静默失败，等待重连
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
 	}
-	return w.conn.WriteJSON(v)
+	select {
+	case w.writeCh <- data:
+	default:
+		logger.Warn("QQ WS 写 channel 已满，丢弃消息")
+	}
+	return nil
 }
 
-// connect 连接到 OneBot WebSocket 服务端，阻塞读取事件。
+// connect 连接到 OneBot WebSocket 服务端，阻塞直到 Stop。
 func (w *wsClient) connect() error {
 	delay := 1 * time.Second
 	const maxDelay = 60 * time.Second
@@ -92,19 +94,16 @@ func (w *wsClient) connect() error {
 		logger.Info("QQ WebSocket 已连接", logger.S("url", w.url))
 		delay = 1 * time.Second
 
-		// 保存连接引用，供 onebotClient 发送消息
-		w.writeMu.Lock()
-		w.conn = conn
-		w.writeMu.Unlock()
+		// 启动写 goroutine，读 goroutine 在 readPump 中阻塞
+		writeCtx, writeCancel := context.WithCancel(w.ctx)
+		go w.writePump(writeCtx, conn)
 
 		w.readPump(conn)
 
-		// 连接断开
-		w.writeMu.Lock()
-		w.conn = nil
-		w.writeMu.Unlock()
-
+		// 读结束（连接断开），通知写 goroutine 退出
+		writeCancel()
 		conn.Close()
+
 		logger.Warn("QQ WebSocket 断开，将重连", logger.S("delay", delay.String()))
 		select {
 		case <-w.ctx.Done():
@@ -118,7 +117,23 @@ func (w *wsClient) connect() error {
 	}
 }
 
-// readPump 从 WebSocket 连接读取事件。
+// writePump 从 writeCh 读取数据并写入 WebSocket 连接。
+func (w *wsClient) writePump(ctx context.Context, conn *websocket.Conn) {
+	logger.Debug("QQ WS writePump 启动")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case data := <-w.writeCh:
+			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				logger.Warn("QQ WS 写入失败", logger.C(err))
+				return
+			}
+		}
+	}
+}
+
+// readPump 从 WebSocket 连接读取事件，推送到 eventCh。
 func (w *wsClient) readPump(conn *websocket.Conn) {
 	logger.Debug("QQ WS readPump 启动")
 	for {
@@ -128,7 +143,7 @@ func (w *wsClient) readPump(conn *websocket.Conn) {
 			return
 		}
 
-		logger.Debug("QQ WS 原始消息", logger.I("len", len(raw)))
+		logger.Debug("QQ WS 收到消息", logger.I("len", len(raw)))
 
 		var event oneBotEvent
 		if err := json.Unmarshal(raw, &event); err != nil {
@@ -136,20 +151,10 @@ func (w *wsClient) readPump(conn *websocket.Conn) {
 			continue
 		}
 
-		if event.PostType == "meta_event" {
-			continue
-		}
-
-		// 只推送 post_type=message 的事件，notice 静默消费
+		// 仅推送 post_type=message，meta_event 和 notice 静默消费
 		if event.PostType != "message" {
 			continue
 		}
-
-		logger.Debug("QQ WS 推送事件到 channel",
-			logger.S("post_type", event.PostType),
-			logger.S("msg_type", event.MessageType),
-			logger.I("user", int(event.UserID)),
-		)
 
 		select {
 		case w.eventCh <- &event:

@@ -22,6 +22,7 @@ type Config struct {
 	Search  SearchConfig  `mapstructure:"search"`
 	Skill   SkillConfig   `mapstructure:"skill"`
 	Confirm ConfirmConfig `mapstructure:"confirm"`
+	QQ      QQConfig      `mapstructure:"qq"`
 }
 
 // cli配置结构体
@@ -188,4 +189,25 @@ type RAGConfig struct {
 	QdrantPort       int    `mapstructure:"qdrant_port"`       // Qdrant gRPC 端口，默认 6334
 	QdrantCollection string `mapstructure:"qdrant_collection"` // Qdrant 集合名，默认 "mifer_docs"
 	QdrantAPIKey     string `mapstructure:"qdrant_api_key"`    // Qdrant API Key（可选）
+}
+
+// QQConfig QQ Bot 配置
+type QQConfig struct {
+	Enabled bool           `mapstructure:"enabled"`
+	Onebot  QQOnebotConfig `mapstructure:"onebot"`
+	Bot     QQBotConfig    `mapstructure:"bot"`
+}
+
+// QQOnebotConfig OneBot 连接配置
+type QQOnebotConfig struct {
+	WsURL       string `mapstructure:"ws_url"`       // WebSocket 地址，如 ws://127.0.0.1:3001
+	HttpURL     string `mapstructure:"http_url"`     // HTTP API 地址，如 http://127.0.0.1:3001
+	AccessToken string `mapstructure:"access_token"` // OneBot access_token（可选）
+}
+
+// QQBotConfig Bot 自身配置
+type QQBotConfig struct {
+	QQ             int64  `mapstructure:"qq"`               // Bot 自己的 QQ 号
+	GroupReplyMode string `mapstructure:"group_reply_mode"` // "mention_only" / "always"
+	PrivateEnabled bool   `mapstructure:"private_enabled"`  // 是否响应私聊，默认 true
 }

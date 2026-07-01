@@ -161,6 +161,9 @@ func Init(c context.Context) (*Humen, error) {
 		for _, t := range tools.WebTools() {
 			orchTools = append(orchTools, t)
 		}
+		for _, t := range tools.QQTools() {
+			orchTools = append(orchTools, t)
+		}
 
 		// 初始化编排器agent（default — 调度主脑）
 		agent, err = deep.New(c, &deep.Config{

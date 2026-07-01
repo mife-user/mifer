@@ -6,12 +6,13 @@ import (
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *AgentHandler) ExchangeMemory(c *gin.Context) {
-	id := c.Param("id")
+	id := strings.TrimPrefix(c.Param("id"), "/")
 	if id == "" {
 		logger.Error(errorer.ErrIdEmpty)
 		c.JSON(http.StatusBadRequest, gin.H{"error": errorer.ErrIdEmpty})

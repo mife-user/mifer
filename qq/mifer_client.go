@@ -158,19 +158,3 @@ func extractConfirmID(eventData string) string {
 	}
 	return confirm.ID
 }
-
-// ─────────────────────────── 内部状态查询 ───────────────────────────
-
-// backendStatus 检查 Mifer 服务是否可用。
-func (c *miferClient) backendStatus() error {
-	url := c.baseURL + "/api/admin/status"
-	resp, err := httpClient.Get(url)
-	if err != nil {
-		return err
-	}
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Mifer 服务不可用，状态码: %d", resp.StatusCode)
-	}
-	return nil
-}

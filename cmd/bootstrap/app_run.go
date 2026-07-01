@@ -36,6 +36,10 @@ func NewApplication(ctx context.Context) (*Application, error) {
 		return nil, errorer.NewS(errorer.ErrInitRouterFailed, err)
 	}
 
+	if err = app.initQQ(); err != nil {
+		logger.Warn("QQ Bot 初始化失败（不影响核心服务）", logger.C(err))
+	}
+
 	if err = app.initCli(); err != nil {
 		logger.Error("初始化CLI失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitCLIFailed, err)

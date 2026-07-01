@@ -157,6 +157,19 @@ confirm:
     - file_reader                    # 文件读取
     - file_viewer                    # 文件查看
 
+# ── QQ Bot ──
+# QQ 机器人功能，通过 SnowLuma（OneBot v11 协议桥）收发 QQ 消息
+qq:
+  enabled: false                      # true=启用 QQ Bot，需先启动 SnowLuma 并登录 QQ
+  onebot:
+    ws_url: "ws://127.0.0.1:3001"    # SnowLuma WebSocket 地址
+    http_url: "http://127.0.0.1:3001" # SnowLuma HTTP API 地址
+    access_token: ""                  # OneBot access_token（可选，需与 SnowLuma 配置一致）
+  bot:
+    qq: 0                             # Bot 自己的 QQ 号（必须配置）
+    group_reply_mode: "mention_only"  # 群聊回复模式：mention_only（仅被@时回复）/ always（总是回复）
+    private_enabled: true             # 是否响应私聊
+
 # ── AI 模型后端 ──
 # 每个后端定义一个 AI 模型连接，provider 支持四种类型：
 #   openai  — OpenAI 兼容接口（支持 DeepSeek、通义千问、硅基流动等所有 OpenAI-API 兼容服务）

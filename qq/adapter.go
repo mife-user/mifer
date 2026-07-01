@@ -13,11 +13,12 @@ import (
 // NewAdapter 创建 QQ adapter。所有外部依赖通过 Config 注入。
 func NewAdapter(cfg Config) *QQAdapter {
 	ctx, cancel := context.WithCancel(context.Background())
+	ws := newWSClient(cfg.WsURL, cfg.OnebotToken)
 	return &QQAdapter{
 		cfg:    cfg,
-		ws:     newWSClient(cfg.WsURL, cfg.OnebotToken),
+		ws:     ws,
 		mifer:  &miferClient{baseURL: cfg.MiferURL},
-		onebot: &onebotClient{httpURL: cfg.OnebotHttpURL, token: cfg.OnebotToken},
+		onebot: &onebotClient{ws: ws},
 		ctx:    ctx,
 		cancel: cancel,
 	}

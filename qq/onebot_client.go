@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"mifer/pkg/logger"
@@ -64,7 +65,6 @@ func (c *onebotClient) sendReply(event *oneBotEvent, content string) {
 // callAPI 通用 OneBot HTTP API 调用。
 // POST {httpURL}/{action}
 func (c *onebotClient) callAPI(action string, params map[string]interface{}) error {
-	logger.Debug("QQ OneBot API 调用", logger.S("action", action), logger.S("url", c.httpURL))
 	body, err := json.Marshal(map[string]interface{}{
 		"action": action,
 		"params": params,
@@ -74,6 +74,12 @@ func (c *onebotClient) callAPI(action string, params map[string]interface{}) err
 	}
 
 	url := c.httpURL + "/" + action
+	logger.Info("QQ OneBot HTTP 请求",
+		logger.S("action", action),
+		logger.S("url", url),
+		logger.S("body", string(body)),
+	)
+
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("创建 OneBot 请求失败: %w", err)
@@ -85,15 +91,27 @@ func (c *onebotClient) callAPI(action string, params map[string]interface{}) err
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
+		logger.Error("QQ OneBot HTTP 调用失败", logger.S("url", url), logger.C(err))
 		return fmt.Errorf("OneBot API 调用失败: %w", err)
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
+	logger.Info("QQ OneBot HTTP 响应",
+		logger.I("status", resp.StatusCode),
+		logger.S("body", string(respBody)),
+	)
+
 	var apiResp apiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+	if err := json.Unmarshal(respBody, &apiResp); err != nil {
+		logger.Warn("QQ OneBot 响应解析失败", logger.C(err))
 		return fmt.Errorf("解析 OneBot 响应失败: %w", err)
 	}
 	if apiResp.Status != "ok" {
+		logger.Warn("QQ OneBot 返回非 ok",
+			logger.S("status", apiResp.Status),
+			logger.I("retcode", apiResp.RetCode),
+		)
 		return fmt.Errorf("OneBot 返回错误: retcode=%d, status=%s", apiResp.RetCode, apiResp.Status)
 	}
 	return nil

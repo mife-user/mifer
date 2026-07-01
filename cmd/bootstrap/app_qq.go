@@ -15,7 +15,13 @@ import (
 // initQQ 初始化 QQ Bot，在 initRouter 之后调用。
 func (app *Application) initQQ() error {
 	cfg := conf.GetConfig().QQ
-	if !cfg.Enabled || cfg.Bot.QQ == 0 {
+	if !cfg.Enabled {
+		logger.Info("QQ Bot 未启用（qq.enabled=false），跳过初始化")
+		return nil
+	}
+	if cfg.Bot.QQ == 0 {
+		logger.Warn("QQ Bot 已启用但未配置 qq 号（qq.bot.qq=0），跳过初始化。" +
+			"请在配置文件中填写你的 Bot QQ 号。")
 		return nil
 	}
 

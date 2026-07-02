@@ -127,3 +127,15 @@ func (s *Service) collectLiveHashes(excludeRound int) map[string]bool {
 
 	return liveHashes
 }
+
+// findNearestRound 查找 ≤ maxRound 的最近一次快照轮次号。
+// 若 r4 不存在但 r3 存在，返回 3；没有任何快照时返回 -1。
+func (s *Service) findNearestRound(maxRound int) int {
+	for r := maxRound; r > 0; r-- {
+		manifestPath := filepath.Join(s.baseDir, fmt.Sprintf("r%d", r), "manifest.json")
+		if _, err := os.Stat(manifestPath); err == nil {
+			return r
+		}
+	}
+	return -1
+}

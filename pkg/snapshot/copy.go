@@ -10,6 +10,7 @@ import (
 
 // SaveRound 保存第 round 轮的工作目录快照。
 // 通过 size + mtime 快速判断未变更文件（复用旧哈希），仅对变更文件计算 SHA256 并写入 objects 池。
+// 若本轮没有任何文件变更，则跳过 manifest 写入，避免产生大量内容相同的快照目录。
 func (s *Service) SaveRound(round int) error {
 	if s.baseDir == "" {
 		return nil
@@ -17,6 +18,7 @@ func (s *Service) SaveRound(round int) error {
 
 	newManifest := make(Manifest)
 	var walkErrors []string
+	changed := false
 
 	err := filepath.Walk(s.workdir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -54,7 +56,8 @@ func (s *Service) SaveRound(round int) error {
 			return nil
 		}
 
-		// 文件已变更 → 计算哈希并存入 objects 池
+		// 文件已变更，计算哈希并存入 objects 池
+		changed = true
 		hash, size, err := s.computeFileHash(path)
 		if err != nil {
 			walkErrors = append(walkErrors, fmt.Sprintf("计算文件哈希失败 %s: %v", path, err))
@@ -78,6 +81,11 @@ func (s *Service) SaveRound(round int) error {
 		return fmt.Errorf("遍历工作目录失败: %w", err)
 	}
 
+	// 无文件变更则跳过写入，避免产生内容相同的快照目录
+	if !changed {
+		return nil
+	}
+
 	// 写出清单并更新内存缓存
 	if err := s.writeManifest(round, newManifest); err != nil {
 		return fmt.Errorf("写入快照清单失败: %w", err)
@@ -92,16 +100,21 @@ func (s *Service) SaveRound(round int) error {
 	return nil
 }
 
-// RestoreToRound 从 manifest.json 恢复工作目录。
-// 先将 objects 池中的文件复制到工作目录，再清理工作目录中清单不存在的多余文件。
-func (s *Service) RestoreToRound(round int) error {
+// RestoreToRound 恢复到 ≤ targetRound 的最近一次快照。
+// 若 targetRound 对应的快照不存在（该轮未发生文件变更），自动向前查找最近的可用快照。
+func (s *Service) RestoreToRound(targetRound int) error {
 	if s.baseDir == "" {
 		return nil
 	}
 
-	manifest, err := s.loadManifest(round)
+	nearest := s.findNearestRound(targetRound)
+	if nearest < 0 {
+		return nil // 无任何快照，无需恢复
+	}
+
+	manifest, err := s.loadManifest(nearest)
 	if err != nil {
-		return fmt.Errorf("快照 r%d 不存在: %w", round, err)
+		return fmt.Errorf("快照 r%d 不存在: %w", nearest, err)
 	}
 
 	var restoreErrors []string
@@ -170,10 +183,14 @@ func (s *Service) RestoreToRound(round int) error {
 		return fmt.Errorf("快照恢复部分失败: %s", strings.Join(allErrors, "; "))
 	}
 
+	// 更新内存缓存为当前快照
+	s.lastManifest = manifest
+
 	return nil
 }
 
 // RemoveRound 删除第 round 轮的快照，同时清理无引用的孤儿 objects。
+// 若该轮快照不存在（SaveRound 跳过），则静默返回。
 func (s *Service) RemoveRound(round int) error {
 	if s.baseDir == "" {
 		return nil
@@ -184,10 +201,8 @@ func (s *Service) RemoveRound(round int) error {
 	// 读取被删除轮次的清单，收集其独有的哈希
 	removedManifest, err := s.loadManifest(round)
 	if err != nil {
-		// 清单不存在或损坏，直接尝试删除目录
-		if rmErr := os.RemoveAll(roundDir); rmErr != nil {
-			return fmt.Errorf("删除损坏的快照目录失败 r%d: %w", round, rmErr)
-		}
+		// 清单不存在（该轮未发生文件变更），直接尝试删除目录后返回
+		_ = os.RemoveAll(roundDir)
 		return nil
 	}
 

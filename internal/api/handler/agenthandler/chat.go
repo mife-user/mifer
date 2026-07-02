@@ -50,6 +50,7 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 
 	err := h.getService().Chat(ctx, &domain.TalkReq{
 		Content: req.Content,
+			Channel: req.Channel,
 	}, func(event, content string) error {
 		escaped := strings.ReplaceAll(content, "\n", "\\n")
 		return sw.SendSync(func(w sse.FlushWriter) error {

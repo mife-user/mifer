@@ -14,10 +14,15 @@ import (
 func NewAdapter(cfg Config) *QQAdapter {
 	ctx, cancel := context.WithCancel(context.Background())
 	ws := newWSClient(cfg.WsURL, cfg.OnebotToken)
+	httpCli := newHTTPClient()
 	return &QQAdapter{
-		cfg:    cfg,
-		ws:     ws,
-		mifer:  &miferClient{baseURL: cfg.MiferURL},
+		cfg:   cfg,
+		ws:    ws,
+		mifer: &miferClient{
+			baseURL:      cfg.MiferURL,
+			httpClient:   httpCli,
+			allowedTools: cfg.AllowedTools,
+		},
 		onebot: &onebotClient{ws: ws},
 		ctx:    ctx,
 		cancel: cancel,
@@ -87,7 +92,7 @@ func (a *QQAdapter) handleMessage(event *oneBotEvent) {
 		}
 		a.handlePrivate(event)
 	case "group":
-		if a.cfg.GroupReplyMode == "mention_only" {
+		if a.cfg.IsMentionOnly() {
 			at := isAtBot(event.Message, a.cfg.BotQQ)
 			logger.Debug("QQ 群聊 @ 检测",
 				logger.I("group", int(event.GroupID)),
@@ -174,7 +179,7 @@ func (a *QQAdapter) processAndReply(sessionID string, event *oneBotEvent, query 
 // ─────────────────────────── Session ID ───────────────────────────
 
 func buildSessionID(event *oneBotEvent) string {
-	if event.MessageType == "private" {
+	if event.IsPrivate() {
 		return fmt.Sprintf("qq_private/%d", event.UserID)
 	}
 	return fmt.Sprintf("qq_group/%d/%d", event.GroupID, event.UserID)

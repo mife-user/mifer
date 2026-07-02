@@ -18,8 +18,8 @@ import (
 type wsClient struct {
 	url     string
 	token   string
-	eventCh chan *oneBotEvent  // 读事件推送到此 channel
-	writeCh chan []byte        // 写数据发送到此 channel
+	eventCh chan *oneBotEvent // 读事件推送到此 channel
+	writeCh chan []byte       // 写数据发送到此 channel
 	dialer  *websocket.Dialer
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -69,6 +69,7 @@ func (w *wsClient) connect() error {
 		case <-w.ctx.Done():
 			return w.ctx.Err()
 		default:
+			logger.Debug("QQ WS 正在连接...", logger.S("url", w.url))
 		}
 
 		logger.Info("QQ 正在连接 WebSocket...", logger.S("url", w.url))
@@ -83,6 +84,7 @@ func (w *wsClient) connect() error {
 			case <-w.ctx.Done():
 				return w.ctx.Err()
 			case <-time.After(delay):
+				logger.Debug("QQ WS 连接超时", logger.S("url", w.url), logger.S("delay", delay.String()))
 			}
 			delay *= 2
 			if delay > maxDelay {
@@ -151,8 +153,8 @@ func (w *wsClient) readPump(conn *websocket.Conn) {
 			continue
 		}
 
-		// 仅推送 post_type=message，meta_event 和 notice 静默消费
-		if event.PostType != "message" {
+		// 仅推送 message 事件，meta_event 和 notice 静默消费
+		if !event.IsMessage() {
 			continue
 		}
 

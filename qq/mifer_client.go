@@ -15,17 +15,19 @@ import (
 
 // miferClient Mifer HTTP API 客户端，封装对话、记忆切换、工具确认的 HTTP 调用。
 type miferClient struct {
-	baseURL string
+	baseURL      string
+	httpClient   *http.Client
+	allowedTools map[string]bool // 自动确认的工具白名单
 }
 
 // ─────────────────────────── 记忆会话切换 ───────────────────────────
 
 // exchangeMemory 切换到指定记忆会话。
 // POST {baseURL}/api/memory/exchange/{sessionID}
-// sessionID 中的 "/" 会被 URL-encode 为 %%2F，Gin 自动解码还原。
+// sessionID 中的 "/" 会被 URL-encode，Gin 自动解码还原。
 func (c *miferClient) exchangeMemory(sessionID string) error {
 	reqURL := fmt.Sprintf("%s/api/memory/exchange/%s", c.baseURL, url.PathEscape(sessionID))
-	resp, err := httpClient.Post(reqURL, "application/json", nil)
+	resp, err := c.httpClient.Post(reqURL, "application/json", nil)
 	if err != nil {
 		logger.Error("QQ切换记忆会话失败", logger.S("session", sessionID), logger.C(err))
 		return err
@@ -39,16 +41,16 @@ func (c *miferClient) exchangeMemory(sessionID string) error {
 
 // ─────────────────────────── SSE 对话 ───────────────────────────
 
-// sseCallback SSE 事件回调，eventType 为 response/tool_confirm/agent_start 等。
-type sseCallback func(eventType, data string) error
-
 // chat 发送对话请求并读取 SSE 流。
 // POST {baseURL}/api/ai/chat  body: {"content": query}
-func (c *miferClient) chat(query string, cb sseCallback) error {
-	body, _ := json.Marshal(map[string]string{"content": query})
+func (c *miferClient) chat(query string, cb func(eventType, data string) error) error {
+	body, _ := json.Marshal(map[string]string{
+		"content": query,
+		"channel": "qq",
+	})
 	url := c.baseURL + "/api/ai/chat"
 
-	resp, err := httpClient.Post(url, "application/json", bytes.NewReader(body))
+	resp, err := c.httpClient.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		logger.Error("QQ发送对话请求失败", logger.C(err))
 		return err
@@ -65,7 +67,7 @@ func (c *miferClient) chat(query string, cb sseCallback) error {
 }
 
 // readSSE 解析 SSE 流，逐事件调用回调。
-func (c *miferClient) readSSE(r io.Reader, cb sseCallback) error {
+func (c *miferClient) readSSE(r io.Reader, cb func(eventType, data string) error) error {
 	scanner := bufio.NewScanner(r)
 	var eventType, data string
 
@@ -103,15 +105,8 @@ func (c *miferClient) readSSE(r io.Reader, cb sseCallback) error {
 
 // ─────────────────────────── 工具确认 ───────────────────────────
 
-// allowedTools QQ 通道允许自动通过的工具名集合。
-var allowedTools = map[string]bool{
-	"qq_send_message": true,
-}
-
-// confirmTool 自动处理工具确认。
-// 若工具在 allowedTools 中则确认，否则拒绝。
+// confirmTool 自动处理工具确认：allowedTools 中的工具自动确认，其余拒绝。
 func (c *miferClient) confirmTool(eventData string) {
-	// 解析 tool_confirm 事件数据：格式为 "tool_name\x00{json_args}"
 	parts := strings.SplitN(eventData, "\x00", 2)
 	toolName := ""
 	if len(parts) > 0 {
@@ -119,11 +114,10 @@ func (c *miferClient) confirmTool(eventData string) {
 	}
 
 	action := "deny"
-	if allowedTools[toolName] {
+	if c.allowedTools != nil && c.allowedTools[toolName] {
 		action = "confirm"
 	}
 
-	// 从 eventData 中提取 confirm_id（位于 JSON 部分的 id 字段）
 	confirmID := extractConfirmID(eventData)
 	if confirmID == "" {
 		logger.Warn("QQ无法解析工具确认ID", logger.S("tool", toolName))
@@ -135,7 +129,7 @@ func (c *miferClient) confirmTool(eventData string) {
 		"action": action,
 	})
 	url := c.baseURL + "/api/tool/confirm"
-	resp, err := httpClient.Post(url, "application/json", bytes.NewReader(body))
+	resp, err := c.httpClient.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		logger.Error("QQ发送工具确认失败", logger.S("tool", toolName), logger.C(err))
 		return

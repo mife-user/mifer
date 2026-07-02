@@ -80,13 +80,24 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
-            ## 🚀 新功能：QQ Bot
-            - QQ 消息通道客户端 `qq/` 包，通过 NapCatQQ（OneBot v11 协议桥）收发 QQ 消息
-            - 支持私聊和群聊（@ 检测），每个用户独立记忆会话（层级 Session ID）
-            - Agent Function Calling 工具 `qq_send_message`，LLM 可主动发送 QQ 消息
-            - 工具确认自动处理：QQ 通道中 `qq_send_message` 自动通过，其他工具自动拒绝
-            - docker-compose 新增 NapCatQQ 服务，一键启动 QQ Bot 桥接
-            - 记忆系统支持层级路径（`qq_private/12345`、`qq_group/789/12345`）
+            ## 🚀 QQ Bot 优化
+            - QQ 通道新增独立 MiQQ Agent（无工具，纯文本对话），避免非 QQ 工具被拒导致死循环
+            - 记忆切换原子化：Chat 请求体支持 `session_id`，SwitchSession + Chat 单次请求完成
+            - 移除 `internal/ai/tools/qq/Sender` 全局变量，改为构造函数闭包注入
+            - `onebotSender` 从 bootstrap 迁移至 `qq/onebot_http.go`，导出 `OnebotHTTPSender`
+            - `oneBotEvent` 新增 `IsPrivate()`/`IsGroup()`/`IsMessage()` 语义方法
+            - 工具包重命名 `qq` → `qqtools`，消除与顶层 `qq/` 包名冲突
+            - `Config` 新增 `AllowedTools` 配置字段，替代硬编码白名单
+
+            ## 📸 文件快照优化
+            - `SaveRound` 仅在文件实际变更时写入 manifest，无操作对话不再产生空快照
+            - `RestoreToRound` 改为查找最近可用快照，兼容 SaveRound 跳过的轮次
+            - `RemoveRound` 对跳过轮次静默容错
+
+            ## 🧹 代码质量
+            - `callback.ToolCallbackHandler` 全局变量改为 `NewHandler(cb)` 工厂，闭包传递 callback
+            - confirm 中间件的 `sendConfirmEvent`/`awaitConfirmation` callback 改为显式参数
+            - 默认系统提示词结构化重写，去除冗余和环境假设
 
             ## 🔧 使用方式
             1. `docker-compose up -d napcat` 启动 NapCatQQ

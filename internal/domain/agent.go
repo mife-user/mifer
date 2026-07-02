@@ -2,6 +2,7 @@ package domain
 
 type TalkReq struct {
 	Content string
+	Channel string // 消息来源通道，为空即默认，"qq" 为 QQ 通道
 }
 
 type MemoryReq struct {

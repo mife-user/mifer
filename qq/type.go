@@ -21,14 +21,18 @@ type QQAdapter struct {
 
 // Config QQ adapter 运行时配置。
 type Config struct {
-	WsURL          string // SnowLuma WebSocket 地址
-	MiferURL       string // Mifer HTTP 服务地址
-	OnebotHttpURL  string // OneBot HTTP API 地址
-	OnebotToken    string // OneBot access_token
-	BotQQ          int64  // Bot 自己的 QQ 号
-	GroupReplyMode string // "mention_only" / "always"
-	PrivateEnabled bool   // 是否响应私聊
+	WsURL          string          // SnowLuma WebSocket 地址
+	MiferURL       string          // Mifer HTTP 服务地址
+	OnebotHttpURL  string          // OneBot HTTP API 地址
+	OnebotToken    string          // OneBot access_token
+	BotQQ          int64           // Bot 自己的 QQ 号
+	GroupReplyMode string          // "mention_only" / "always"
+	PrivateEnabled bool            // 是否响应私聊
+	AllowedTools   map[string]bool // 工具自动确认白名单
 }
+
+// IsMentionOnly 是否仅在 @ 了 Bot 时才回复群聊消息。
+func (c Config) IsMentionOnly() bool { return c.GroupReplyMode == "mention_only" }
 
 // ─────────────────────────── OneBot 事件 ───────────────────────────
 
@@ -38,16 +42,36 @@ type oneBotEvent struct {
 	MessageType string      `json:"message_type"` // "private" | "group"
 	UserID      int64       `json:"user_id"`
 	GroupID     int64       `json:"group_id"`
-	Message     string      `json:"message"`    // CQ 码格式
+	Message     string      `json:"message"`     // CQ 码格式
 	RawMessage  string      `json:"raw_message"` // 纯文本
-	Sender      eventSender `json:"sender"`
+	Sender      eventSender `json:"sender"`      // 发送者信息
 }
 
+// IsPrivate 是否私聊消息。
+func (e *oneBotEvent) IsPrivate() bool { return e.MessageType == "private" }
+
+// IsGroup 是否群聊消息。
+func (e *oneBotEvent) IsGroup() bool { return e.MessageType == "group" }
+
+// IsMessage 是否为消息事件（排除 meta_event、notice 等）。
+func (e *oneBotEvent) IsMessage() bool { return e.PostType == "message" }
+
 type eventSender struct {
-	Nickname string `json:"nickname"`
+	Nickname string `json:"nickname"` // 昵称
 }
 
 // ─────────────────────────── HTTP 客户端 ───────────────────────────
 
-// httpClient 统一的 HTTP 客户端配置。
-var httpClient = &http.Client{Timeout: 60 * time.Second}
+// newHTTPClient 创建带超时的 HTTP 客户端。
+func newHTTPClient() *http.Client {
+	return &http.Client{Timeout: 60 * time.Second}
+}
+
+// ─────────────────────────── Sender 接口 ───────────────────────────
+
+// Sender QQ 消息发送器接口，用于 internal/ai/tools/qq 包的函数注入。
+// qq/ 包提供 OneBot HTTP 和 WebSocket 两种实现。
+type Sender interface {
+	SendPrivateMsg(userID int64, message string) error
+	SendGroupMsg(groupID int64, message string) error
+}

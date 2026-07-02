@@ -1,8 +1,9 @@
 package domain
 
 type TalkReq struct {
-	Content string
-	Channel string // 消息来源通道，为空即默认，"qq" 为 QQ 通道
+	Content   string
+	Channel   string // 消息来源通道，为空即默认，"qq" 为 QQ 通道
+	SessionID string // 指定会话 ID，非空时在对话前自动切换记忆（替代单独调用 ExchangeMemory）
 }
 
 type MemoryReq struct {

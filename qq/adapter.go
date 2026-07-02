@@ -139,17 +139,10 @@ func (a *QQAdapter) handleGroup(event *oneBotEvent) {
 // ─────────────────────────── 核心流水线 ───────────────────────────
 
 func (a *QQAdapter) processAndReply(sessionID string, event *oneBotEvent, query string) {
-	// 1. 切换记忆会话
-	logger.Debug("QQ 切换记忆会话", logger.S("session", sessionID))
-	if err := a.mifer.exchangeMemory(sessionID); err != nil {
-		logger.Error("QQ切换记忆失败", logger.S("session", sessionID), logger.C(err))
-		return
-	}
-
-	// 2. SSE 对话
+	// SSE 对话（sessionID 传入请求体，由服务端原子完成记忆切换 + 对话）
 	logger.Info("QQ 开始对话", logger.S("session", sessionID), logger.S("query", query))
 	var replyBuf strings.Builder
-	err := a.mifer.chat(query, func(eventType, data string) error {
+	err := a.mifer.chat(sessionID, query, func(eventType, data string) error {
 		logger.Debug("QQ SSE事件", logger.S("type", eventType), logger.I("len", len(data)))
 		switch eventType {
 		case "response":
@@ -165,7 +158,7 @@ func (a *QQAdapter) processAndReply(sessionID string, event *oneBotEvent, query 
 		return
 	}
 
-	// 3. 发送回复
+	// 发送回复
 	reply := strings.TrimSpace(replyBuf.String())
 	logger.Info("QQ 对话完成", logger.S("session", sessionID), logger.I("reply_len", len(reply)))
 	if reply != "" {

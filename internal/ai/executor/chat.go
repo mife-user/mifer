@@ -46,10 +46,20 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		e.compress.needsCompression = false
 	}
 
+	// 指定了 sessionID 时先切换记忆，保证 switch + chat 原子执行
+	if req.SessionID != "" {
+		if err := e.Humen.Prompt.Memory.SwitchSession(req.SessionID); err != nil {
+			logger.Error("切换记忆会话失败", logger.S("session", req.SessionID), logger.C(err))
+		}
+	}
+
 	e.Humen.Prompt.Memory.AppendUser(req.Content)
 
 	// 获取会话 ID 用于工具确认和清理
-	sessionID, _ := c.Value("id").(string)
+	sessionID := req.SessionID
+	if sessionID == "" {
+		sessionID, _ = c.Value("id").(string)
+	}
 
 	// 构建 per-invocation Tool 回调处理器，将 callback 通过闭包注入
 	toolCBHandler := aicallback.NewHandler(callback)

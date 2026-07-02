@@ -42,11 +42,13 @@ func (c *miferClient) exchangeMemory(sessionID string) error {
 // ─────────────────────────── SSE 对话 ───────────────────────────
 
 // chat 发送对话请求并读取 SSE 流。
-// POST {baseURL}/api/ai/chat  body: {"content": query}
-func (c *miferClient) chat(query string, cb func(eventType, data string) error) error {
+// POST {baseURL}/api/ai/chat  body: {"content": query, "channel": "qq", "session_id": sid}
+// sessionID 指定目标会话，服务端在对话前自动切换记忆，保证 switch + chat 原子执行。
+func (c *miferClient) chat(sessionID, query string, cb func(eventType, data string) error) error {
 	body, _ := json.Marshal(map[string]string{
-		"content": query,
-		"channel": "qq",
+		"content":    query,
+		"channel":    "qq",
+		"session_id": sessionID,
 	})
 	url := c.baseURL + "/api/ai/chat"
 

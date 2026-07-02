@@ -15,6 +15,7 @@ import (
 	"mifer/pkg/logger"
 	"mifer/pkg/mcp"
 	"mifer/pkg/skill"
+	"mifer/qq"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
@@ -27,6 +28,7 @@ var confirmMiddleware compose.ToolMiddleware
 
 type Humen struct {
 	Agent        adk.Agent
+	QQAgent      adk.Agent // QQ 通道专用 Agent（无工具，仅文本对话），nil 表示未启用
 	Prompt       *prompt.Prompty
 	Registry     *llm.Registry
 	MCPManager   *mcp.Manager
@@ -34,6 +36,16 @@ type Humen struct {
 	ConfirmStore *confirm.Store // 工具确认存储
 	AgentInfos   []AgentInfo    // Agent 元数据列表
 }
+
+// qqInstruction QQ 通道 Agent 的系统指令。
+const qqInstruction = `你是 Mifer QQ 消息助手。
+
+行为准则：
+- 你是 QQ 聊天中的 AI 助手，直接回复用户问题
+- 回复简洁自然，与用户消息长度匹配
+- 使用与用户相同的语言
+- 任务完成后直接结束，不追问
+- 你没有文件、命令、搜索等工具，遇到需要这些能力的问题直接说明限制`
 
 func Init(c context.Context) (*Humen, error) {
 	// 初始化LLM注册中心
@@ -70,6 +82,7 @@ func Init(c context.Context) (*Humen, error) {
 	var subagents []adk.Agent
 	var agentInfos []AgentInfo
 	var agent adk.Agent
+	var qqAgent adk.Agent
 
 	// 仅当 default 后端可用时才创建子 Agent 和编排器
 	// api_key 未配置时跳过，程序运行时通过 /api/admin/status 提示用户
@@ -161,7 +174,7 @@ func Init(c context.Context) (*Humen, error) {
 		for _, t := range tools.WebTools() {
 			orchTools = append(orchTools, t)
 		}
-		for _, t := range tools.QQTools() {
+		for _, t := range tools.QQTools(func() qq.Sender { return nil }) {
 			orchTools = append(orchTools, t)
 		}
 
@@ -186,6 +199,19 @@ func Init(c context.Context) (*Humen, error) {
 			return nil, err
 		}
 		agentInfos = append(agentInfos, AgentInfo{Name: "Mifer", ModelBackend: "default", Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务", Tools: resolveToolNames(c, orchTools)})
+
+		// 创建 QQ 通道专用 Agent（无工具，纯文本对话）
+		// 使用 ChatModelAgent 而非 DeepAgent：QQ 消息不需要子 Agent 调度，直接回复即可
+		if qa, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
+			Name:          "MiQQ",
+			Description:   "QQ 消息助手，直接回复用户问题",
+			Instruction:   qqInstruction,
+			Model:         reg.Get("default"),
+			MaxIterations: 1,
+		}); err == nil {
+			qqAgent = qa
+			agentInfos = append(agentInfos, AgentInfo{Name: "MiQQ", ModelBackend: "default", Description: "QQ 通道专用助手，纯文本对话"})
+		}
 	} else {
 		logger.Warn("default后端不可用，跳过Agent初始化，AI对话功能需配置api_key后通过/config重载启用")
 		agentInfos = append(agentInfos, AgentInfo{Name: "Mifer", ModelBackend: "default", Description: "智能任务编排器（未配置api_key，暂不可用）"})
@@ -202,7 +228,7 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos}, nil
+	return &Humen{Agent: agent, QQAgent: qqAgent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos}, nil
 }
 
 // mcpToBaseTools 将 []tool.InvokableTool 转为 []tool.BaseTool

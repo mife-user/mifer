@@ -83,7 +83,12 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 			logger.Error("构建提示词失败", logger.C(err))
 			return err
 		}
-		iter := e.Runner.Run(ctx, msgs, adk.WithCallbacks(toolCBHandler))
+		// QQ 通道使用专用 Agent（无工具，纯文本），避免工具确认死循环
+		runner := e.Runner
+		if req.Channel == "qq" && e.QQRunner != nil {
+			runner = e.QQRunner
+		}
+		iter := runner.Run(ctx, msgs, adk.WithCallbacks(toolCBHandler))
 
 		lastMsg := &strings.Builder{}
 		eventCount := 0

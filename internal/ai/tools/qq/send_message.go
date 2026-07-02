@@ -1,22 +1,18 @@
-package qq
+package qqtools
 
 import (
 	"context"
 	"fmt"
 
+	"mifer/qq"
+
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 )
 
-// Sender QQ 消息发送器接口，由 bootstrap 层在 QQ adapter 初始化时注入。
-// 未注入时工具调用返回友好错误。
-var Sender interface {
-	SendPrivateMsg(userID int64, message string) error
-	SendGroupMsg(groupID int64, message string) error
-}
-
-// New 创建 qq_send_message 工具，供 Agent 通过 Function Calling 发送 QQ 消息。
-func New() (tool.InvokableTool, error) {
+// NewSendMessage 创建 qq_send_message 工具，供 Agent 通过 Function Calling 发送 QQ 消息。
+// getSender 延迟获取 Sender 实现，避免构造工具时 Sender 尚未初始化。
+func NewSendMessage(getSender func() qq.Sender) (tool.InvokableTool, error) {
 	return utils.InferTool("qq_send_message",
 		"发送 QQ 消息到指定目标（私聊或群聊）。target_type 为 private 时发私聊，为 group 时发群聊。",
 		func(ctx context.Context, input struct {
@@ -24,16 +20,17 @@ func New() (tool.InvokableTool, error) {
 			TargetID   int64  `json:"target_id"   jsonschema:"required,description=目标ID 私聊为QQ号 群聊为群号"`
 			Content    string `json:"content"     jsonschema:"required,description=要发送的消息内容"`
 		}) (string, error) {
-			if Sender == nil {
+			sender := getSender()
+			if sender == nil {
 				return "", fmt.Errorf("QQ 消息服务未启用，请在配置中开启 qq.enabled")
 			}
 			switch input.TargetType {
 			case "private":
-				if err := Sender.SendPrivateMsg(input.TargetID, input.Content); err != nil {
+				if err := sender.SendPrivateMsg(input.TargetID, input.Content); err != nil {
 					return "", err
 				}
 			case "group":
-				if err := Sender.SendGroupMsg(input.TargetID, input.Content); err != nil {
+				if err := sender.SendGroupMsg(input.TargetID, input.Content); err != nil {
 					return "", err
 				}
 			default:

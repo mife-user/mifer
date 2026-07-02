@@ -23,6 +23,7 @@ type compressState struct {
 
 type Executor struct {
 	Runner   *adk.Runner
+	QQRunner *adk.Runner // QQ 通道专用 Runner（无工具 Agent），nil 时回退到 Runner
 	Humen    *agent.Humen
 	Token    *TokenUsage       // token 累计用量统计
 	compress compressState     // 上下文压缩状态
@@ -42,9 +43,16 @@ func Init(c context.Context) (*Executor, error) {
 	// 仅当 Agent 已成功创建时才初始化 Runner
 	// api_key 未配置时 ag.Agent 为 nil，Runner 保持 nil，Chat 中将返回友好提示
 	var runner *adk.Runner
+	var qqRunner *adk.Runner
 	if ag.Agent != nil {
 		runner = adk.NewRunner(c, adk.RunnerConfig{
 			Agent:           ag.Agent,
+			EnableStreaming: true,
+		})
+	}
+	if ag.QQAgent != nil {
+		qqRunner = adk.NewRunner(c, adk.RunnerConfig{
+			Agent:           ag.QQAgent,
 			EnableStreaming: true,
 		})
 	}
@@ -67,8 +75,9 @@ func Init(c context.Context) (*Executor, error) {
 	}
 
 	return &Executor{
-		Runner: runner,
-		Humen:  ag,
+		Runner:   runner,
+		QQRunner: qqRunner,
+		Humen:    ag,
 		Token:  tokens,
 		compress: compressState{
 			compressor: compressor.NewCompressor(ag.Registry, ag.SkillManager),

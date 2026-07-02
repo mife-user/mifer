@@ -18,6 +18,7 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
+	"mifer/qq"
 
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
@@ -168,11 +169,11 @@ func WebTools() []tool.BaseTool {
 }
 
 // QQTools 返回 QQ 消息相关工具（发送消息等）。
-// 调用前需由 bootstrap 注入 qq.Sender，否则工具调用返回提示错误。
-func QQTools() []tool.BaseTool {
+// getSender 延迟获取 qq.Sender 实现，避免工具构造时 Sender 尚未初始化。
+func QQTools(getSender func() qq.Sender) []tool.BaseTool {
 	var tools []tool.BaseTool
 
-	qs, err := qqtools.New()
+	qs, err := qqtools.NewSendMessage(getSender)
 	if err != nil {
 		logger.Error("创建 qq_send_message 工具失败", logger.C(err))
 	} else {

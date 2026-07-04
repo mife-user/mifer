@@ -36,6 +36,7 @@ docker-compose exec ollama ollama pull nomic-embed-text  # 拉取嵌入模型
 | Qdrant | localhost:6333 (HTTP) / 6334 (gRPC) | 向量数据库，RAG 知识库存储 |
 | SearXNG | localhost:18080 | 元搜索引擎，web_search 工具后端 |
 | Ollama | localhost:11434 | 本地嵌入模型（默认 `nomic-embed-text`），可选 GPU |
+| NapCatQQ | localhost:6099 (WebUI) / 3001 (WS) | QQ Bot 桥接服务（OneBot v11 协议），通过 WebSocket 收发 QQ 消息 |
 
 ### CI/CD
 
@@ -70,8 +71,8 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **`pkg/exc/`** — 类型转换与 JSON 编组工具函数（`StrToUint`、`UintToStr`、`IsUint`、`IsString` 等）。
 - **`internal/domain/`** — 核心接口定义。`agent.go` 定义 DTO（`TalkReq`, `MemoryReq/Resp`, `RebackReq/Resp` 等）和 `Agent` 接口（executor 层），`bridge.go` 定义 `AgentService` 和 `ToolService` 接口（service 层），`AgentService` 与 `Agent` 方法签名完全相同（含 `ListAgents`），实现 service ↔ executor 解耦。
 - **`internal/api/routes/`** — Gin 路由注册。完整路由表：
-  - `POST /api/ai/chat` — 流式对话（SSE）
-  - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear`, `POST /api/memory/compact` — 记忆管理与手动压缩
+  - `POST /api/ai/chat` — 流式对话（SSE），支持 `channel`（通道类型）和 `session_id`（自动切换记忆）字段
+  - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear`, `POST /api/memory/compact` — 记忆管理与手动压缩。`exchange/:id` 保留供 TUI 使用，QQ 通道改为在 Chat 请求中传递 `session_id` 原子完成
   - `GET /api/memory/reback`, `POST /api/memory/reback/:index` — 对话回退
   - `GET /api/prompt`, `POST /api/prompt`, `POST /api/prompt/reset` — 系统提示词管理
   - `GET /api/plan`, `GET /api/plan/:name` — 计划文件管理
@@ -92,21 +93,22 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
   - **MiPlanner** (opus) — 项目计划与方案（工具限制在 `.mifer/plans` 目录）
   - **MiCommander** (sonnet) — 终端命令执行（受白名单约束，注入 `CommandTools`）
   - **MiAuditor** (opus) — 代码与配置安全审计（注入 `AuditTools`）
-  - **Mifer** (default, Orchestrator) — `deep.New` 编排器，MaxIteration=0（由模型自主控制迭代次数），`EmitInternalEvents: true` 转发子 Agent 事件到 TUI 侧边栏。编排器工具包含 `SkillTool`（技能调用）+ MCP 工具 + WebTools（web_search、web_fetch）
+  - **MiQQ** (default, ChatModelAgent) — QQ 通道专用 Agent，无任何工具，纯文本对话。MaxIterations=1（无工具循环需求）。通过 `Humen.QQAgent` 和 `Executor.QQRunner` 独立于编排器运行，避免 QQ 通道中非 QQ 工具被 confirm 拒绝导致死循环
+  - **Mifer** (default, Orchestrator) — `deep.New` 编排器，MaxIteration=0（由模型自主控制迭代次数），`EmitInternalEvents: true` 转发子 Agent 事件到 TUI 侧边栏。编排器工具包含 `SkillTool`（技能调用）+ MCP 工具 + WebTools（web_search、web_fetch）+ QQTools（qq_send_message）
   - 所有子 Agent 在创建后通过 `skillHub.Register()` 注册到 `AgentHub`，供技能 fork 模式路由使用
 - **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 执行 agent 迭代，处理流式/非流式消息，最多 3 次自动重试，自动追加记忆并保存，检测压缩阈值。`tokens.go` 独立管理 TokenUsage 累计统计。`compressor` 在 prompt tokens 超阈值时自动触发压缩。
-- **`internal/ai/callback/`** — 全局 Tool 回调处理器。通过 `callbacks.AppendGlobalHandlers` 注册，统一处理工具调用事件（开始/结束/错误），发送 `tool_start`/`tool_end`/`tool_error` SSE 事件。
+- **`internal/ai/callback/`** — Tool 回调处理器。`NewHandler(cb)` 工厂函数按请求构建 handler，callback 通过闭包捕获而非 context 注入。每次 `Runner.Run()` 通过 `adk.WithCallbacks()` 按调用注入（per-invocation），替代早期的 `callbacks.AppendGlobalHandlers` 全局注册。三个事件处理函数（`onToolStart/onToolEnd/onToolError`）通过 `newOnStart(cb)/newOnEnd(cb)/newOnError(cb)` 闭包捕获 callback，零依赖 context。
 - **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。支持 openai/claude/gemini/ollama 四种 provider，按名称索引（default/haiku/sonnet/opus/multi_modal），缺失后端自动 fallback 到 default。provider 实现在各自文件中（`openai.go`、`claude.go`、`gemini.go`、`ollama.go`），`providers.go` 包含 `initBackend()` 工厂方法。
 - **`internal/ai/prompt/`** — 系统提示词管理。`build.go` 构建完整提示词（系统提示词 + 记忆上下文），支持模板格式 `{system_prompt}`、`{history}`、`{query}`，运行时可通过 API 动态修改。
 - **`internal/ai/memory/`** — JSONL 文件持久化对话历史。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。支持列表、加载、切换、清除、回退、按 ID 加载（不修改当前会话）。
 - **`internal/ai/tools/`** — 工具定义（Function Calling）。每个工具独立子目录（`filereader/`、`filewriter/`、`filecreator/`、`fileviewer/`、`imagegenerator/`、`commandexecutor/`、`knowledgesearch/`、`knowledgestore/`、`websearch/`、`webfetch/`），通过 `utils.InferTool` 创建。`tools.go` 提供按角色分组的工具工厂函数：`FileTools(mmModel)` — file_reader/file_writer/file_creator/file_viewer/image_generator；`CommandTools()` — command_executor；`AuditTools(mmModel)` — file_reader/file_viewer；`PlannerTools()` — file_creator/file_writer（限制目录）；`KnowledgeTools(ragSvc)` — knowledge_search/knowledge_store；`WebTools()` — web_search/web_fetch；`NewWithName(names, ...)` — 按名称构造自定义工具集。
 - **`internal/ai/rag/`** — RAG 检索增强。`LazyService` 懒加载模式：`Init()` 仅创建 embedder/loader/chunker（无网络调用），首次工具调用时才通过 `ensureReady()` 连接 Qdrant（Mutex 保护，失败可重试）。子目录：`chunker/`（递归分块，SHA256 去重）、`embedder/`（Ollama 嵌入，默认 `nomic-embed-text`）、`loader/`（文件加载，支持 PDF/Word/Text/Markdown）、`vectorstore/`（Qdrant 索引器 + 检索器）。
-- **`internal/ai/confirm/`** — 工具调用确认子系统。Actor 模式：`Store` 用专用 goroutine + channel 序列化所有状态访问，30s 心跳清理超时条目。`Middleware` 实现 Eino `compose.ToolMiddleware` 接口，拦截工具调用并阻塞等待用户确认，通过 SSE `tool_confirm` 事件与前端通信。`config.go` 管理确认规则（enable/exclude 列表、command_executor 白名单、会话 allow 列表）。
+- **`internal/ai/confirm/`** — 工具调用确认子系统。Actor 模式：`Store` 用专用 goroutine + channel 序列化所有状态访问，30s 心跳清理超时条目。`Middleware` 实现 Eino `compose.ToolMiddleware` 接口，拦截工具调用并阻塞等待用户确认，通过 SSE `tool_confirm` 事件与前端通信。`config.go` 管理确认规则（enable/exclude 列表、command_executor 白名单、会话 allow 列表）。**callback 传参设计**：中间件端点从 context 提取 callback 后，作为显式参数传递到 `awaitConfirmation(cb, ...)` → `sendConfirmEvent(cb, ...)`，内部 helper 不碰 context，与 `sessionID` 的处理模式统一。
 - **`internal/ai/compressor/`** — 上下文自动压缩。当 prompt tokens 超过配置阈值时自动触发压缩：使用 `context-summarizer` 技能模板和配置的压缩模型（默认 haiku）对早期消息生成摘要，通过 `ReplaceMessages` 原子替换记忆。也支持手动 `/compact` 命令触发。降级策略：压缩失败时移除最早一轮对话。
 - **`pkg/skill/`** — 声明式技能系统。`Manager` 扫描 `.mifer/skills/` 目录下的 `SKILL.md` 文件（带 frontmatter 解析），按名称加载技能。`AgentHub` 收集所有子 Agent 并注册，供 `SkillTool` 在 fork 模式下路由到特定 Agent 执行。`SkillTool` 适配为 Eino 工具，支持 `inline`（当前上下文执行）和 `fork`（子 Agent 独立执行）两种模式。内置 `context-summarizer` 技能用于上下文压缩。
 - **`pkg/mcp/`** — MCP 协议支持。`Manager` 管理 MCP Server 的启动/停止/重载生命周期，按 Agent 分配工具。`MCPServerConfig` 支持 `Name`/`Command`/`Args`/`Env`/`Agents`/`Enabled` 字段，`Env` 可为每个 MCP Server 设置环境变量（如 `["GITHUB_TOKEN=xxx"]`）。`MCPToolAdapter` 将 MCP 工具桥接为 Eino `tool.InvokableTool` 接口，使外部 MCP 工具无缝集成到子 Agent 的工具列表中。
 - **`pkg/sse/`** — SSE 写入器。由专用 goroutine + 缓冲 channel（buf=16）驱动，`SendSync()` 阻塞写入，`SendFire()` 即发即忘（用于心跳）。内置心跳保活机制。
-- **`pkg/snapshot/`** — 文件快照服务。基于内容寻址 + SHA256 哈希的增量快照，`SaveRound` 通过 size + mtime 快速变更检测（仅对变更文件计算哈希并写入 objects 池），`RestoreToRound` 按 manifest 从 objects 池恢复文件并清理多余文件，`RemoveRound` 自动 GC 无引用的孤儿 objects。纯库设计，不依赖项目内任何包。
+- **`pkg/snapshot/`** — 文件快照服务。基于内容寻址 + SHA256 哈希的增量快照。`SaveRound` 通过 size + mtime 快速变更检测（仅对变更文件计算哈希并写入 objects 池），**若本轮无任何文件变更则跳过 manifest 写入**，避免无操作对话产生大量空快照目录。`RestoreToRound` 通过 `findNearestRound(maxRound)` 查找 ≤ targetRound 的最近可用快照，兼容 SaveRound 跳过的轮次。`RemoveRound` 对不存在的轮次静默容错，自动 GC 无引用的孤儿 objects。纯库设计，不依赖项目内任何包。`InitBaseline` 保证 r0 始终存在作为回退底线。
 - **`cmd/bootstrap/`** — 应用启动引导，Application 结构体及初始化方法。端口不足时自动递增回退（+=10，上限 18000）。
 - **`cmd/mcp-demo/`** — 独立 MCP Stdio 演示服务，包含 echo、get_time、calculator、random_number 四个示例工具。
 - **`cli/`** — CLI 客户端（Bubble Tea TUI）。通过 HTTP + SSE 调用服务端，核心组件：
@@ -124,6 +126,21 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **Qdrant** (`github.com/qdrant/go-client v1.15.2`) — RAG 向量存储
 - **Uber Zap** — 结构化日志
 - **Viper** — 配置管理
+- **Gorilla WebSocket** (`github.com/gorilla/websocket v1.5.3`) — QQ Bot WebSocket 连接
+
+### QQ Bot 子系统
+
+- **`qq/`** — QQ 消息通道客户端包，通过 NapCatQQ（OneBot v11）收发 QQ 消息。**不依赖任何 `internal/` 包**，纯 HTTP + WebSocket 消费者，通过 Mifer HTTP API 与服务端通信。
+  - `type.go` — `QQAdapter`、`Config`、`oneBotEvent` 类型定义，以及 `Sender` 接口（供 `internal/ai/tools/qq` 注入）和 `IsPrivate()`/`IsGroup()`/`IsMessage()`/`IsMentionOnly()` 语义方法
+  - `adapter.go` — 消息分发器：私聊/群聊路由、CQ 码清洗、`buildSessionID`（层级路径 `qq_private/{uid}` / `qq_group/{gid}/{uid}`）
+  - `ws_client.go` — NapCat WebSocket 客户端（readPump → eventCh → writePump），自动重连（指数退避 1s→60s）
+  - `mifer_client.go` — Mifer HTTP API 客户端（exchangeMemory / chat SSE / confirmTool），`allowedTools` 配置驱动
+  - `onebot_client.go` — OneBot WebSocket 消息发送器（sendPrivateMsg / sendGroupMsg）
+  - `onebot_http.go` — OneBot HTTP 消息发送器（`OnebotHTTPSender`），实现 `Sender` 接口
+  - `parser.go` — CQ 码清洗（@ / image / face 等）
+- **`internal/ai/tools/qq/`**（包名 `qqtools`）— QQ 消息发送工具定义。`NewSendMessage(getSender func() qq.Sender)` 延迟获取 Sender，通过闭包注入到工具函数中，避免工具构造时 Sender 尚未初始化。`qq.Sender` 接口定义在 `qq/type.go`，`qqtools` 通过导入 `mifer/qq` 使用。
+- **QQ 通道路由** — `Executor.Chat()` 根据 `req.Channel == "qq"` 选择 `QQRunner`（MiQQ 无工具 Agent），否则使用默认 `Runner`（Mifer 编排器）。QQ 通道的 confirm 中间件自动处理：`qq_send_message` 自动通过，其他工具自动拒绝（由 `miferClient.confirmTool` 调用 `/api/tool/confirm` 完成）。
+- **记忆切换原子化** — `TalkReq.SessionID` 非空时，`Chat()` 在 `chatMu` 保护下先 `SwitchSession` 再 `AppendUser`，保证 switch + chat 原子执行。QQ adapter 将 `sessionID` 直接放入 Chat 请求体，不再单独调用 `/api/memory/exchange`。
 
 ## 代码约定
 
@@ -256,11 +273,8 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **`WithValue` + 私有 key 类型**传递横切关注点：
   ```go
   type ctxKey struct{}  // 未导出空结构体，防止 key 冲突
-  func WithExecutorCallback(ctx context.Context, cb ExecutorCallback) context.Context {
-      return context.WithValue(ctx, ctxKey{}, cb)
-  }
   ```
-  类似模式：`confirm.WithCallback(ctx, cb)`、`confirm.WithSessionID(ctx, id)`
+  项目中使用：`confirm.WithCallback(ctx, cb)`（中间件端点从 ctx 提取 callback 后显式传参）、`confirm.WithSessionID(ctx, id)`。**注意**：`callback.WithExecutorCallback` 已移除——Tool 回调处理器改为 `NewHandler(cb)` 闭包工厂，通过 `adk.WithCallbacks(handler)` 按调用注入，不再通过 context 传递 callback。
 - **`context.WithCancel`** 用于流式 SSE 生命周期（Writer goroutine 与请求处理器共享 cancel 函数）
 - **`context.WithTimeout`** 用于启动关闭（30s）和命令执行超时
 
@@ -301,6 +315,10 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 | **MiEditer** | 文件编辑子 Agent | `internal/ai/agent/chatediter.go` |
 | **excmem** | 交换记忆（Exchange Memory） | `cli/client/excmemhandler/`、`internal/ai/executor/excmem.go` |
 | **Mifer** | Orchestrator 编排 Agent | `internal/ai/agent/init.go` |
+| **MiQQ** | QQ 通道专用 Agent（无工具，纯文本对话） | `internal/ai/agent/init.go` |
+| **QQRunner** | QQ 通道专用 adk.Runner | `internal/ai/executor/init.go` |
+| **qqtools** | `internal/ai/tools/qq/` 的包名 | `internal/ai/tools/qq/send_message.go` |
+| **OnebotHTTPSender** | OneBot HTTP API 消息发送器，实现 `qq.Sender` | `qq/onebot_http.go` |
 
 ## 新增功能指南
 

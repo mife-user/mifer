@@ -21,6 +21,7 @@
 | **MiPlanner**  | 项目计划与方案设计 | opus   |
 | **MiCommander** | 终端命令执行（白名单约束） | sonnet |
 | **MiAuditor**  | 代码与配置安全审计 | opus   |
+| **MiQQ**       | QQ 通道专用助手（无工具，纯文本对话） | default |
 | **Mifer**      | 编排器，协调子 Agent，由模型自主控制迭代次数 | default |
 
 所有 Agent 通过 `adk.Runner` 统一启动，Agent / ChatModel / Tool 三层接口解耦。
@@ -89,12 +90,14 @@ _snapshots/
 ```
 
 **关键设计**：
-- **增量快照** — `SaveRound` 通过 size + mtime 快速判断未变更文件（复用旧哈希），仅对变更文件计算 SHA256 并写入 objects 池，未变更文件零 IO
+- **按需写入** — `SaveRound` 通过 size + mtime 快速判断未变更文件（复用旧哈希），若本轮无任何文件变更则跳过 manifest 写入，避免无操作对话产生大量空快照目录
+- **最近快照查找** — `RestoreToRound(targetRound)` 通过 `findNearestRound` 降序查找 ≤ targetRound 的第一个可用快照，兼容 SaveRound 跳过的轮次
 - **内容去重** — 相同内容的文件在 objects 池中仅存一份，多轮快照通过 manifest 共享引用
-- **回退恢复** — Reback 时按目标轮次的 manifest 从 objects 池恢复文件，并清理工作目录中不在清单的多余文件
-- **孤儿 GC** — `RemoveRound` 自动扫描所有剩余 manifest，清理无引用的孤儿 objects 文件
-- **旧格式兼容** — `InitBaseline` 自动检测并迁移旧版全量快照目录
+- **回退恢复** — Reback 时按 manifest 从 objects 池恢复文件，并清理工作目录中不在清单的多余文件
+- **孤儿 GC** — `RemoveRound` 自动扫描所有剩余 manifest，清理无引用的孤儿 objects，对 SaveRound 跳过的轮次静默容错
+- **基线保证** — `InitBaseline` 自动创建 r0 基线快照，作为回退底线；自动检测并迁移旧版全量快照目录
 - **零依赖纯库** — `pkg/snapshot/` 不依赖项目内任何包，仅通过返回 error 与上层通信
+- **单会话假设** — 快照按 `{sessionID}_snapshots/` 隔离存储，但操作同一个 workdir。多个并发会话各自回退可能互相影响文件状态，设计上假设同一 workdir 同时只有一个活跃会话
 
 ### 配置热重载
 
@@ -110,9 +113,9 @@ _snapshots/
 
 运行时通过 API 动态读取 / 修改 / 重置系统提示词，修改后立即生效于后续对话。支持多提示词模板管理，与记忆上下文自动拼接。
 
-### 全局工具回调
+### 工具回调（Per-Invocation）
 
-基于 Eino 全局回调机制统一处理所有工具调用事件（开始 / 结束 / 错误），替代了早期分散在各 executor 中的事件处理代码。TUI 侧边栏通过回调事件实时展示工具执行状态。
+`callback.NewHandler(cb)` 工厂函数按请求构建 Eino callback handler，callback 通过闭包捕获而非 context 注入。每次 `Runner.Run()` 通过 `adk.WithCallbacks(handler)` 按调用注入，替代早期的 `callbacks.AppendGlobalHandlers` 全局注册。TUI 侧边栏通过回调事件实时展示工具执行状态。三个事件处理函数（start/end/error）通过闭包捕获 callback，零依赖 context。
 
 ### 工具调用确认机制
 
@@ -205,6 +208,33 @@ Plan 功能的设计哲学是**"由 AI 决定，而非框架强制"**——不�
 ### SSE 流取消
 
 TUI 模式下支持 `Ctrl+C` 中断正在生成的 SSE 流——取消后对话记录保留已生成的部分内容，不会丢失上下文。
+
+### QQ Bot（QQ 消息通道）
+
+通过 NapCatQQ（OneBot v11 协议桥）将 Mifer 接入 QQ，支持私聊和群聊（@ 检测），每个用户独立记忆会话。
+
+**架构**：
+```
+QQ 消息 → NapCatQQ WebSocket → qq/adapter.go → POST /api/ai/chat {channel:"qq", session_id:"qq_private/123"}
+                                                     │
+                                              executor.Chat() → 选择 QQRunner（MiQQ 无工具 Agent）
+                                                     │
+                                                   纯文本响应 → onebotClient.sendReply()
+```
+
+**关键设计**：
+- **独立 Agent 隔离** — QQ 通道使用专用 MiQQ Agent（`ChatModelAgent`，无任何工具），与 Mifer 编排器完全分离。从源头消除"AI 调 file_reader → confirm 拒绝 → AI 重试 → 死循环"的问题
+- **记忆切换原子化** — QQ adapter 不再单独调用 `/api/memory/exchange`，改为在 Chat 请求体中传递 `session_id`，服务端 `chatMu` 保护下一次完成 switch + chat
+- **层级 Session ID** — 私聊 `qq_private/{userID}`，群聊 `qq_group/{groupID}/{userID}`，`validateID` 允许路径分隔符，`buildFilePath` 自动创建嵌套目录
+- **工具确认自动处理** — `miferClient.confirmTool()` 根据 `Config.AllowedTools` 自动确认/拒绝：`qq_send_message` 自动通过，其余拒绝（实际上 MiQQ 无工具，此机制作为防护兜底）
+- **去全局变量设计** — `qq/` 包通过构造函数注入 `httpClient`、`allowedTools`；`qqtools.NewSendMessage(getSender)` 通过 `func() qq.Sender` 延迟获取依赖
+- **语义方法** — `oneBotEvent` 提供 `IsPrivate()`/`IsGroup()`/`IsMessage()`，`Config` 提供 `IsMentionOnly()`
+
+**使用方式**：
+1. `docker-compose up -d napcat` 启动 NapCatQQ
+2. 浏览器打开 `http://localhost:6099` 扫码登录 QQ
+3. 网络配置 → 新建 WebSocket 服务端 → 主机 0.0.0.0 端口 3001 → 启用
+4. 配置 `qq.enabled: true` 和 `qq.bot.qq: 你的QQ号`
 
 ---
 
@@ -304,7 +334,7 @@ docker-compose up -d mifer
 
 | 方法   | 路径                       | 说明                   |
 | ------ | -------------------------- | ---------------------- |
-| POST   | `/api/ai/chat`             | 流式对话（SSE）        |
+| POST   | `/api/ai/chat`             | 流式对话（SSE），支持 `channel` + `session_id` |
 | GET    | `/api/memory`              | 记忆列表               |
 | GET    | `/api/memory/:id`          | 获取指定会话记忆       |
 | POST   | `/api/memory/exchange/:id` | 切换记忆会话           |
@@ -386,9 +416,12 @@ RAG 的 Qdrant 连接需要网络，如果 Agent 初始化时强行连接，不�
 │           rag (chunker / embedder / loader / vectorstore)    │
 │           (AI 核心，不含 HTTP 依赖)                            │
 ├──────────────────────────────────────────────────────────────┤
+│                     qq                                       │
+│   (QQ 消息通道客户端，HTTP+WS 消费者，不依赖 internal/)        │
+├──────────────────────────────────────────────────────────────┤
 │                     pkg                                      │
 │   conf / logger / auth / errorer / res / task / utils        │
-│   mcp / skill / sse / qdrant / cache                         │
+│   mcp / skill / sse / qdrant / cache / snapshot              │
 │           (公共基础包，无业务依赖)                              │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -419,8 +452,16 @@ mifer/
 │   └── tui/                      #   TUI 界面（Bubble Tea）
 ├── cmd/
 │   ├── main/                     #   服务主入口
-│   ├── bootstrap/                #   启动引导（配置→日志→路由→CLI）
+│   ├── bootstrap/                #   启动引导（配置→日志→路由→CLI→QQ）
 │   └── mcp-demo/                 #   MCP 内置演示 Server
+├── qq/                           # QQ 消息通道客户端（不依赖 internal/）
+│   ├── adapter.go                #   消息分发器（私聊/群聊路由）
+│   ├── ws_client.go              #   NapCat WebSocket 客户端（自动重连）
+│   ├── mifer_client.go           #   Mifer HTTP API 客户端（Chat SSE + 工具确认）
+│   ├── onebot_client.go          #   OneBot WebSocket 消息发送器
+│   ├── onebot_http.go            #   OneBot HTTP 消息发送器（实现 Sender 接口）
+│   ├── parser.go                 #   CQ 码清洗
+│   └── type.go                   #   类型定义 + Sender 接口 + 语义方法
 ├── config/
 │   └── dev.yaml                  #   开发环境配置（自动生成）
 ├── internal/
@@ -444,7 +485,8 @@ mifer/
 │   │       ├── filewriter/       #     文件写入
 │   │       ├── imagegenerator/   #     图片生成
 │   │       ├── knowledgesearch/  #     知识库检索（含上下文扩展）
-│   │       └── knowledgestore/   #     文档入库
+│   │       ├── knowledgestore/   #     文档入库
+│   │       └── qq/               #     QQ 消息发送（包名 qqtools）
 │   ├── api/
 │   │   ├── dto/                  #   请求 / 响应 DTO
 │   │   │   ├── request/          #     请求 DTO（按模块分子目录）
@@ -465,6 +507,7 @@ mifer/
 │   ├── res/                      #   统一 HTTP 响应格式
 │   ├── skill/                    #   技能系统（Manager + Tool + AgentHub）
 │   ├── snapshot/                 #   文件快照（增量 + 内容寻址 + GC）
+│   ├── snapshot/                 #   文件快照（增量 + 内容寻址 + 按需写入 + GC）
 │   ├── sse/                      #   SSE 流式响应工具
 │   ├── task/                     #   异步任务管理
 │   └── utils/                    #   通用工具（hash / random）

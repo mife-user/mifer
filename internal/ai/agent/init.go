@@ -17,6 +17,7 @@ import (
 	"mifer/pkg/skill"
 	"mifer/qq"
 
+	localbk "github.com/cloudwego/eino-ext/adk/backend/local"
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
 	"github.com/cloudwego/eino/components/tool"
@@ -54,7 +55,7 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("初始化LLM注册中心失败", logger.C(err))
 		return nil, err
 	}
-	mmModel := reg.Get("multi_modal")
+
 	// 检查 default 后端是否可用（api_key 未配置时不可用）
 	defaultReady := reg.IsReady()
 
@@ -87,60 +88,31 @@ func Init(c context.Context) (*Humen, error) {
 	// 仅当 default 后端可用时才创建子 Agent 和编排器
 	// api_key 未配置时跳过，程序运行时通过 /api/admin/status 提示用户
 	if defaultReady {
-		// 初始化文件编辑agent（sonnet — 均衡）
-		editerAgent, err := newChatEditer(c, reg.Get("sonnet"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer")))
+		//初始化图片创建agent（multi_modal — 图片生成）
+		imageAgent, err := newImage(c, reg.Get("multi_modal"), reg.Get("multi_modal"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiImager")))
 		if err != nil {
-			logger.Error("init editer agent failed", logger.C(err))
+			logger.Error("init image agent failed", logger.C(err))
 			return nil, err
 		}
-		skillHub.Register("MiEditer", editerAgent)
-		subagents = append(subagents, editerAgent)
-		editerTools := append(tools.FileTools(mmModel), mcpToBaseTools(mcpManager.GetToolsForAgent("MiEditer"))...)
-		agentInfos = append(agentInfos, AgentInfo{Name: "MiEditer", ModelBackend: "sonnet", Description: "文件编辑专家，安全处理本地文件的读取、写入、创建、查看和图片生成操作", Tools: resolveToolNames(c, editerTools)})
-		// 初始化文档摘要agent（sonnet — 均衡），注入知识库工具 + MCP 工具
-		summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), mmModel, tools.KnowledgeTools(ragSvc), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer")))
+		skillHub.Register("MiImager", imageAgent)
+		subagents = append(subagents, imageAgent)
+		imagerInfo := AgentInfo{Name: "MiImager", ModelBackend: "multi_modal", Description: "图片生成专家，负责创建和编辑图片", Tools: resolveToolNames(c, mcpToBaseTools(mcpManager.GetToolsForAgent("MiImager")))}
+		imagerInfo.Tools = append(imagerInfo.Tools, "image_generator", "file_viewer")
+		agentInfos = append(agentInfos, imagerInfo)
+		// 初始化文档摘要agent（sonnet — 均衡）
+		summarizerAgent, err := newSummarizer(c, reg.Get("sonnet"), reg.Get("multi_modal"), tools.KnowledgeTools(ragSvc), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer")))
 		if err != nil {
 			logger.Error("init summarizer agent failed", logger.C(err))
 			return nil, err
 		}
 		skillHub.Register("MiSummarizer", summarizerAgent)
 		subagents = append(subagents, summarizerAgent)
-		summarizerTools := append(append(tools.AuditTools(mmModel), tools.KnowledgeTools(ragSvc)...), mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer"))...)
-		agentInfos = append(agentInfos, AgentInfo{Name: "MiSummarizer", ModelBackend: "sonnet", Description: "文档摘要与知识库管理专家，读取文档、查看图片、生成摘要并可检索和存储知识库", Tools: resolveToolNames(c, summarizerTools)})
-		// 初始化计划编写agent（opus — 最强推理），PlannerTools 内部读取 Workdir 配置
-		plannerAgent, err := newPlanner(c, reg.Get("opus"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiPlanner")))
-		if err != nil {
-			logger.Error("init planner agent failed", logger.C(err))
-			return nil, err
-		}
-		skillHub.Register("MiPlanner", plannerAgent)
-		subagents = append(subagents, plannerAgent)
-		plannerTools := append(tools.PlannerTools(), mcpToBaseTools(mcpManager.GetToolsForAgent("MiPlanner"))...)
-		agentInfos = append(agentInfos, AgentInfo{Name: "MiPlanner", ModelBackend: "opus", Description: "项目计划专家，根据需求编写结构化、可执行的计划文档", Tools: resolveToolNames(c, plannerTools)})
-		// 初始化终端命令agent（sonnet — 均衡）
-		commanderAgent, err := newCommander(c, reg.Get("sonnet"), mcpToBaseTools(mcpManager.GetToolsForAgent("MiCommander")))
-		if err != nil {
-			logger.Error("init commander agent failed", logger.C(err))
-			return nil, err
-		}
-		skillHub.Register("MiCommander", commanderAgent)
-		subagents = append(subagents, commanderAgent)
-		commanderTools := append(tools.CommandTools(), mcpToBaseTools(mcpManager.GetToolsForAgent("MiCommander"))...)
-		agentInfos = append(agentInfos, AgentInfo{Name: "MiCommander", ModelBackend: "sonnet", Description: "终端命令执行专家，在安全沙箱中执行shell命令并返回结果", Tools: resolveToolNames(c, commanderTools)})
-		// 初始化安全审计agent（opus — 最强推理）
-		auditorAgent, err := newAuditor(c, reg.Get("opus"), mmModel, mcpToBaseTools(mcpManager.GetToolsForAgent("MiAuditor")))
-		if err != nil {
-			logger.Error("init auditor agent failed", logger.C(err))
-			return nil, err
-		}
-		skillHub.Register("MiAuditor", auditorAgent)
-		subagents = append(subagents, auditorAgent)
-		auditorTools := append(tools.AuditTools(mmModel), mcpToBaseTools(mcpManager.GetToolsForAgent("MiAuditor"))...)
-		agentInfos = append(agentInfos, AgentInfo{Name: "MiAuditor", ModelBackend: "opus", Description: "安全审计专家，审查代码和配置文件中的安全隐患", Tools: resolveToolNames(c, auditorTools)})
-		//创建自定义agent，注入MCP工具和技能工具
+		summarizerAgentInfo := AgentInfo{Name: "MiSummarizer", ModelBackend: "sonnet", Description: "文档摘要与知识库管理专家，读取文档、查看图片、生成摘要并可检索和存储知识库", Tools: resolveToolNames(c, mcpToBaseTools(mcpManager.GetToolsForAgent("MiSummarizer")))}
+		summarizerAgentInfo.Tools = append(summarizerAgentInfo.Tools, "file_viewer", "knowledge_search", "knowledge_store")
+		agentInfos = append(agentInfos, summarizerAgentInfo)
 		for _, agentcfg := range conf.GetConfig().Agents {
 			var tool []tool.BaseTool
-			tool, err = tools.NewWithName(agentcfg.Tools, mmModel, ragSvc)
+			tool, err = tools.NewWithName(agentcfg.Tools, reg.Get("multi_modal"), ragSvc)
 			if err != nil {
 				logger.Error("创建自定义Agent工具失败", logger.S("agent", agentcfg.Name), logger.C(err))
 				return nil, err
@@ -156,6 +128,7 @@ func Init(c context.Context) (*Humen, error) {
 						ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 					},
 				},
+
 				MaxIterations: 100,
 			})
 			if err != nil {
@@ -177,12 +150,16 @@ func Init(c context.Context) (*Humen, error) {
 		for _, t := range tools.QQTools(func() qq.Sender { return nil }) {
 			orchTools = append(orchTools, t)
 		}
-
+		backend, err := localbk.NewBackend(c, &localbk.Config{})
+		if err != nil {
+			logger.Error(errorer.ErrInitLocalBackendFailed, logger.C(err))
+			return nil, err
+		}
 		// 初始化编排器agent（default — 调度主脑）
 		agent, err = deep.New(c, &deep.Config{
 			Name:        "Mifer",
 			Description: "智能任务编排器，根据用户请求自动选择最合适的专家Agent处理任务",
-			Instruction: " 你是Mifer智能助手的管理员，运行于Windows环境，负责分析用户请求并调度合适的专家Agent。\n\n你可以调用的专家Agent：\n- MiEditer：文件读取、写入、创建、查看、图片生成（不要用MiCommander读文件）\n- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索和文档入库）\n- MiPlanner：项目计划与方案编写\n- MiCommander：安全执行终端命令（仅用于运行程序/构建/安装等命令行操作，不要用于读取文件）\n- MiAuditor：代码与配置安全审计\n\n你自身具备以下工具：\n- web_search：搜索互联网获取最新信息（基于 SearXNG 元搜索引擎，聚合 Google/Bing/百度等多家结果）\n- web_fetch：抓取指定网页URL的文本内容\n- skill：调用预定义的技能\n\nWindows 环境须知：\n- 文件路径使用反斜杠（如 C:\\Users\\xxx\\file.txt）或正斜杠均可\n- 工作目录为当前项目根目录，所有相对路径基于此目录\n- 读取文件内容始终委派给 MiEditer（使用 file_reader），不要委派给 MiCommander\n- MiCommander 仅用于执行构建、运行、安装等命令行工具\n\n文件操作铁律（必须遵守）：\n1. 写入文件前必须先调用 file_reader 确认文件当前状态（是否存在、内容是什么）\n2. 创建文件前必须先确认文件不存在（可用 file_reader 探测，文件不存在会返回明确错误）\n3. 修改文件前必须先读取原始内容，基于实际内容修改，不要凭空猜测\n4. 禁止在未读取文件的情况下直接写入或创建文件\n\n工作原则：\n1. 先理解用户意图，再选择合适的Agent或工具\n2. 涉及实时信息、新闻、最新资料时使用 web_search 搜索\n3. 需要阅读具体网页内容时使用 web_fetch 抓取\n4. 复杂任务可串联多个Agent协作完成\n5. 涉及安全操作时优先咨询MiAuditor\n6. 回复用户时使用中文，简洁清晰\n7. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示\n8. 读取文件用MiEditer，运行命令用MiCommander，不要混淆两者职责",
+			Instruction: miferInstruction,
 			ChatModel:   reg.Get("default"),
 			ToolsConfig: adk.ToolsConfig{
 				EmitInternalEvents: true,
@@ -191,8 +168,10 @@ func Init(c context.Context) (*Humen, error) {
 					ToolCallMiddlewares: []compose.ToolMiddleware{confirmMiddleware},
 				},
 			},
-			SubAgents:    subagents,
-			MaxIteration: 100,
+			SubAgents:      subagents,
+			Backend:        backend,
+			StreamingShell: backend,
+			MaxIteration:   100,
 		})
 		if err != nil {
 			logger.Error("init agent failed", logger.C(err))
@@ -239,3 +218,34 @@ func mcpToBaseTools(invokable []tool.InvokableTool) []tool.BaseTool {
 	}
 	return result
 }
+const miferInstruction = ` 你是Mifer智能助手的主控编排器，运行于Windows环境，负责分析用户请求并调度合适的专家Agent。
+
+你可以调用的专家Agent：
+- MiImager：图片查看与生成（基于图片描述生成图片文件、查看图片内容）
+- MiSummarizer：文档阅读、摘要总结与知识库管理（支持知识库检索、文档入库、文档和图片查看）
+
+你自身具备以下工具：
+- web_search：搜索互联网获取最新信息（基于 SearXNG 元搜索引擎，聚合 Google/Bing/百度等多家结果）
+- web_fetch：抓取指定网页URL的文本内容
+- skill：调用预定义的技能（支持 inline 和 fork 两种模式）
+- qq_send_message：发送QQ消息（仅QQ通道可用）
+
+Windows 环境须知：
+- 文件路径使用反斜杠（如 C:\Users\xxx\file.txt）或正斜杠均可
+- 工作目录为当前项目根目录，所有相对路径基于此目录
+- 你自身不具备文件读写工具，所有文件操作必须委派给 MiImager 或 MiSummarizer
+
+Agent 委派原则：
+1. 图片生成、图片查看、文件内容查看 → 委派给 MiImager
+2. 文档阅读、知识库检索、知识库存储 → 委派给 MiSummarizer
+3. 涉及代码文件查看 → 委派给 MiSummarizer（使用 file_viewer）
+4. 复杂任务可串联多个Agent协作完成
+5. 自定义 Agent 在技能列表中查看，按描述匹配合适的 Agent
+
+工作原则：
+1. 先理解用户意图，再选择合适的Agent或工具
+2. 涉及实时信息、新闻、最新资料时使用 web_search 搜索
+3. 需要阅读具体网页内容时使用 web_fetch 抓取
+4. 子Agent连续3次失败后，不要再委派相同任务，向用户报告失败原因并等待指示
+5. 回复用户时使用中文，简洁清晰
+6. 不需要向用户展示Agent的思考过程或内部调度细节，直接呈现最终结果`

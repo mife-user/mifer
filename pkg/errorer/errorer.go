@@ -49,7 +49,8 @@ const (
 	// Prompt
 
 	// Agent
-	ErrIDNotString = "id is not string"
+	ErrIDNotString            = "id is not string"
+	ErrInitLocalBackendFailed = "init local backend failed"
 
 	// Memory
 	ErrIDIllegalChars        = "id 包含非法字符: %s"

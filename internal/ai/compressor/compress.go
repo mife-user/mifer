@@ -95,22 +95,7 @@ func (c *Compressor) generateSummary(
 	// 将待总结消息序列化为文本
 	var convBuilder strings.Builder
 	for _, msg := range messages {
-		content := msg.Content
-		// 截断过长的消息内容，避免摘要请求自身超限
-		// 使用 rune 边界截断，防止 UTF-8 多字节字符被切断
-		const maxBytes = 8000
-		if len(content) > maxBytes {
-			// 向前搜索最近的合法 UTF-8 起始字节，避免截断多字节字符
-			cut := maxBytes
-			for cut > 0 && cut > maxBytes-4 {
-				if content[cut]&0xC0 != 0x80 {
-					break
-				}
-				cut--
-			}
-			content = content[:cut] + "...（内容过长已截断）"
-		}
-		convBuilder.WriteString(fmt.Sprintf("[%s]: %s\n", msg.Role, content))
+		convBuilder.WriteString(fmt.Sprintf("[%s]: %s\n", msg.Role, msg.Content))
 	}
 
 	// 构建摘要请求

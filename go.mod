@@ -7,15 +7,16 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/cloudwego/eino v0.8.13
-	github.com/cloudwego/eino-ext/components/document/loader/file v0.0.0-20260521063832-407552a64b76
-	github.com/cloudwego/eino-ext/components/document/transformer/splitter/recursive v0.0.0-20260521063832-407552a64b76
-	github.com/cloudwego/eino-ext/components/embedding/ollama v0.0.0-20260521063832-407552a64b76
-	github.com/cloudwego/eino-ext/components/indexer/qdrant v0.0.0-20260522093257-1524b085bdbd
-	github.com/cloudwego/eino-ext/components/model/claude v0.1.18
-	github.com/cloudwego/eino-ext/components/model/gemini v0.1.31
+	github.com/cloudwego/eino v0.9.12
+	github.com/cloudwego/eino-ext/adk/backend/local v0.2.6
+	github.com/cloudwego/eino-ext/components/document/loader/file v0.0.0-20260703093938-7f6839cbf307
+	github.com/cloudwego/eino-ext/components/document/transformer/splitter/recursive v0.0.0-20260703093938-7f6839cbf307
+	github.com/cloudwego/eino-ext/components/embedding/ollama v0.0.0-20260703093938-7f6839cbf307
+	github.com/cloudwego/eino-ext/components/indexer/qdrant v0.0.0-20260703093938-7f6839cbf307
+	github.com/cloudwego/eino-ext/components/model/claude v0.1.20
+	github.com/cloudwego/eino-ext/components/model/gemini v0.1.32
 	github.com/cloudwego/eino-ext/components/model/ollama v0.1.9
-	github.com/cloudwego/eino-ext/components/retriever/qdrant v0.0.0-20260522093257-1524b085bdbd
+	github.com/cloudwego/eino-ext/components/retriever/qdrant v0.0.0-20260703093938-7f6839cbf307
 	github.com/eino-contrib/jsonschema v1.0.3
 	github.com/gabriel-vasile/mimetype v1.4.12
 	github.com/go-redis/redis/v8 v8.11.5
@@ -28,7 +29,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.50.0
-	golang.org/x/net v0.52.0
+	golang.org/x/net v0.53.0
 	google.golang.org/genai v1.36.0
 )
 
@@ -36,7 +37,7 @@ require (
 	cloud.google.com/go v0.118.3 // indirect
 	cloud.google.com/go/auth v0.15.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
-	cloud.google.com/go/compute/metadata v0.6.0 // indirect
+	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.26.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
@@ -80,7 +81,7 @@ require (
 	github.com/evanphx/json-patch v0.5.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -94,8 +95,10 @@ require (
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
+	github.com/jolestar/go-commons-pool/v2 v2.1.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/klippa-app/go-pdfium v1.19.3 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
@@ -113,7 +116,6 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/nikolalohinski/gonja v1.5.3 // indirect
 	github.com/ollama/ollama v0.9.6 // indirect
-	github.com/onsi/gomega v1.35.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
@@ -122,6 +124,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/slongfield/pyfmt v0.0.0-20220222012616-ea85ff4c361f // indirect
+	github.com/tetratelabs/wazero v1.11.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -135,21 +138,21 @@ require (
 	github.com/yuin/goldmark v1.7.13 // indirect
 	github.com/yuin/goldmark-emoji v1.0.6 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.59.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0 // indirect
-	go.opentelemetry.io/otel v1.34.0 // indirect
-	go.opentelemetry.io/otel/metric v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.34.0 // indirect
+	go.opentelemetry.io/otel v1.39.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/api v0.224.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
-	google.golang.org/grpc v1.71.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
@@ -171,5 +174,5 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )

@@ -197,9 +197,11 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				// 收集工具调用消息（成功时持久化，重试时丢弃）
 				if msgOutput.Role == schema.Assistant && len(message.ToolCalls) > 0 {
 					turnToolMsgs = append(turnToolMsgs, message)
+					logger.Debug("tool calls found", logger.S("args:", getToolCallName(message.ToolCalls)))
 				}
 				if msgOutput.Role == schema.Tool {
 					turnToolMsgs = append(turnToolMsgs, message)
+					logger.Debug("tool result found", logger.S("tool:", message.ToolName))
 				}
 				// 仅纯文本 Assistant 消息（无 ToolCalls）才发射 response
 				if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 {
@@ -302,4 +304,14 @@ func isRetryable(err error) bool {
 		}
 	}
 	return false
+}
+
+// getToolCallName 提取工具调用的函数名列表，用于日志记录
+func getToolCallName(toolCall []schema.ToolCall) string {
+	nameArgs := strings.Builder{}
+	for _, call := range toolCall {
+		nameArgs.WriteString(call.Function.Name)
+		nameArgs.WriteString("|")
+	}
+	return nameArgs.String()
 }

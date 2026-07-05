@@ -1,21 +1,14 @@
 package tools
 
 import (
-	"path/filepath"
-
 	"mifer/internal/ai/rag"
-	"mifer/internal/ai/tools/commandexecutor"
-	"mifer/internal/ai/tools/filecreator"
-	"mifer/internal/ai/tools/filereader"
 	"mifer/internal/ai/tools/fileviewer"
-	"mifer/internal/ai/tools/filewriter"
 	"mifer/internal/ai/tools/imagegenerator"
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
 	qqtools "mifer/internal/ai/tools/qq"
 	"mifer/internal/ai/tools/webfetch"
 	"mifer/internal/ai/tools/websearch"
-	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"mifer/qq"
@@ -25,101 +18,20 @@ import (
 )
 
 // FileTools 返回文件操作相关工具（读取、写入、创建、查看、图片生成）
-func FileTools(mmModel model.BaseChatModel) []tool.BaseTool {
+func Image(mmModel model.BaseChatModel) []tool.BaseTool {
 	var tools []tool.BaseTool
-
-	fr, err := filereader.New()
-	if err != nil {
-		logger.Error("创建 file_reader 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fr)
-	}
-
-	fw, err := filewriter.New()
-	if err != nil {
-		logger.Error("创建 file_writer 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fw)
-	}
-
-	fc, err := filecreator.New()
-	if err != nil {
-		logger.Error("创建 file_creator 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fc)
-	}
-
-	fv, err := fileviewer.New(mmModel)
-	if err != nil {
-		logger.Error("创建 file_viewer 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fv)
-	}
-
 	ig, err := imagegenerator.New(mmModel)
 	if err != nil {
 		logger.Error("创建 image_generator 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, ig)
 	}
-
-	return tools
-}
-
-// CommandTools 返回命令执行相关工具（需传入 config 以注入安全策略）
-func CommandTools() []tool.BaseTool {
-	var tools []tool.BaseTool
-
-	ce, err := commandexecutor.New()
-	if err != nil {
-		logger.Error("创建 command_executor 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, ce)
-	}
-
-	return tools
-}
-
-// AuditTools 返回安全审计相关工具（文件读取、文件查看）
-func AuditTools(mmModel model.BaseChatModel) []tool.BaseTool {
-	var tools []tool.BaseTool
-
-	fr, err := filereader.New()
-	if err != nil {
-		logger.Error("创建 file_reader 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fr)
-	}
-
-	fv, err := fileviewer.New(mmModel)
+	ig, err = fileviewer.New(mmModel)
 	if err != nil {
 		logger.Error("创建 file_viewer 工具失败", logger.C(err))
 	} else {
-		tools = append(tools, fv)
+		tools = append(tools, ig)
 	}
-
-	return tools
-}
-
-// PlannerTools 返回计划编写专用工具（仅文件创建和写入，限制在 .mifer/plans 目录下）
-func PlannerTools() []tool.BaseTool {
-	var tools []tool.BaseTool
-	plansDir := filepath.Join(conf.GetConfig().Path.Workdir, ".mifer", "plans")
-
-	fc, err := filecreator.New(plansDir)
-	if err != nil {
-		logger.Error("创建 planner file_creator 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fc)
-	}
-
-	fw, err := filewriter.New(plansDir)
-	if err != nil {
-		logger.Error("创建 planner file_writer 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, fw)
-	}
-
 	return tools
 }
 
@@ -187,34 +99,6 @@ func NewWithName(name []string, mmModel model.BaseChatModel, ragSvc rag.RAGServi
 	var tools []tool.BaseTool
 	for _, n := range name {
 		switch n {
-		case "file_reader":
-			fr, err := filereader.New()
-			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
-				return nil, err
-			}
-			tools = append(tools, fr)
-		case "file_writer":
-			fw, err := filewriter.New()
-			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
-				return nil, err
-			}
-			tools = append(tools, fw)
-		case "file_creator":
-			fc, err := filecreator.New()
-			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
-				return nil, err
-			}
-			tools = append(tools, fc)
-		case "file_viewer":
-			fv, err := fileviewer.New(mmModel)
-			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
-				return nil, err
-			}
-			tools = append(tools, fv)
 		case "image_generator":
 			ig, err := imagegenerator.New(mmModel)
 			if err != nil {
@@ -222,13 +106,6 @@ func NewWithName(name []string, mmModel model.BaseChatModel, ragSvc rag.RAGServi
 				return nil, err
 			}
 			tools = append(tools, ig)
-		case "command_executor":
-			ce, err := commandexecutor.New()
-			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
-				return nil, err
-			}
-			tools = append(tools, ce)
 		case "knowledge_search":
 			ks, err := knowledgesearch.New(ragSvc)
 			if err != nil {

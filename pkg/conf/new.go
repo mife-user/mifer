@@ -244,7 +244,6 @@ agents:
     instruction: "你是MiTest，测试Agent。"  # 系统提示词，定义 Agent 的行为和角色
     model: "sonnet"                  # 使用的模型后端名称
     tools:                           # 分配给该 Agent 的工具列表
-      - file_reader
 
 # ── HTTP 服务 ──
 gin:

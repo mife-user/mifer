@@ -10,10 +10,10 @@ import (
 	"github.com/cloudwego/eino/compose"
 )
 
-// newSummarizer 创建文档摘要agent，负责读取并总结文档内容，管理知识库
+// newSummarizer管理知识库
 func newSummarizer(c context.Context, chatModel model.BaseChatModel, mmModel model.BaseChatModel, ragTools []tool.BaseTool, extraTools []tool.BaseTool) (*adk.ChatModelAgent, error) {
 	// 合并审计工具、知识库工具与额外的 MCP 工具
-	allTools := append(tools.AuditTools(mmModel), ragTools...)
+	allTools := append(tools.Image(mmModel), ragTools...)
 	allTools = append(allTools, extraTools...)
 
 	agent, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{

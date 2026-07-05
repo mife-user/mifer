@@ -102,6 +102,7 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 
 		lastMsg := &strings.Builder{}
 		eventCount := 0
+		var turnToolMsgs []*schema.Message // 本轮收集的工具调用消息（仅在成功时持久化）
 		var currentAgent string
 		var retry bool
 		e.Token.reset()
@@ -193,6 +194,13 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				if message == nil {
 					continue
 				}
+				// 收集工具调用消息（成功时持久化，重试时丢弃）
+				if msgOutput.Role == schema.Assistant && len(message.ToolCalls) > 0 {
+					turnToolMsgs = append(turnToolMsgs, message)
+				}
+				if msgOutput.Role == schema.Tool {
+					turnToolMsgs = append(turnToolMsgs, message)
+				}
 				// 仅纯文本 Assistant 消息（无 ToolCalls）才发射 response
 				if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 {
 					lastMsg.WriteString(message.Content)
@@ -226,6 +234,12 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		if lastMsg.String() == "" {
 			return errorer.New(errorer.ErrCallBackNull)
 		}
+		// 持久化本轮收集的工具调用消息（assistant+ToolCalls 与 tool 结果按事件流顺序）
+		if len(turnToolMsgs) > 0 {
+			e.Humen.Prompt.Memory.AppendMessages(turnToolMsgs)
+		}
+		// 检查是否需要压缩旧工具调用
+		e.checkToolCompression()
 		e.Humen.Prompt.Memory.AppendAssistant(lastMsg.String())
 		if err := e.Humen.Prompt.Memory.Save(); err != nil {
 			logger.Error("保存记忆失败", logger.C(err))

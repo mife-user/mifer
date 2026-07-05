@@ -26,6 +26,13 @@ func (e *Executor) LoadMemory(c context.Context, req *domain.MemoryReq) (*domain
 
 	var sb strings.Builder
 	for _, msg := range msgs {
+		// 跳过工具消息（不向用户展示），保持 /viewmemory 仅显示对话内容
+		if msg.Role == schema.Tool {
+			continue
+		}
+		if msg.Role == schema.Assistant && len(msg.ToolCalls) > 0 {
+			continue
+		}
 		sb.WriteString("[")
 		sb.WriteString(roleToChinese(msg.Role))
 		sb.WriteString("]: ")

@@ -59,6 +59,7 @@ const (
 	ErrSerializeJSONFailed   = "序列化JSON失败"
 	ErrWriteFileFailed       = "写入文件失败"
 	ErrWriteNewlineFailed    = "写入换行失败"
+	ErrFileRenameFailed      = "重命名文件失败"
 	ErrParseLineFailed       = "解析行失败"
 	ErrReadFileFailed        = "读取文件失败"
 

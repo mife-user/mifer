@@ -231,6 +231,7 @@ ai:
     threshold: 0.8                   # 触发压缩的比例（当前 Tokens > length * threshold 时压缩）
     model: "haiku"                   # 执行压缩的模型后端（建议用 haiku 减少耗时）
     recent_rounds: 3                 # 压缩后保留的最近对话轮数
+    tool_keep_rounds: 0              # 工具调用保留完整轮数（0=不压缩）
 
 # ── 自定义 Agent ──
 # 除内置的 5 个子 Agent 外，可在下方定义额外的专用 Agent

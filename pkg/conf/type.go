@@ -176,7 +176,8 @@ type ContextConfig struct {
 	Length       int     `mapstructure:"length"`        // 上下文长度阈值（token数），默认 1000000
 	Threshold    float64 `mapstructure:"threshold"`     // 触发压缩的比例，默认 0.8
 	Model        string  `mapstructure:"model"`         // 压缩用模型后端名，默认 "haiku"
-	RecentRounds int     `mapstructure:"recent_rounds"` // 压缩后保留的最近完整对话轮数，默认 3
+	RecentRounds   int `mapstructure:"recent_rounds"`    // 压缩后保留的最近完整对话轮数，默认 3
+	ToolKeepRounds int `mapstructure:"tool_keep_rounds"` // 工具调用保留完整轮数，0=不压缩，默认 0
 }
 
 // RAG配置结构体

@@ -1,4 +1,4 @@
-package conf
+﻿package conf
 
 import (
 	"mifer/pkg/errorer"
@@ -117,7 +117,7 @@ rag:
 
 # ── MCP 服务器（Model Context Protocol） ──
 # MCP 是外部工具扩展协议，可接入第三方工具服务（如 GitHub、数据库、文件系统等）
-# 每个 Server 可分配给的 Agent 列表：MiEditer / MiSummarizer / MiPlanner / MiCommander / MiAuditor / Mifer
+# 每个 Server 可分配给的 Agent 列表：Mifer（主 Agent）/ 自定义 Agent 名称
 mcp:
   servers:
     - name: "demo"                   # Server 唯一标识，用于日志和状态查询
@@ -181,8 +181,8 @@ qq:
 #   default     — 主对话模型，所有请求的默认选择，必须配置
 #   multi_modal — 图片识别模型，用于 file_viewer / image_generator 工具
 #   haiku       — 轻量模型，用于上下文压缩等低算力任务
-#   sonnet      — 均衡模型，用于 MiEditer / MiSummarizer / MiCommander 子 Agent
-#   opus        — 最强推理，用于 MiPlanner / MiAuditor 需要深度分析的子 Agent
+#   sonnet      — 均衡模型，预留用于自定义 Agent
+#   opus        — 最强推理模型，预留用于需要深度分析的自定义 Agent
 #   embedder    — 文本嵌入模型，用于 RAG 知识库文档向量化（通常用本地 Ollama）
 #
 # api_key 获取方式（常见平台）：
@@ -233,7 +233,7 @@ ai:
     recent_rounds: 3                 # 压缩后保留的最近对话轮数
 
 # ── 自定义 Agent ──
-# 除内置的 5 个子 Agent 外，可在下方定义额外的专用 Agent
+# 可在下方定义额外的专用 Agent（作为 Mifer 的子 Agent 运行）
 # model 字段必须是 ai.backends 中已定义的后端名称
 # tools 支持：file_reader, file_writer, file_creator, file_viewer, image_generator,
 #            knowledge_search, knowledge_store, command_executor, web_search, web_fetch

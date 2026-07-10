@@ -234,8 +234,11 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 		// 轮次结束后保存文件快照（需在配置中启用 snapshot_enabled）
 		if e.Snapshot != nil {
 			round := e.Humen.Prompt.Memory.CountUserMessages()
+			logger.Debug("开始保存文件快照", logger.I("round", round))
 			if err := e.Snapshot.SaveRound(round); err != nil {
 				logger.Warn("保存文件快照失败（不中断对话流程）", logger.C(err), logger.I("round", round))
+			} else {
+				logger.Debug("文件快照保存完成", logger.I("round", round))
 			}
 		}
 		return nil

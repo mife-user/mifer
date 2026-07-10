@@ -37,11 +37,19 @@ func (e *Executor) Reback(c context.Context, req *domain.RebackReq) (*domain.Reb
 	// 从文件快照恢复（需在配置中启用 snapshot_enabled）
 	if e.Snapshot != nil {
 		targetRound := req.Index - 1 // 恢复到目标轮次之前的状态
+		logger.Debug("开始从快照恢复文件",
+			logger.I("reqIndex", req.Index),
+			logger.I("targetRound", targetRound),
+			logger.I("totalRounds", totalRounds),
+		)
 		if err := e.Snapshot.RestoreToRound(targetRound); err != nil {
 			logger.Warn("从快照恢复文件失败", logger.C(err))
+		} else {
+			logger.Info("从快照恢复文件成功", logger.I("targetRound", targetRound))
 		}
 		// 删除被回退的后续快照
 		for i := req.Index; i <= totalRounds; i++ {
+			logger.Debug("删除被回退的快照轮次", logger.I("round", i))
 			e.Snapshot.RemoveRound(i)
 		}
 	}

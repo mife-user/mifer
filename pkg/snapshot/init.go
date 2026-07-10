@@ -3,8 +3,6 @@ package snapshot
 import (
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 // New 创建快照服务。
@@ -13,7 +11,7 @@ func New(workdir, baseDir string) *Service {
 	return &Service{
 		workdir:      workdir,
 		baseDir:      baseDir,
-		lastManifest: make(Manifest),
+		lastManifest: make(map[string]FileEntry),
 		skipDirs: map[string]bool{
 			".git":         true,
 			"node_modules": true,
@@ -25,30 +23,24 @@ func New(workdir, baseDir string) *Service {
 	}
 }
 
-// InitBaseline 创建初始快照 r0（仅在首次启动且 r0/manifest.json 不存在时执行）。
-// 用于 reback 到第 1 轮时恢复至对话前的状态。
+// InitBaseline 初始化快照基线。
+// 若 changes.jsonl 已存在则加载最新状态到内存；否则检测并清理旧版 r{N}/ 目录，
+// 通过 SaveRound(0) 创建全新的基线快照。
 func (s *Service) InitBaseline() error {
 	if s.baseDir == "" {
 		return nil
 	}
 
-	r0Dir := filepath.Join(s.baseDir, "r0")
-	manifestPath := filepath.Join(r0Dir, "manifest.json")
-
-	// 新格式已存在，加载最近清单后直接返回（加载失败非致命，下次 SaveRound 将全量计算）
-	if _, err := os.Stat(manifestPath); err == nil {
+	// changes.jsonl 已存在，加载最新清单后直接返回（加载失败非致命，下次 SaveRound 将全量计算）
+	if _, err := os.Stat(s.changesPath()); err == nil {
 		_ = s.loadLatestManifest()
 		return nil
 	}
 
-	// 检测旧格式全量快照并迁移
-	if info, err := os.Stat(r0Dir); err == nil && info.IsDir() {
-		if err := os.RemoveAll(r0Dir); err != nil {
-			return err
-		}
-	}
+	// 检测并清理旧版 r{N}/ 目录（迁移）
+	s.cleanLegacyRounds()
 
-	// 创建增量基线快照
+	// 创建基线快照
 	if err := s.SaveRound(0); err != nil {
 		return err
 	}
@@ -56,36 +48,49 @@ func (s *Service) InitBaseline() error {
 	return nil
 }
 
-// loadLatestManifest 扫描 baseDir 下所有轮次的清单，加载最大轮次到 lastManifest。
-// 失败时返回错误但由调用方决定是否致命。
-func (s *Service) loadLatestManifest() error {
+// cleanLegacyRounds 清理旧版 per-round 快照目录（r0/, r1/, ...）。
+func (s *Service) cleanLegacyRounds() {
 	entries, err := os.ReadDir(s.baseDir)
 	if err != nil {
-		return err
+		return
 	}
-
-	maxRound := -1
 	for _, entry := range entries {
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "r") {
+		if !entry.IsDir() {
 			continue
 		}
-		round, err := strconv.Atoi(entry.Name()[1:])
-		if err != nil {
+		name := entry.Name()
+		// 旧版格式：目录名以 "r" 开头且后面全是数字
+		if len(name) < 2 || name[0] != 'r' {
 			continue
 		}
-		if round > maxRound {
-			maxRound = round
+		isRound := true
+		for _, c := range name[1:] {
+			if c < '0' || c > '9' {
+				isRound = false
+				break
+			}
+		}
+		if isRound {
+			_ = os.RemoveAll(filepath.Join(s.baseDir, name))
 		}
 	}
+}
 
-	if maxRound < 0 {
-		return nil
-	}
-
-	manifest, err := s.loadManifest(maxRound)
+// loadLatestManifest 读取 changes.jsonl，重建 lastManifest 为每个文件的最新状态。
+func (s *Service) loadLatestManifest() error {
+	entries, err := s.readChanges()
 	if err != nil {
 		return err
 	}
-	s.lastManifest = manifest
+
+	s.lastManifest = make(map[string]FileEntry)
+	for _, entry := range entries {
+		if entry.Hash == "" {
+			// 删除标记 → 从最新清单中移除
+			delete(s.lastManifest, entry.Path)
+		} else {
+			s.lastManifest[entry.Path] = entry
+		}
+	}
 	return nil
 }

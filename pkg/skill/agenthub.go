@@ -41,3 +41,8 @@ func (h *AgentHub) Has(name string) bool {
 	_, ok := h.agents[name]
 	return ok
 }
+
+// HasAny 检查是否有任何 Agent 已注册
+func (h *AgentHub) HasAny() bool {
+	return len(h.agents) > 0
+}

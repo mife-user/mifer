@@ -67,18 +67,26 @@ func Init(c context.Context) (*Executor, error) {
 		memPath := filepath.Join(cfg.Path.CfgPath, "memory", filepath.Base(cfg.Path.Workdir))
 		id, _ := c.Value("id").(string)
 		baseDir := filepath.Join(memPath, id+"_snapshots")
+		logger.Debug("初始化文件快照服务",
+			logger.S("workdir", cfg.Path.Workdir),
+			logger.S("baseDir", baseDir),
+		)
 		snapSvc = snapshot.New(cfg.Path.Workdir, baseDir)
 		if err := snapSvc.InitBaseline(); err != nil {
 			logger.Warn("初始化快照基线失败，禁用快照功能", logger.C(err))
 			snapSvc = nil
+		} else {
+			logger.Info("文件快照服务初始化成功", logger.S("baseDir", baseDir))
 		}
+	} else {
+		logger.Debug("文件快照功能未启用（snapshot_enabled=false）")
 	}
 
 	return &Executor{
 		Runner:   runner,
 		QQRunner: qqRunner,
 		Humen:    ag,
-		Token:  tokens,
+		Token:    tokens,
 		compress: compressState{
 			compressor: compressor.NewCompressor(ag.Registry, ag.SkillManager),
 		},

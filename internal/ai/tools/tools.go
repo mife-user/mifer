@@ -12,12 +12,14 @@ import (
 	"mifer/internal/ai/tools/imagegenerator"
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
+	"mifer/internal/ai/tools/paralleldispatch"
 	qqtools "mifer/internal/ai/tools/qq"
 	"mifer/internal/ai/tools/webfetch"
 	"mifer/internal/ai/tools/websearch"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
+	"mifer/pkg/skill"
 	"mifer/qq"
 
 	"github.com/cloudwego/eino/components/model"
@@ -178,6 +180,20 @@ func QQTools(getSender func() qq.Sender) []tool.BaseTool {
 		logger.Error("创建 qq_send_message 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, qs)
+	}
+
+	return tools
+}
+
+// ParallelDispatch 返回并行调度工具，agentHub 用于查找目标 Agent 实例
+func ParallelDispatch(agentHub *skill.AgentHub) []tool.BaseTool {
+	var tools []tool.BaseTool
+
+	pd, err := paralleldispatch.New(agentHub)
+	if err != nil {
+		logger.Error("创建 parallel_dispatch 工具失败", logger.C(err))
+	} else {
+		tools = append(tools, pd)
 	}
 
 	return tools

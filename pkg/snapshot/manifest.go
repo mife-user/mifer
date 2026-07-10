@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -8,48 +9,61 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 )
 
-// loadManifest 读取指定轮次的快照清单。
-func (s *Service) loadManifest(round int) (Manifest, error) {
-	manifestPath := filepath.Join(s.baseDir, fmt.Sprintf("r%d", round), "manifest.json")
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return nil, fmt.Errorf("读取清单文件失败 %s: %w", manifestPath, err)
-	}
-	var m Manifest
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("解析清单文件失败 %s: %w", manifestPath, err)
-	}
-	return m, nil
+// changesPath 返回 changes.jsonl 的完整路径。
+func (s *Service) changesPath() string {
+	return filepath.Join(s.baseDir, "changes.jsonl")
 }
 
-// writeManifest 将快照清单写入指定轮次的 manifest.json（先写临时文件再 Rename 保证原子性）。
-func (s *Service) writeManifest(round int, m Manifest) error {
-	roundDir := filepath.Join(s.baseDir, fmt.Sprintf("r%d", round))
-	if err := os.MkdirAll(roundDir, 0755); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(m, "", "  ")
+// readChanges 读取 changes.jsonl 中的所有变更条目。
+// 文件不存在时返回空切片（非错误）。
+func (s *Service) readChanges() ([]FileEntry, error) {
+	f, err := os.Open(s.changesPath())
 	if err != nil {
-		return fmt.Errorf("序列化清单失败: %w", err)
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("打开变更日志失败: %w", err)
+	}
+	defer f.Close()
+
+	var entries []FileEntry
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var entry FileEntry
+		if err := json.Unmarshal(line, &entry); err != nil {
+			continue // 跳过损坏行
+		}
+		entries = append(entries, entry)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("读取变更日志失败: %w", err)
+	}
+	return entries, nil
+}
+
+// appendChange 将单条变更记录追加写入 changes.jsonl。
+// 使用 O_APPEND 保证追加操作的原子性（POSIX 保证 ≤ PIPE_BUF 的写入是原子的）。
+func (s *Service) appendChange(entry FileEntry) error {
+	f, err := os.OpenFile(s.changesPath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("打开变更日志失败: %w", err)
+	}
+	defer f.Close()
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return fmt.Errorf("序列化变更条目失败: %w", err)
 	}
 
-	manifestPath := filepath.Join(roundDir, "manifest.json")
-	tmpPath := manifestPath + ".tmp"
-
-	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
-		return fmt.Errorf("写入临时清单失败: %w", err)
+	if _, err := f.Write(append(data, '\n')); err != nil {
+		return fmt.Errorf("写入变更日志失败: %w", err)
 	}
-
-	if err := os.Rename(tmpPath, manifestPath); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("重命名清单文件失败: %w", err)
-	}
-
 	return nil
 }
 
@@ -91,51 +105,22 @@ func (s *Service) storeObject(srcPath, hash string) error {
 	return s.copyFile(srcPath, dstPath)
 }
 
-// collectLiveHashes 扫描所有轮次的清单，收集仍在使用的哈希集合（排除指定轮次）。
-func (s *Service) collectLiveHashes(excludeRound int) map[string]bool {
-	liveHashes := make(map[string]bool)
-
-	entries, err := os.ReadDir(s.baseDir)
+// copyFile 复制单个文件内容。
+func (s *Service) copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
 	if err != nil {
-		return liveHashes
+		return err
 	}
+	defer srcFile.Close()
 
-	for _, entry := range entries {
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "r") {
-			continue
-		}
-
-		// 解析轮次号
-		roundStr := entry.Name()[1:] // 去掉 "r" 前缀
-		round, err := strconv.Atoi(roundStr)
-		if err != nil {
-			continue
-		}
-		if round == excludeRound {
-			continue
-		}
-
-		manifest, err := s.loadManifest(round)
-		if err != nil {
-			continue
-		}
-
-		for _, fileEntry := range manifest {
-			liveHashes[fileEntry.Hash] = true
-		}
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
 	}
+	defer dstFile.Close()
 
-	return liveHashes
-}
-
-// findNearestRound 查找 ≤ maxRound 的最近一次快照轮次号。
-// 若 r4 不存在但 r3 存在，返回 3；没有任何快照时返回 -1。
-func (s *Service) findNearestRound(maxRound int) int {
-	for r := maxRound; r > 0; r-- {
-		manifestPath := filepath.Join(s.baseDir, fmt.Sprintf("r%d", r), "manifest.json")
-		if _, err := os.Stat(manifestPath); err == nil {
-			return r
-		}
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return err
 	}
-	return -1
+	return dstFile.Sync()
 }

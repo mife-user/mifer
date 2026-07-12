@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"path/filepath"
-	"sync"
 
 	"mifer/internal/ai/agent"
 	"mifer/internal/ai/compressor"
@@ -22,13 +21,13 @@ type compressState struct {
 }
 
 type Executor struct {
-	Runner   *adk.Runner
-	QQRunner *adk.Runner // QQ 通道专用 Runner（无工具 Agent），nil 时回退到 Runner
-	Humen    *agent.Humen
+	Runner     *adk.Runner
+	QQRunner   *adk.Runner // QQ 通道专用 Runner（无工具 Agent），nil 时回退到 Runner
+	PlanRunner *adk.Runner // 计划专用 Runner（只读工具 PlanAgent）
+	Humen      *agent.Humen
 	Token    *TokenUsage       // token 累计用量统计
 	compress compressState     // 上下文压缩状态
 	Snapshot *snapshot.Service // 文件快照服务
-	chatMu   sync.Mutex        // 防止并发 Chat 调用导致 Memory 数据竞争
 }
 
 func Init(c context.Context) (*Executor, error) {
@@ -53,6 +52,13 @@ func Init(c context.Context) (*Executor, error) {
 	if ag.QQAgent != nil {
 		qqRunner = adk.NewRunner(c, adk.RunnerConfig{
 			Agent:           ag.QQAgent,
+			EnableStreaming: true,
+		})
+	}
+	var planRunner *adk.Runner
+	if ag.PlanAgent != nil {
+		planRunner = adk.NewRunner(c, adk.RunnerConfig{
+			Agent:           ag.PlanAgent,
 			EnableStreaming: true,
 		})
 	}
@@ -83,13 +89,22 @@ func Init(c context.Context) (*Executor, error) {
 	}
 
 	return &Executor{
-		Runner:   runner,
-		QQRunner: qqRunner,
-		Humen:    ag,
+		Runner:     runner,
+		QQRunner:   qqRunner,
+		PlanRunner: planRunner,
+		Humen:      ag,
 		Token:    tokens,
 		compress: compressState{
 			compressor: compressor.NewCompressor(ag.Registry, ag.SkillManager),
 		},
 		Snapshot: snapSvc,
 	}, nil
+}
+
+// pickRunner 根据通道类型选择对应的 Runner。
+func (e *Executor) pickRunner(channel string) *adk.Runner {
+	if channel == "qq" && e.QQRunner != nil {
+		return e.QQRunner
+	}
+	return e.Runner
 }

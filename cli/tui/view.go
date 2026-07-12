@@ -61,6 +61,13 @@ func (m *Model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Top, title, sep, m.memoryViewport.View())
 	}
 
+		// 计划确认模式
+		if m.showingPlanConfirm {
+			title := m.lip.SidebarActive.Render(" 计划确认 — Enter 确认 / Esc 拒绝")
+			sep := m.lip.SidebarSeparator.Render(strings.Repeat("─", m.width-4))
+			return lipgloss.JoinVertical(lipgloss.Top, title, sep, m.planViewport.View())
+		}
+
 	// 全屏计划查看模式
 	if m.showingPlanView {
 		title := m.lip.SidebarActive.Render(" 计划查看 — Esc 返回")

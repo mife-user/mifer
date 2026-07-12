@@ -184,6 +184,12 @@ type Model struct {
 	confirmQueue     []*ToolConfirmPrompt  // 待确认队列
 	currentConfirm   *ToolConfirmPrompt    // 当前正在确认的项（队首）
 	confirmList      list.Model            // bubbles/list 选择组件 [Yes | No | Allow]
+
+	// 计划确认
+	showingPlanConfirm bool   // 是否处于计划确认模式
+	planConfirmID      string // 计划确认 UUID
+	planConfirmPath    string // 计划文件路径
+	planConfirmContent string // 计划内容
 	sessionAllowed   map[string]bool       // 当前会话已 Allow 的工具名集合
 }
 

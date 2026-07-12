@@ -12,11 +12,13 @@ import (
 
 type chatReq struct {
 	Content string `json:"content"`
+	Mode    string `json:"mode,omitempty"`
 }
 
-// Send 发送消息并处理SSE流式响应，每收到一个chunk调用onChunk回调
-func (h *ChatHandler) Send(ctx context.Context, content string, onChunk func(event, chunk string) error) error {
-	body, err := json.Marshal(chatReq{Content: content})
+// Send 发送消息并处理SSE流式响应，每收到一个chunk调用onChunk回调。
+// mode: "" 为默认模式，"plan" 为先制定计划等确认再执行。
+func (h *ChatHandler) Send(ctx context.Context, content, mode string, onChunk func(event, chunk string) error) error {
+	body, err := json.Marshal(chatReq{Content: content, Mode: mode})
 	if err != nil {
 		return errorer.NewS(errorer.ErrSerializeRequestFailed, err)
 	}

@@ -77,7 +77,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.memoryViewport, cmd = m.memoryViewport.Update(msg)
 			return m, cmd
 		}
-		if m.showingPlanView {
+		if m.showingPlanView || m.showingPlanConfirm {
 			var cmd tea.Cmd
 			m.planViewport, cmd = m.planViewport.Update(msg)
 			return m, cmd
@@ -179,6 +179,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			default:
 				return m, nil
+			}
+		}
+
+		// ---- 计划确认模式：Enter 确认 / Esc 拒绝 ----
+		if m.showingPlanConfirm {
+			switch msg.String() {
+			case "enter":
+				m.showingPlanConfirm = false
+				return m, tea.Batch(
+					confirmPlanCmd(m.client, m.planConfirmID, "confirm"),
+					listenStreamCmd(m.streamCh),
+				)
+			case "esc":
+				m.showingPlanConfirm = false
+				m.messages = append(m.messages, message{role: "system", content: "计划已取消"})
+				return m, tea.Batch(
+					confirmPlanCmd(m.client, m.planConfirmID, "deny"),
+					listenStreamCmd(m.streamCh),
+				)
+			default:
+				var cmd tea.Cmd
+				m.planViewport, cmd = m.planViewport.Update(msg)
+				return m, cmd
 			}
 		}
 
@@ -292,6 +315,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ======================================================================
 	// 4b. 工具确认事件
 	// ======================================================================
+		case planConfirmMsg:
+			return m.handlePlanConfirm(msg)
+
 	case toolConfirmMsg:
 		return m.handleToolConfirm(msg)
 
@@ -562,8 +588,8 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	case strings.HasPrefix(input, "/plan"):
 		args := strings.TrimSpace(strings.TrimPrefix(input, "/plan"))
 		if args != "" {
-			// /plan <说明> — 构造带计划指令前缀的聊天消息发送给 AI
-			chatMsg := "请先制定详细计划并等待我审批。计划说明如下：\n\n" + args
+				// /plan <说明> — 设置 Mode="plan"，服务端路由到 runPlanFlow
+				chatMsg := args
 			m.messages = append(m.messages, message{
 				role:    "user",
 				content: input,
@@ -583,7 +609,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 			var spCmd tea.Cmd
 			m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 			return m, tea.Batch(
-				startSSECmd(m.client, chatMsg, m.streamCh, ctx),
+				startSSECmd(m.client, chatMsg, "plan", m.streamCh, ctx),
 				listenStreamCmd(m.streamCh),
 				spCmd,
 			)
@@ -612,7 +638,7 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		var spCmd tea.Cmd
 		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 		return m, tea.Batch(
-			startSSECmd(m.client, input, m.streamCh, ctx),
+			startSSECmd(m.client, input, "", m.streamCh, ctx),
 			listenStreamCmd(m.streamCh),
 			spCmd,
 		) // 启动流式传输并监听消息

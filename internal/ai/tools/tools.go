@@ -199,6 +199,40 @@ func ParallelDispatch(agentHub *skill.AgentHub) []tool.BaseTool {
 	return tools
 }
 
+// ReadOnlyTools 返回只读工具（用于计划 Agent），不可写入、不可执行命令。
+func ReadOnlyTools(mmModel model.BaseChatModel, ragSvc rag.RAGService) []tool.BaseTool {
+	var ts []tool.BaseTool
+
+	fr, err := filereader.New()
+	if err != nil {
+		logger.Error("创建 file_reader 工具失败", logger.C(err))
+	} else {
+		ts = append(ts, fr)
+	}
+
+	fv, err := fileviewer.New(mmModel)
+	if err != nil {
+		logger.Error("创建 file_viewer 工具失败", logger.C(err))
+	} else {
+		ts = append(ts, fv)
+	}
+
+	for _, t := range WebTools() {
+		ts = append(ts, t)
+	}
+
+	if ragSvc != nil {
+		ks, err := knowledgesearch.New(ragSvc)
+		if err != nil {
+			logger.Error("创建 knowledge_search 工具失败", logger.C(err))
+		} else {
+			ts = append(ts, ks)
+		}
+	}
+
+	return ts
+}
+
 func NewWithName(name []string, mmModel model.BaseChatModel, ragSvc rag.RAGService) ([]tool.BaseTool, error) {
 	var tools []tool.BaseTool
 	for _, n := range name {

@@ -22,6 +22,7 @@
 | **MiCommander** | 终端命令执行（白名单约束） | sonnet |
 | **MiAuditor**  | 代码与配置安全审计 | opus   |
 | **MiQQ**       | QQ 通道专用助手（无工具，纯文本对话） | default |
+| **PlanAgent**  | 计划制定助手（只读工具：file_reader/file_viewer/web_search/web_fetch/knowledge_search） | sonnet |
 | **Mifer**      | 编排器，协调子 Agent，由模型自主控制迭代次数 | default |
 
 所有 Agent 通过 `adk.Runner` 统一启动，Agent / ChatModel / Tool 三层接口解耦。
@@ -179,15 +180,34 @@ agent: MiEditer
 - **文件系统即数据库** — 技能以 `目录名/SKILL.md` 形式存储，零配置、零依赖。首次启动自动创建 `hello-world` 示例技能
 - **LLM 自主选择** — `skill` 工具的描述中动态注入所有可用技能列表，LLM 根据用户意图自主判断是否调用、调用哪个
 
-### Plan 管理：AI 自主的计划系统
+### /plan 计划强制执行
 
-Plan 功能的设计哲学是**"由 AI 决定，而非框架强制"**——不使用 Graph/Workflow 的强制编排，让 LLM 自主调度计划。
+`/plan <任务描述>` 命令触发两阶段计划流程，通过**工具隔离**（PlanAgent 只读 vs Mifer 全工具）+ **用户确认**（SSE confirm）确保先规划后执行。
+
+**执行流程**：
+```
+用户 /plan <任务>
+  │
+  ├── PlanAgent(只读工具, sonnet) 流式分析 → planning/thinking/tool 事件实时显示
+  ├── 计划写入 .mifer/plans/plan_xxx.md
+  ├── SSE plan_confirm → TUI 全屏预览 → Enter 确认 / Esc 拒绝
+  └── Mifer(全工具) 按计划执行 → 正常对话
+```
 
 **关键设计**：
-- **无 Graph 强制** — `MiPlanner` Agent 配备 `PlannerTools()`（仅限文件创建和写入，工作目录锁定在 `.mifer/plans/`），AI 直接编写 Markdown 计划文件，不预设状态机、不限制格式
-- **面向 AI 能力演进** — 随着 LLM 推理能力增强，许多需要工程化 Graph 编排的场景可以由 AI 自主完成。**用 AI 的判断替代代码的分支逻辑**，减少工程化复杂度
-- **工作目录隔离** — 文件操作限制在 `.mifer/plans/` 下，安全边界在工具层保证
-- **CLI 集成** — `/plan` 命令查看计划文件列表，回车加载并展示计划内容
+- **工具隔离强制** — PlanAgent 只有 `file_reader`/`file_viewer`/`web_search`/`web_fetch`/`knowledge_search`，**无写入和命令权限**，从工具层面杜绝跳过计划直接执行
+- **Eino Graph 编排** — `PlanGraph`（compose 图）：`plan_agent(Lambda) → plan_write(Lambda) → plan_confirm(Lambda)`，plan_confirm 节点复用 confirm.Store 阻塞等待用户
+- **中间件复用** — PlanAgent 注入 `errorMiddleware` + `confirmMiddleware`，工具调用需确认（与 Mifer 一致）
+- **完整历史** — 计划阶段共享 Memory，不丢失对话上下文
+- **双重持久化** — 计划确认后保存一次，执行完成后保存一次
+
+### 用户习惯总结（HabitGraph）
+
+每轮对话末尾异步触发 `HabitGraph`（Eino Graph）：`ChatModel(haiku) → Lambda(全量覆盖 MIFER.md)`，分析本轮对话并增量更新用户画像。
+
+- 分析维度：编程语言偏好、技术栈、工作习惯、常用工具、项目类型、沟通风格
+- 写入 `{CfgPath}/MIFER.md`（用户级），自动拼接到系统提示词
+- fire-and-forget 模式，不阻塞对话响应
 
 ### /init 命令：AI 自动生成项目提示词
 

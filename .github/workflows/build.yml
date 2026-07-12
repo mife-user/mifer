@@ -81,31 +81,30 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
-            ## 🚀 QQ Bot 优化
-            - QQ 通道新增独立 MiQQ Agent（无工具，纯文本对话），避免非 QQ 工具被拒导致死循环
-            - 记忆切换原子化：Chat 请求体支持 `session_id`，SwitchSession + Chat 单次请求完成
-            - 移除 `internal/ai/tools/qq/Sender` 全局变量，改为构造函数闭包注入
-            - `onebotSender` 从 bootstrap 迁移至 `qq/onebot_http.go`，导出 `OnebotHTTPSender`
-            - `oneBotEvent` 新增 `IsPrivate()`/`IsGroup()`/`IsMessage()` 语义方法
-            - 工具包重命名 `qq` → `qqtools`，消除与顶层 `qq/` 包名冲突
-            - `Config` 新增 `AllowedTools` 配置字段，替代硬编码白名单
+            ## 📋 /plan 计划强制执行
+            - 新增 `Mode` 字段（`TalkReq`），`/plan` 命令通过 `req.Mode="plan"` 路由到计划流程
+            - 新增 **PlanAgent**（只读工具：file_reader/file_viewer/web_search/web_fetch/knowledge_search），sonnet 模型
+            - 新增 **PlanGraph**（Eino compose 图）：`PlanAgent(流式) → 写入 .mifer/plans/ → SSE 确认 → 用户审批`
+            - PlanAgent 复用 `errorMiddleware` + `confirmMiddleware`，工具事件通过 `aicallback.NewHandler` 转发
+            - PlanGraph 流式转发全部事件（thinking/tool_start/tool_end/response/token），TUI 体验与正常对话一致
+            - TUI 新增 `plan_confirm` SSE 事件处理：全屏计划预览 → Enter 确认 / Esc 拒绝 → `POST /api/tool/confirm`
+            - 计划阶段保留完整对话历史，确认后 Mifer（全工具）按计划执行，两轮 Memory 分别持久化
 
-            ## 📸 文件快照优化
-            - `SaveRound` 仅在文件实际变更时写入 manifest，无操作对话不再产生空快照
-            - `RestoreToRound` 改为查找最近可用快照，兼容 SaveRound 跳过的轮次
-            - `RemoveRound` 对跳过轮次静默容错
+            ## 🧠 用户习惯总结（HabitGraph）
+            - 每轮对话末尾异步调用 Eino Graph：`ChatModel(haiku) → Lambda(全量覆盖 MIFER.md)`
+            - 分析本轮对话 + 现有画像 → AI 增量更新用户级 `{CfgPath}/MIFER.md`
+            - `HabitInstruction` 常量定义，fire-and-forget 模式不阻塞对话
 
-            ## 🧹 代码质量
-            - `callback.ToolCallbackHandler` 全局变量改为 `NewHandler(cb)` 工厂，闭包传递 callback
-            - confirm 中间件的 `sendConfirmEvent`/`awaitConfirmation` callback 改为显式参数
-            - 默认系统提示词结构化重写，去除冗余和环境假设
+            ## 🔪 Chat 原子化重构
+            - `chat.go` 拆分为 `chat.go`（prepareChat/finalizeChat/Chat） + `chat_run.go`（runConversation/runAgentOnce/handleEvent） + `chat_plan.go`（runPlanFlow）
+            - Chat() 主流程精简为 60 行编排逻辑，新增 `pickRunner()` 方法
+            - 移除 `chatMu` 全局锁（Memory 内部自带 `mu.Lock` 保护），多 session 不再互相阻塞
 
-            ## 🔧 使用方式
-            1. `docker-compose up -d napcat` 启动 NapCatQQ
-            2. 浏览器打开 `http://localhost:6099` 扫码登录 QQ
-            3. 网络配置 → 新建 WebSocket 服务端 → 主机 0.0.0.0 端口 3001 → 启用
-            4. 配置 `qq.enabled: true` 和 `qq.bot.qq: 你的QQ号`
-            5. `go run ./cmd/main` 启动 Mifer
+            ## 🛠 工具与 Agent 优化
+            - `paralleldispatch` 消息收集对齐 chat.go：只取最终 Assistant 回复（`Role==Assistant && ToolCalls==0`）
+            - 新增 `ReadOnlyTools()` 工厂（file_reader/file_viewer/web_search/web_fetch/knowledge_search）
+            - `CallbackFromCtx` / `SessionIDFromCtx` 导出，供 Lambda 节点等非中间件组件使用
+            - 删除旧硬编码子 Agent 文件（MiEditer/MiPlanner 等），改为纯配置驱动
           files: artifacts/**/*
           draft: false
           prerelease: false

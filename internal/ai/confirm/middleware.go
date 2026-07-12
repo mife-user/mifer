@@ -39,6 +39,18 @@ func getSessionID(ctx context.Context) string {
 	return ""
 }
 
+// CallbackFromCtx 从 context 中取出 executor 回调，供 Lambda 节点等非中间件组件使用。
+func CallbackFromCtx(ctx context.Context) (ExecutorCallback, bool) {
+	cb := getCallback(ctx)
+	return cb, cb != nil
+}
+
+// SessionIDFromCtx 从 context 中取出会话 ID，供 Lambda 节点等非中间件组件使用。
+func SessionIDFromCtx(ctx context.Context) (string, bool) {
+	id := getSessionID(ctx)
+	return id, id != ""
+}
+
 // NewConfirmMiddleware 创建 Eino ToolMiddleware，在工具调用前拦截并等待确认。
 // needConfirmFn 接收 toolName、arguments、sessionID，返回是否需要确认。
 // timeout 为等待用户确认的最大时长。

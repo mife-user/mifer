@@ -2,6 +2,9 @@ package agent
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"mifer/internal/ai/confirm"
@@ -19,8 +22,10 @@ import (
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/schema"
 )
 
 // confirmMiddleware 包级工具确认中间件，由 Init() 设置后供 Mifer 编排器和自定义 Agent 使用。
@@ -35,6 +40,7 @@ type Humen struct {
 	SkillManager *skill.Manager
 	ConfirmStore *confirm.Store // 工具确认存储
 	AgentInfos   []AgentInfo    // Agent 元数据列表
+	HabitGraph   compose.Runnable[[]*schema.Message, string] // 用户习惯总结图
 }
 
 // qqInstruction QQ 通道 Agent 的系统指令。
@@ -46,6 +52,17 @@ const qqInstruction = `你是 Mifer QQ 消息助手。
 - 使用与用户相同的语言
 - 任务完成后直接结束，不追问
 - 你没有文件、命令、搜索等工具，遇到需要这些能力的问题直接说明限制`
+
+// HabitInstruction 用户习惯分析助手的系统指令，供 graph 调用方构建输入消息时使用。
+const HabitInstruction = `你是用户习惯分析助手，根据对话内容分析并更新用户画像。
+
+规则：
+- 直接以 Markdown 格式输出完整的用户画像内容，不要添加额外说明
+- 通过分析每轮对话来推断用户的偏好、习惯、技能和背景
+- 如果已有现有画像，基于新对话增量更新，保留之前仍有价值的信息
+- 包含但不限于：编程语言偏好、技术栈、工作习惯、常用工具、项目类型、沟通风格
+- 内容简洁结构化，使用标题和列表组织
+- 不记录敏感信息（密码、密钥、个人身份信息等）`
 
 // miferInstruction Mifer 主 Agent 的系统指令，涵盖所有已注入工具的使用准则。
 const miferInstruction = `你是 Mifer 智能助手，运行于 Windows 环境。你直接拥有以下全部工具——无需委派给其他 Agent，所有操作由你独立完成。
@@ -122,6 +139,7 @@ func Init(c context.Context) (*Humen, error) {
 	var agentInfos []AgentInfo
 	var agent adk.Agent
 	var qqAgent adk.Agent
+	var habitGraph compose.Runnable[[]*schema.Message, string]
 
 	// 仅当 default 后端可用时才创建 Agent 和编排器
 	// api_key 未配置时跳过，程序运行时通过 /api/admin/status 提示用户
@@ -229,6 +247,9 @@ func Init(c context.Context) (*Humen, error) {
 			qqAgent = qa
 			agentInfos = append(agentInfos, AgentInfo{Name: "MiQQ", ModelBackend: "default", Description: "QQ 通道专用助手，纯文本对话"})
 		}
+
+		// 创建用户习惯总结图（使用 haiku 廉价模型，后台异步运行）
+		habitGraph = newHabitGraph(c, reg.Get("haiku"))
 	} else {
 		logger.Warn("default后端不可用，跳过Agent初始化，AI对话功能需配置api_key后通过/config重载启用")
 		agentInfos = append(agentInfos, AgentInfo{Name: "Mifer", ModelBackend: "default", Description: "Mifer 智能助手（未配置api_key，暂不可用）"})
@@ -246,7 +267,51 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, QQAgent: qqAgent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos}, nil
+	return &Humen{Agent: agent, QQAgent: qqAgent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos, HabitGraph: habitGraph}, nil
+}
+
+// newHabitGraph 创建用户习惯总结图：ChatModel(haiku) → Lambda(写入 MIFER.md)
+// 图结构：START → habit_chat → habit_writer → END
+// 返回 nil 表示图创建失败（仅记录日志，不中断 Init 流程）
+func newHabitGraph(ctx context.Context, chatModel model.BaseChatModel) compose.Runnable[[]*schema.Message, string] {
+	g := compose.NewGraph[[]*schema.Message, string]()
+
+	if err := g.AddChatModelNode("habit_chat", chatModel); err != nil {
+		logger.Warn("创建习惯总结图 ChatModel 节点失败", logger.C(err))
+		return nil
+	}
+	if err := g.AddLambdaNode("habit_writer", compose.InvokableLambda(
+		func(ctx context.Context, msg *schema.Message) (string, error) {
+			miferPath := filepath.Join(conf.GetConfig().Path.CfgPath, "MIFER.md")
+			if err := os.WriteFile(miferPath, []byte(msg.Content), 0644); err != nil {
+				return "", fmt.Errorf("写入 MIFER.md 失败: %w", err)
+			}
+			logger.Debug("用户画像已更新", logger.I("len", len(msg.Content)))
+			return msg.Content, nil
+		},
+	)); err != nil {
+		logger.Warn("创建习惯总结图 Lambda 节点失败", logger.C(err))
+		return nil
+	}
+	if err := g.AddEdge(compose.START, "habit_chat"); err != nil {
+		logger.Warn("创建习惯总结图边失败", logger.C(err))
+		return nil
+	}
+	if err := g.AddEdge("habit_chat", "habit_writer"); err != nil {
+		logger.Warn("创建习惯总结图边失败", logger.C(err))
+		return nil
+	}
+	if err := g.AddEdge("habit_writer", compose.END); err != nil {
+		logger.Warn("创建习惯总结图边失败", logger.C(err))
+		return nil
+	}
+
+	compiled, err := g.Compile(ctx)
+	if err != nil {
+		logger.Warn("编译习惯总结图失败", logger.C(err))
+		return nil
+	}
+	return compiled
 }
 
 // mcpToBaseTools 将 []tool.InvokableTool 转为 []tool.BaseTool

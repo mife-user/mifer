@@ -3,10 +3,14 @@ package executor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"mifer/internal/ai/agent"
 	aicallback "mifer/internal/ai/callback"
 	"mifer/internal/ai/confirm"
 	"mifer/internal/domain"
@@ -241,10 +245,41 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 				logger.Debug("文件快照保存完成", logger.I("round", round))
 			}
 		}
+
+		// 异步总结用户习惯（fire-and-forget，不阻塞对话响应）
+		if e.Humen.HabitGraph != nil {
+			go e.summarizeHabits(req.Content, lastMsg.String())
+		}
 		return nil
 	}
 
 	return errorer.New("AI调用达到最大重试次数")
+}
+
+// summarizeHabits 异步调用习惯总结图，分析本轮对话并更新用户级 MIFER.md。
+// 使用 context.Background() 独立于请求上下文，fire-and-forget 模式。
+func (e *Executor) summarizeHabits(userMsg, assistantReply string) {
+	ctx := context.Background()
+
+	// 读取现有 MIFER.md（文件不存在时为空，AI 会生成初始画像）
+	miferPath := filepath.Join(conf.GetConfig().Path.CfgPath, "MIFER.md")
+	existingContent := ""
+	if data, err := os.ReadFile(miferPath); err == nil {
+		existingContent = string(data)
+	}
+
+	// 构建图输入消息
+	msgs := []*schema.Message{
+		schema.SystemMessage(agent.HabitInstruction),
+		schema.UserMessage(fmt.Sprintf(
+			"## 本轮对话\n用户: %s\n\nAI: %s\n\n## 现有用户画像\n%s",
+			userMsg, assistantReply, existingContent,
+		)),
+	}
+
+	if _, err := e.Humen.HabitGraph.Invoke(ctx, msgs); err != nil {
+		logger.Warn("用户习惯总结失败", logger.C(err))
+	}
 }
 
 // checkCompressionThreshold 检查当前 PromptTokens 是否超过压缩阈值

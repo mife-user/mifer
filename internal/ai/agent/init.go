@@ -34,6 +34,7 @@ var confirmMiddleware compose.ToolMiddleware
 type Humen struct {
 	Agent        adk.Agent
 	QQAgent      adk.Agent // QQ 通道专用 Agent（无工具，仅文本对话），nil 表示未启用
+	PlanAgent    adk.Agent // 计划 Agent（只读工具），nil 表示创建失败
 	Prompt       *prompt.Prompty
 	Registry     *llm.Registry
 	MCPManager   *mcp.Manager
@@ -41,6 +42,7 @@ type Humen struct {
 	ConfirmStore *confirm.Store // 工具确认存储
 	AgentInfos   []AgentInfo    // Agent 元数据列表
 	HabitGraph   compose.Runnable[[]*schema.Message, string] // 用户习惯总结图
+	PlanGraph    compose.Runnable[[]*schema.Message, string] // 计划制定图
 }
 
 // qqInstruction QQ 通道 Agent 的系统指令。
@@ -139,7 +141,9 @@ func Init(c context.Context) (*Humen, error) {
 	var agentInfos []AgentInfo
 	var agent adk.Agent
 	var qqAgent adk.Agent
+	var planAgent adk.Agent
 	var habitGraph compose.Runnable[[]*schema.Message, string]
+	var planGraph compose.Runnable[[]*schema.Message, string]
 
 	// 仅当 default 后端可用时才创建 Agent 和编排器
 	// api_key 未配置时跳过，程序运行时通过 /api/admin/status 提示用户
@@ -248,7 +252,32 @@ func Init(c context.Context) (*Humen, error) {
 			agentInfos = append(agentInfos, AgentInfo{Name: "MiQQ", ModelBackend: "default", Description: "QQ 通道专用助手，纯文本对话"})
 		}
 
-		// 创建用户习惯总结图（使用 haiku 廉价模型，后台异步运行）
+			// 创建 PlanAgent（只读工具，sonnet 模型，复用中间件栈）
+			if pa, err := adk.NewChatModelAgent(c, &adk.ChatModelAgentConfig{
+				Name:        "PlanAgent",
+				Description: "计划制定助手，只能查看文件和搜索，不可写入或执行",
+				Instruction: PlanInstruction,
+				Model:       reg.Get("sonnet"),
+				ToolsConfig: adk.ToolsConfig{
+					ToolsNodeConfig: compose.ToolsNodeConfig{
+						Tools: tools.ReadOnlyTools(mmModel, ragSvc),
+						ToolCallMiddlewares: []compose.ToolMiddleware{
+							errorMiddleware,
+							confirmMiddleware,
+						},
+					},
+				},
+				MaxIterations: 20,
+			}); err == nil {
+				planAgent = pa
+				agentInfos = append(agentInfos, AgentInfo{Name: "PlanAgent", ModelBackend: "sonnet", Description: "计划制定助手，只读分析"})
+			}
+
+			// 创建 PlanGraph（计划制定图）
+			if planAgent != nil {
+				planGraph = newPlanGraph(c, planAgent, confirmStore)
+			}
+
 		habitGraph = newHabitGraph(c, reg.Get("haiku"))
 	} else {
 		logger.Warn("default后端不可用，跳过Agent初始化，AI对话功能需配置api_key后通过/config重载启用")
@@ -267,7 +296,7 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	prompty := prompt.New(mem)
-	return &Humen{Agent: agent, QQAgent: qqAgent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos, HabitGraph: habitGraph}, nil
+	return &Humen{Agent: agent, QQAgent: qqAgent, Prompt: prompty, Registry: reg, MCPManager: mcpManager, SkillManager: skillMgr, ConfirmStore: confirmStore, AgentInfos: agentInfos, HabitGraph: habitGraph, PlanAgent: planAgent, PlanGraph: planGraph}, nil
 }
 
 // newHabitGraph 创建用户习惯总结图：ChatModel(haiku) → Lambda(写入 MIFER.md)

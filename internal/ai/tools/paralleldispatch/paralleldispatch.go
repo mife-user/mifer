@@ -103,9 +103,14 @@ func New(agentHub *skill.AgentHub) (tool.InvokableTool, error) {
 						return
 					}
 					if event.Output != nil && event.Output.MessageOutput != nil {
-						msg, msgErr := event.Output.MessageOutput.GetMessage()
-						if msgErr == nil && msg != nil && msg.Content != "" {
-							contents = append(contents, msg.Content)
+						msgOutput := event.Output.MessageOutput
+						message := msgOutput.Message
+						if message == nil {
+							continue
+						}
+						// 只收集最终的 AI 回复（纯文本，无工具调用），过滤中间消息
+						if msgOutput.Role == schema.Assistant && len(message.ToolCalls) == 0 && message.Content != "" {
+							contents = append(contents, message.Content)
 						}
 					}
 				}

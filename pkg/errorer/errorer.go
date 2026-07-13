@@ -15,11 +15,11 @@ const (
 
 	// 后端配置
 	ErrNoBackendConfig      = "未配置任何模型后端，请在配置中添加 ai.backends"
-	ErrDefaultBackendConfig = "默认后端未配置，请在 ai.backends 中添加 default"
+	ErrNoBackendAvailable   = "未找到可用的 chat 后端，请检查 ai.backends 配置"
 	ErrApiKey               = "apikey未配置"
 
 	// Embedder
-	ErrEmbedderBackendConfig = "未找到 embedder 后端配置，请在 backends 中配置 embedder"
+	ErrNoEmbeddingBackend   = "未找到 type=embedding 的后端配置，请在 backends 中添加 embedding 类型后端"
 	ErrEmbedderModelEmpty    = "embedder 模型名称为空"
 	ErrCreateEmbedderFailed  = "创建Ollama嵌入器失败"
 
@@ -98,10 +98,8 @@ const (
 	ErrLoadMainConfigFailed          = "加载主配置失败"
 	ErrParseConfigFailed             = "解析配置失败"
 	ErrJWTKeyNotConfigured           = "jwt密钥未配置"
-	ErrAIDefaultBackendNotConfigured = "ai默认后端未配置，请配置 ai.backends.default"
-	ErrAIBaseURLNotConfigured        = "ai默认后端 base_url 未配置"
-	ErrAIModelNotConfigured          = "ai默认后端模型未配置"
-	ErrAIApiKeyNotConfigured         = "ai默认后端 api_key 未配置"
+	ErrAIBaseURLNotConfigured        = "ai 后端 base_url 未配置"
+	ErrAIModelNotConfigured          = "ai 后端模型未配置"
 	ErrCreateConfigDirFailed         = "创建配置目录失败"
 	ErrWriteDefaultConfigFailed      = "写入默认配置失败"
 

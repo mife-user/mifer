@@ -136,7 +136,7 @@ func TestErrorConstants(t *testing.T) {
 		ErrChatTimeout,
 		ErrCallBackNull,
 		ErrNoBackendConfig,
-		ErrDefaultBackendConfig,
+		ErrNoBackendAvailable,
 		ErrApiKey,
 		ErrTokenInvalid,
 		ErrIdEmpty,

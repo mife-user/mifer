@@ -15,6 +15,8 @@ import (
 	"mifer/pkg/logger"
 	"mifer/pkg/mcp"
 	"mifer/pkg/skill"
+
+	"github.com/cloudwego/eino/components/model"
 )
 
 // initInfra 初始化所有基础设施服务，结果直接写入 Humen 对应字段。
@@ -45,6 +47,20 @@ func (h *Humen) initInfra(c context.Context) {
 	h.errorMw = tools.NewErrorHandleMiddleware()
 }
 
+// getBackendModel 根据 Agent 名称从配置中获取对应的模型实例。
+// 回退链：config.Ai.AgentBackends[agentName] → 第一个注册后端 → nil
+func getBackendModel(reg *llm.Registry, agentName string) model.BaseChatModel {
+	cfg := conf.GetConfig()
+	backendName, ok := cfg.Ai.AgentBackends[agentName]
+	if !ok || backendName == "" {
+		backendName = reg.FirstKey()
+	}
+	if backendName == "" {
+		return nil
+	}
+	return reg.Get(backendName)
+}
+
 // Init 初始化 Humen：LLM 注册中心 → 基础设施 → Agent/Graph → 记忆与提示词。
 func Init(c context.Context) (*Humen, error) {
 	reg, err := llm.InitRegistry(c)
@@ -52,40 +68,44 @@ func Init(c context.Context) (*Humen, error) {
 		logger.Error("初始化LLM注册中心失败", logger.C(err))
 		return nil, err
 	}
-	mmModel := reg.Get("multi_modal")
 
 	h := &Humen{Registry: reg}
 	h.initInfra(c)
 
 	if reg.IsReady() {
-		subagents, customInfos, err := h.createCustomAgents(c, reg, mmModel)
+		subagents, customInfos, err := h.createCustomAgents(c, reg)
 		if err != nil {
 			return nil, err
 		}
 		h.AgentInfos = append(h.AgentInfos, customInfos...)
 
-		miferAgent, miferInfo, err := h.createMiferAgent(c, reg, mmModel, subagents)
+		miferAgent, miferInfo, err := h.createMiferAgent(c, reg, subagents)
 		if err != nil {
 			return nil, err
 		}
-		h.Agents.Mifer = miferAgent
-		h.AgentInfos = append(h.AgentInfos, miferInfo)
+		if miferInfo.Name != "" {
+			h.Agents.Mifer = miferAgent
+			h.AgentInfos = append(h.AgentInfos, miferInfo)
+		}
 
 		if qa, qi := h.createQQAgent(c, reg); qi.Name != "" {
 			h.Agents.QQ = qa
 			h.AgentInfos = append(h.AgentInfos, qi)
 		}
 
-		if pa, pi := h.createPlanAgent(c, reg, mmModel); pi.Name != "" {
+		if pa, pi := h.createPlanAgent(c, reg); pi.Name != "" {
 			h.Agents.Plan = pa
 			h.AgentInfos = append(h.AgentInfos, pi)
 			h.Graphs.Plan = newPlanGraph(c, pa, h.ConfirmStore)
 		}
 
-		h.Graphs.Habit = createHabitGraph(c, reg.Get("haiku"))
+		habitModel := getBackendModel(reg, "habit_summarizer")
+		if habitModel != nil {
+			h.Graphs.Habit = createHabitGraph(c, habitModel)
+		}
 	} else {
-		logger.Warn("default后端不可用，跳过Agent初始化，AI对话功能需配置api_key后通过/config重载启用")
-		h.AgentInfos = append(h.AgentInfos, AgentInfo{Name: "Mifer", ModelBackend: "default", Description: "Mifer 智能助手（未配置api_key，暂不可用）"})
+		logger.Warn("没有可用的模型后端，跳过Agent初始化，请配置 ai.backends 后通过 /config 重载启用")
+		h.AgentInfos = append(h.AgentInfos, AgentInfo{Name: "Mifer", ModelBackend: "", Description: "Mifer 智能助手（未配置可用后端，暂不可用）"})
 	}
 
 	id, ok := c.Value("id").(string)

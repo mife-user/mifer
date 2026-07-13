@@ -11,7 +11,7 @@ import (
 // AgentInfo 保存 Init() 期间记录的 agent 元数据
 type AgentInfo struct {
 	Name         string   // agent 名称，如 "MiEditer"、"Mifer"
-	ModelBackend string   // 配置后端 key，如 "sonnet"、"opus"、"default"
+	ModelBackend string   // 配置后端 key，如 "main"、"fast-model"
 	Description  string   // agent 描述
 	Tools        []string // 已解析的工具名列表
 }

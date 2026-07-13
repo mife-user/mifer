@@ -9,7 +9,6 @@ import (
 	"mifer/internal/ai/tools/filereader"
 	"mifer/internal/ai/tools/fileviewer"
 	"mifer/internal/ai/tools/filewriter"
-	"mifer/internal/ai/tools/imagegenerator"
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
 	"mifer/internal/ai/tools/paralleldispatch"
@@ -22,12 +21,11 @@ import (
 	"mifer/pkg/skill"
 	"mifer/qq"
 
-	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 )
 
-// FileTools 返回文件操作相关工具（读取、写入、创建、查看、图片生成）
-func FileTools(mmModel model.BaseChatModel) []tool.BaseTool {
+// FileTools 返回文件操作相关工具（读取、写入、创建、查看）
+func FileTools() []tool.BaseTool {
 	var tools []tool.BaseTool
 
 	fr, err := filereader.New()
@@ -51,18 +49,11 @@ func FileTools(mmModel model.BaseChatModel) []tool.BaseTool {
 		tools = append(tools, fc)
 	}
 
-	fv, err := fileviewer.New(mmModel)
+	fv, err := fileviewer.New()
 	if err != nil {
 		logger.Error("创建 file_viewer 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fv)
-	}
-
-	ig, err := imagegenerator.New(mmModel)
-	if err != nil {
-		logger.Error("创建 image_generator 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, ig)
 	}
 
 	return tools
@@ -83,7 +74,7 @@ func CommandTools() []tool.BaseTool {
 }
 
 // AuditTools 返回安全审计相关工具（文件读取、文件查看）
-func AuditTools(mmModel model.BaseChatModel) []tool.BaseTool {
+func AuditTools() []tool.BaseTool {
 	var tools []tool.BaseTool
 
 	fr, err := filereader.New()
@@ -93,7 +84,7 @@ func AuditTools(mmModel model.BaseChatModel) []tool.BaseTool {
 		tools = append(tools, fr)
 	}
 
-	fv, err := fileviewer.New(mmModel)
+	fv, err := fileviewer.New()
 	if err != nil {
 		logger.Error("创建 file_viewer 工具失败", logger.C(err))
 	} else {
@@ -200,7 +191,7 @@ func ParallelDispatch(agentHub *skill.AgentHub) []tool.BaseTool {
 }
 
 // ReadOnlyTools 返回只读工具（用于计划 Agent），不可写入、不可执行命令。
-func ReadOnlyTools(mmModel model.BaseChatModel, ragSvc rag.RAGService) []tool.BaseTool {
+func ReadOnlyTools(ragSvc rag.RAGService) []tool.BaseTool {
 	var ts []tool.BaseTool
 
 	fr, err := filereader.New()
@@ -210,7 +201,7 @@ func ReadOnlyTools(mmModel model.BaseChatModel, ragSvc rag.RAGService) []tool.Ba
 		ts = append(ts, fr)
 	}
 
-	fv, err := fileviewer.New(mmModel)
+	fv, err := fileviewer.New()
 	if err != nil {
 		logger.Error("创建 file_viewer 工具失败", logger.C(err))
 	} else {
@@ -233,7 +224,7 @@ func ReadOnlyTools(mmModel model.BaseChatModel, ragSvc rag.RAGService) []tool.Ba
 	return ts
 }
 
-func NewWithName(name []string, mmModel model.BaseChatModel, ragSvc rag.RAGService) ([]tool.BaseTool, error) {
+func NewWithName(name []string, ragSvc rag.RAGService) ([]tool.BaseTool, error) {
 	var tools []tool.BaseTool
 	for _, n := range name {
 		switch n {
@@ -259,19 +250,12 @@ func NewWithName(name []string, mmModel model.BaseChatModel, ragSvc rag.RAGServi
 			}
 			tools = append(tools, fc)
 		case "file_viewer":
-			fv, err := fileviewer.New(mmModel)
+			fv, err := fileviewer.New()
 			if err != nil {
 				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fv)
-		case "image_generator":
-			ig, err := imagegenerator.New(mmModel)
-			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
-				return nil, err
-			}
-			tools = append(tools, ig)
 		case "command_executor":
 			ce, err := commandexecutor.New()
 			if err != nil {

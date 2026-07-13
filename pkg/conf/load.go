@@ -4,6 +4,7 @@ import (
 	"mifer/pkg/errorer"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -110,20 +111,27 @@ func applyEnvOverrides(v *viper.Viper) {
 			v.Set(key, val)
 		}
 	}
-	// 后端模型配置 — 支持 MIFER_AI_<BACKEND>_<FIELD> 格式
-	for _, backend := range []string{"DEFAULT", "MULTI", "HAIKU", "SONNET", "OPUS"} {
-		envPrefix := "MIFER_AI_" + backend + "_"
-		if val := os.Getenv(envPrefix + "APIKEY"); val != "" {
-			v.Set("ai.backends."+backend+".api_key", val)
+	// 后端 API Key 覆盖 — 支持 MIFER_AI_BACKENDS_<NAME>_APIKEY 格式
+	// 敏感信息通过环境变量传入，避免写入配置文件
+	prefix := "MIFER_AI_BACKENDS_"
+	suffix := "_APIKEY"
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, prefix) || !strings.Contains(env, suffix+"=") {
+			continue
 		}
-		if val := os.Getenv(envPrefix + "BASE_URL"); val != "" {
-			v.Set("ai.backends."+backend+".base_url", val)
+		// 格式：MIFER_AI_BACKENDS_<NAME>_APIKEY=<VALUE>
+		rest := env[len(prefix):]
+		eqIdx := strings.IndexByte(rest, '=')
+		if eqIdx < 0 {
+			continue
 		}
-		if val := os.Getenv(envPrefix + "PROVIDER"); val != "" {
-			v.Set("ai.backends."+backend+".provider", val)
+		keyPart := rest[:eqIdx] // <NAME>_APIKEY
+		// 去掉末尾的 _APIKEY
+		if !strings.HasSuffix(keyPart, "_APIKEY") {
+			continue
 		}
-		if val := os.Getenv(envPrefix + "MODEL"); val != "" {
-			v.Set("ai.backends."+backend+".model", val)
-		}
+		backendName := keyPart[:len(keyPart)-7] // 去掉 "_APIKEY"
+		val := rest[eqIdx+1:]
+		v.Set("ai.backends."+backendName+".api_key", val)
 	}
 }

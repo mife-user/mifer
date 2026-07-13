@@ -8,15 +8,23 @@ func StatusConfig() error {
 	if globalConfig.JWT.Secret == "" {
 		return errorer.New(errorer.ErrJWTKeyNotConfigured)
 	}
-	//ai配置检查
-	defaultBackend, ok := globalConfig.Ai.Backends["default"]
-	if !ok || defaultBackend.Provider == "" {
-		return errorer.New(errorer.ErrAIDefaultBackendNotConfigured)
+	//ai配置检查 — 找到第一个 chat 类型后端进行校验
+	firstChatBackend := ""
+	var firstChatCfg BackendConfig
+	for name, cfg := range globalConfig.Ai.Backends {
+		if cfg.Type != "embedding" {
+			firstChatBackend = name
+			firstChatCfg = cfg
+			break
+		}
 	}
-	if defaultBackend.BaseURL == "" && defaultBackend.Provider == "openai" {
+	if firstChatBackend == "" || firstChatCfg.Provider == "" {
+		return errorer.New(errorer.ErrNoBackendAvailable)
+	}
+	if firstChatCfg.BaseURL == "" && firstChatCfg.Provider == "openai" {
 		return errorer.New(errorer.ErrAIBaseURLNotConfigured)
 	}
-	if defaultBackend.Model == "" {
+	if firstChatCfg.Model == "" {
 		return errorer.New(errorer.ErrAIModelNotConfigured)
 	}
 	// api_key 为空时不再阻止启动，运行时通过 /api/admin/status 提示用户配置

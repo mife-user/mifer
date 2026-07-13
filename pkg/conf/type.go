@@ -93,18 +93,20 @@ type LogConfig struct {
 	Level      string `mapstructure:"level"`       // 日志级别（debug/info/warn/error），为空时由 env 决定
 }
 
-// 后端模型配置结构体
+// BackendConfig 后端模型配置结构体
 type BackendConfig struct {
+	Type     string `mapstructure:"type"`     // 后端类型：chat（默认） / embedding
 	Provider string `mapstructure:"provider"` // 模型提供商：openai / claude / gemini / ollama
 	BaseURL  string `mapstructure:"base_url"`
 	Model    string `mapstructure:"model"`
 	APIKey   string `mapstructure:"api_key"`
 }
 
-// ai配置结构体
+// AiConfig AI 配置结构体
 type AiConfig struct {
-	Backends map[string]BackendConfig `mapstructure:"backends"`
-	Context  ContextConfig            `mapstructure:"context"` // 上下文压缩配置
+	Backends      map[string]BackendConfig `mapstructure:"backends"`       // 自由命名的后端列表
+	AgentBackends map[string]string        `mapstructure:"agent_backends"` // 内置 Agent → 后端映射（如 mifer/main）
+	Context       ContextConfig            `mapstructure:"context"`        // 上下文压缩配置
 }
 
 // agent自定义
@@ -175,8 +177,8 @@ type ConfirmConfig struct {
 type ContextConfig struct {
 	Length       int     `mapstructure:"length"`        // 上下文长度阈值（token数），默认 1000000
 	Threshold    float64 `mapstructure:"threshold"`     // 触发压缩的比例，默认 0.8
-	Model        string  `mapstructure:"model"`         // 压缩用模型后端名，默认 "haiku"
-	RecentRounds int     `mapstructure:"recent_rounds"` // 压缩后保留的最近完整对话轮数，默认 3
+	Backend     string  `mapstructure:"backend"`       // 压缩用模型后端名，默认取第一个注册后端
+	RecentRounds int    `mapstructure:"recent_rounds"` // 压缩后保留的最近完整对话轮数，默认 3
 }
 
 // RAG配置结构体

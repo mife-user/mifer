@@ -67,19 +67,15 @@ const defaultConfig = `
 # ├──────────────────────────────────────────────────────────────────────┤
 # │                                                                      │
 # │  快速入门：                                                          │
-# │    1. 在 ai.backends.default.api_key 填入你的 API Key               │
-# │    2. 根据需要修改 default.provider 和 default.base_url              │
+# │    1. 在 ai.backends.main.api_key 填入你的 API Key                  │
+# │    2. 根据需要修改 main.provider 和 main.base_url                    │
 # │    3. 保存后运行 /reload 或重启程序即可生效                          │
 # │                                                                      │
 # │  环境变量覆盖（优先级高于本文件）：                                  │
-# │    MIFER_AI_DEFAULT_APIKEY    — 覆盖 default 后端 api_key           │
-# │    MIFER_AI_DEFAULT_BASE_URL  — 覆盖 default 后端 base_url          │
-# │    MIFER_AI_DEFAULT_PROVIDER  — 覆盖 default 后端 provider          │
-# │    MIFER_AI_DEFAULT_MODEL     — 覆盖 default 后端 model             │
-# │    （同样支持 HAIKU、SONNET、OPUS、MULTI 后缀）                      │
+# │    MIFER_AI_BACKENDS_<NAME>_APIKEY — 覆盖任意后端的 api_key         │
 # │    MIFER_ENV=dev 强制使用开发环境配置                                │
-# │    MIFER_JWT_SECRET           — 覆盖 JWT 签名密钥                   │
-# │    MIFER_SEARCH_API_KEY       — 覆盖搜索引擎 API Key                │
+# │    MIFER_JWT_SECRET  — 覆盖 JWT 签名密钥                            │
+# │    MIFER_SEARCH_API_KEY — 覆盖搜索引擎 API Key                      │
 # └──────────────────────────────────────────────────────────────────────┘
 
 # ── 运行环境 ──
@@ -171,78 +167,77 @@ qq:
     private_enabled: true             # 是否响应私聊
 
 # ── AI 模型后端 ──
-# 每个后端定义一个 AI 模型连接，provider 支持四种类型：
+# 每个后端定义一个 AI 模型连接，backends 下的名称完全由你定义。
+# 使用 agent_backends 将内置 Agent 分配到指定后端。
+#
+# provider 支持四种类型：
 #   openai  — OpenAI 兼容接口（支持 DeepSeek、通义千问、硅基流动等所有 OpenAI-API 兼容服务）
 #   claude  — Anthropic Claude 原生接口
 #   gemini  — Google Gemini 原生接口
 #   ollama  — 本地 Ollama 服务（免费，无需 API Key，适合隐私敏感场景）
 #
-# 各后端用途说明：
-#   default     — 主对话模型，所有请求的默认选择，必须配置
-#   multi_modal — 图片识别模型，用于 file_viewer / image_generator 工具
-#   haiku       — 轻量模型，用于上下文压缩等低算力任务
-#   sonnet      — 均衡模型，预留用于自定义 Agent
-#   opus        — 最强推理模型，预留用于需要深度分析的自定义 Agent
-#   embedder    — 文本嵌入模型，用于 RAG 知识库文档向量化（通常用本地 Ollama）
+# type 字段：chat（默认） / embedding
+#   chat     — 用于对话的 LLM 模型（Mifer、PlanAgent 等 Agent 使用）
+#   embedding — 文本嵌入模型，用于 RAG 知识库文档向量化（通常用本地 Ollama）
 #
 # api_key 获取方式（常见平台）：
 #   DeepSeek   → https://platform.deepseek.com/api_keys
-#   ￦阿里百炼  → https://bailian.console.aliyun.com/  （通义千问系列）
+#   阿里百炼   → https://bailian.console.aliyun.com/  （通义千问系列）
 #   Claude     → https://console.anthropic.com/  （Anthropic API）
 #   OpenAI     → https://platform.openai.com/api-keys
 #   Gemini     → https://aistudio.google.com/apikey
 #   Ollama     → 本地运行，api_key 可任意填写（如 "ollama"）
 ai:
   backends:
-    default:                         # 【必填】主调度模型，Mifer 编排器使用
-      provider: "openai"             # openai / claude / gemini / ollama
-      base_url: "https://api.deepseek.com"  # API 地址，支持任意 OpenAI 兼容端点
-      model: "deepseek-v4-flash"     # 模型名称，需与你申请的 API 平台一致
-      api_key: ""                    # 【必填】API Key，在此填入或设置环境变量 MIFER_AI_DEFAULT_APIKEY
-    multi_modal:                     # 多模态模型，用于图片识别和图片生成
-      provider: "openai"
-      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-      model: "qwen-omni-turbo"       # 通义千问多模态模型，支持图片理解
-      api_key: ""                    # 阿里云百炼 API Key，留空则图片功能不可用
-    haiku:                           # 轻量快速模型，用于上下文压缩等低算力场景
+    main:                                # 主对话模型，Mifer 编排器使用
+      type: "chat"                       # chat（默认）/ embedding
+      provider: "openai"                 # openai / claude / gemini / ollama
+      base_url: "https://api.deepseek.com"   # API 地址，支持任意 OpenAI 兼容端点
+      model: "deepseek-v4-flash"         # 模型名称，需与你申请的 API 平台一致
+      api_key: ""                        # 【必填】API Key，在此填入或设置环境变量
+    fast-model:                          # 轻量快速模型，用于上下文压缩等低算力场景
+      type: "chat"
       provider: "openai"
       base_url: "https://api.deepseek.com"
       model: "deepseek-v4-flash"
-      api_key: ""                    # 为空时自动回退到 default 后端
-    sonnet:                          # 均衡模型，用于文件编辑、摘要、命令执行等子 Agent
-      provider: "claude"
-      model: "claude-sonnet-4-6"
-      api_key: ""                    # 为空时自动回退到 default 后端
-    opus:                            # 最强推理模型，用于计划编写和安全审计
-      provider: "claude"
-      model: "claude-opus-4-7"
-      api_key: ""                    # 为空时自动回退到 default 后端
-    embedder:                        # 文本嵌入模型，将文档转为向量存入 Qdrant
-      provider: "ollama"             # 推荐使用本地 Ollama（免费，数据不出本机）
-      base_url: "http://localhost:11434"  # Ollama 默认地址
-      model: "nomic-embed-text"      # 轻量嵌入模型（需先运行 ollama pull nomic-embed-text）
-      api_key: "ollama"              # Ollama 无需真实 API Key，任意字符串即可
+      api_key: ""
+    embed:                               # 文本嵌入模型，将文档转为向量存入 Qdrant
+      type: "embedding"                  # type=embedding 表示嵌入模型
+      provider: "ollama"                 # 推荐使用本地 Ollama（免费，数据不出本机）
+      base_url: "http://localhost:11434" # Ollama 默认地址
+      model: "nomic-embed-text"          # 轻量嵌入模型（需先运行 ollama pull nomic-embed-text）
+      api_key: "ollama"                  # Ollama 无需真实 API Key，任意字符串即可
+
+  # ── 内置 Agent → 后端映射 ──
+  # 将各内置 Agent 分配到 ai.backends 中已定义的后端
+  # 如果后端名不存在，自动回退到第一个注册的后端
+  agent_backends:
+    mifer: main                          # Mifer 编排器
+    plan_agent: main                     # 计划制定 Agent
+    qq_agent: main                       # QQ 通道 Agent
+    context_compressor: fast-model       # 上下文压缩
+    habit_summarizer: fast-model         # 用户习惯总结
 
   # ── 上下文压缩 ──
-  # 当对话历史超过阈值时，自动使用 haiku 模型将早期对话压缩为摘要
+  # 当对话历史超过阈值时，自动使用指定后端将早期对话压缩为摘要
   # 压缩后仍保留最近 recent_rounds 轮完整对话
   context:
-    length: 1000000                  # 上下文长度阈值（Prompt Tokens 数）
-    threshold: 0.8                   # 触发压缩的比例（当前 Tokens > length * threshold 时压缩）
-    model: "haiku"                   # 执行压缩的模型后端（建议用 haiku 减少耗时）
-    recent_rounds: 3                 # 压缩后保留的最近对话轮数
+    length: 1000000                      # 上下文长度阈值（Prompt Tokens 数）
+    threshold: 0.8                       # 触发压缩的比例（当前 Tokens > length * threshold 时压缩）
+    backend: "fast-model"                # 执行压缩的模型后端（建议用轻量模型减少耗时）
+    recent_rounds: 3                     # 压缩后保留的最近对话轮数
 
 # ── 自定义 Agent ──
 # 可在下方定义额外的专用 Agent（作为 Mifer 的子 Agent 运行）
 # model 字段必须是 ai.backends 中已定义的后端名称
-# tools 支持：file_reader, file_writer, file_creator, file_viewer, image_generator,
+# tools 支持：file_reader, file_writer, file_creator, file_viewer,
 #            knowledge_search, knowledge_store, command_executor, web_search, web_fetch
 agents:
-  - name: "MiTest"                   # Agent 名称，唯一标识
-    description: "测试Agent"         # Agent 功能描述
-    instruction: "你是MiTest，测试Agent。"  # 系统提示词，定义 Agent 的行为和角色
-    model: "sonnet"                  # 使用的模型后端名称
-    tools:                           # 分配给该 Agent 的工具列表
+  - name: "MiTest"                       # Agent 名称，唯一标识
+    description: "测试Agent"             # Agent 功能描述
+    instruction: "你是MiTest，测试Agent。" # 系统提示词，定义 Agent 的行为和角色
+    model: "main"                        # 使用的模型后端名称
+    tools:                               # 分配给该 Agent 的工具列表
       - file_reader
 
 # ── HTTP 服务 ──

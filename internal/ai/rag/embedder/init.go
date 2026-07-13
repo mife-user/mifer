@@ -10,12 +10,22 @@ import (
 )
 
 // NewEmbedder 使用 Ollama 创建嵌入器
-// 配置来源：config.Ai.Backends["embedder"]，默认 base_url=http://localhost:11434/v1, model=nomic-embed-text
+// 自动从 ai.backends 中找到第一个 type=embedding 的后端配置
 func NewEmbedder(ctx context.Context) (*ollama.Embedder, error) {
 	config := conf.GetConfig()
-	backend, ok := config.Ai.Backends["embedder"]
-	if !ok {
-		return nil, errorer.New(errorer.ErrEmbedderBackendConfig)
+
+	// 查找第一个 type=embedding 的后端
+	var backend conf.BackendConfig
+	found := false
+	for _, cfg := range config.Ai.Backends {
+		if cfg.Type == "embedding" {
+			backend = cfg
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, errorer.New(errorer.ErrNoEmbeddingBackend)
 	}
 	if backend.Model == "" {
 		return nil, errorer.New(errorer.ErrEmbedderModelEmpty)

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 	"github.com/cloudwego/eino/schema"
@@ -17,142 +16,79 @@ import (
 
 // FileViewerInput 文件查看工具输入
 type FileViewerInput struct {
-	FilePaths []string `json:"file_paths" jsonschema:"required,description=要读取的文件路径列表"`
+	FilePaths []string `json:"file_paths" jsonschema:"required,description=图片文件路径列表，支持批量查看多张图片"`
 }
 
-// FileResult 单个文件的读取结果
-type FileResult struct {
-	FilePath string `json:"file_path"`
-	Content  string `json:"content"`
-	MIMEType string `json:"mime_type"`
-	IsImage  bool   `json:"is_image"`
-	Error    string `json:"error,omitempty"`
-}
-
-// FileViewerOutput 文件查看工具输出
-type FileViewerOutput struct {
-	Results []FileResult `json:"results"`
-	Error   string       `json:"error,omitempty"`
-}
-
-// New 创建 file_viewer 工具，mmModel 用于图片描述（可为 nil，此时图片读取返回错误）
-func New(mmModel model.BaseChatModel) (tool.InvokableTool, error) {
-	return utils.InferTool("file_viewer",
-		"读取用户指定的本地文件。对图片文件会调用多模态模型生成图片描述，对文档文件直接返回文本内容。支持批量读取。",
-		func(ctx context.Context, input FileViewerInput) (FileViewerOutput, error) {
-			return viewFiles(ctx, input, mmModel)
+// New 创建 file_viewer 工具（EnhancedInvokableTool）
+// 读取图片文件并返回结构化图片数据供 LLM 原生识别。文本文件请使用 file_reader。
+func New() (tool.EnhancedInvokableTool, error) {
+	return utils.InferEnhancedTool("file_viewer",
+		"读取图片文件并返回图片数据供AI直接识别。支持批量查看多张图片。注意：非图片文件（文本、代码等）请使用 file_reader 读取。",
+		func(ctx context.Context, input FileViewerInput) (*schema.ToolResult, error) {
+			return viewFiles(ctx, input)
 		})
 }
 
-func viewFiles(ctx context.Context, input FileViewerInput, mmModel model.BaseChatModel) (FileViewerOutput, error) {
+func viewFiles(ctx context.Context, input FileViewerInput) (*schema.ToolResult, error) {
 	if len(input.FilePaths) == 0 {
-		return FileViewerOutput{Error: "文件路径列表为空"}, nil
+		return &schema.ToolResult{Parts: []schema.ToolOutputPart{
+			{Type: schema.ToolPartTypeText, Text: "文件路径列表为空"},
+		}}, nil
 	}
 
-	results := make([]FileResult, 0, len(input.FilePaths))
+	var parts []schema.ToolOutputPart
 
 	for _, fp := range input.FilePaths {
-		results = append(results, readOneFile(ctx, fp, mmModel))
+		part := readOneFile(ctx, fp)
+		parts = append(parts, part)
 	}
 
-	return FileViewerOutput{Results: results}, nil
+	return &schema.ToolResult{Parts: parts}, nil
 }
 
-func readOneFile(ctx context.Context, fp string, mmModel model.BaseChatModel) FileResult {
+func readOneFile(ctx context.Context, fp string) schema.ToolOutputPart {
 	absPath, err := filepath.Abs(filepath.Clean(fp))
 	if err != nil {
-		return FileResult{FilePath: fp, Error: "路径解析失败: " + err.Error()}
+		return schema.ToolOutputPart{
+			Type: schema.ToolPartTypeText,
+			Text: fmt.Sprintf("文件 %s: 路径解析失败: %s", fp, err),
+		}
 	}
 
 	data, err := os.ReadFile(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return FileResult{FilePath: absPath, Error: "文件不存在"}
+			return schema.ToolOutputPart{
+				Type: schema.ToolPartTypeText,
+				Text: fmt.Sprintf("文件 %s: 文件不存在", absPath),
+			}
 		}
-		return FileResult{FilePath: absPath, Error: "读取文件失败: " + err.Error()}
+		return schema.ToolOutputPart{
+			Type: schema.ToolPartTypeText,
+			Text: fmt.Sprintf("文件 %s: 读取失败: %s", absPath, err),
+		}
 	}
 
 	mtype := mimetype_detect.Detect(data)
 	mimeStr := mtype.String()
 
-	// 图片文件：调多模态模型生成描述
+	// 图片文件：返回结构化图片数据
 	if strings.HasPrefix(mimeStr, "image/") {
-		desc, err := describeImage(ctx, data, mimeStr, mmModel)
-		if err != nil {
-			return FileResult{FilePath: absPath, MIMEType: mimeStr, IsImage: true, Error: "图片描述失败: " + err.Error()}
-		}
-		return FileResult{
-			FilePath: absPath,
-			Content:  desc,
-			MIMEType: mimeStr,
-			IsImage:  true,
-		}
-	}
-
-	// 文本类文件：直接返回内容
-	if isTextMIME(mimeStr) {
-		content := string(data)
-		if len(content) > 100000 {
-			content = content[:100000] + fmt.Sprintf("\n\n[... 内容已截断，原始长度 %d 字符]", len(content))
-		}
-		return FileResult{
-			FilePath: absPath,
-			Content:  content,
-			MIMEType: mimeStr,
-		}
-	}
-
-	// 其他二进制文件
-	return FileResult{
-		FilePath: absPath,
-		MIMEType: mimeStr,
-		Error:    fmt.Sprintf("无法读取二进制文件（MIME: %s），不支持此格式", mimeStr),
-	}
-}
-
-func describeImage(ctx context.Context, data []byte, mimeType string, mmModel model.BaseChatModel) (string, error) {
-	if mmModel == nil {
-		return "", fmt.Errorf("多模态模型未配置，请在配置文件中设置 multi_modal 后端")
-	}
-
-	b64 := base64.StdEncoding.EncodeToString(data)
-	msg := &schema.Message{
-		Role: schema.User,
-		UserInputMultiContent: []schema.MessageInputPart{
-			{Type: schema.ChatMessagePartTypeText, Text: "请详细描述这张图片里的内容。"},
-			{Type: schema.ChatMessagePartTypeImageURL, Image: &schema.MessageInputImage{
+		b64 := base64.StdEncoding.EncodeToString(data)
+		return schema.ToolOutputPart{
+			Type: schema.ToolPartTypeImage,
+			Image: &schema.ToolOutputImage{
 				MessagePartCommon: schema.MessagePartCommon{
 					Base64Data: &b64,
-					MIMEType:   mimeType,
+					MIMEType:   mimeStr,
 				},
-			}},
-		},
-	}
-
-	resp, err := mmModel.Generate(ctx, []*schema.Message{msg})
-	if err != nil {
-		return "", err
-	}
-
-	return resp.Content, nil
-}
-
-// isTextMIME 判断 MIME 类型是否为可读文本
-func isTextMIME(m string) bool {
-	if strings.HasPrefix(m, "text/") {
-		return true
-	}
-	textTypes := []string{
-		"application/json",
-		"application/xml",
-		"application/javascript",
-		"application/x-yaml",
-		"application/x-httpd-php",
-	}
-	for _, t := range textTypes {
-		if m == t {
-			return true
+			},
 		}
 	}
-	return false
+
+	// 非图片文件：提示使用 file_reader
+	return schema.ToolOutputPart{
+		Type: schema.ToolPartTypeText,
+		Text: fmt.Sprintf("文件 %s（%s）不是图片，无法查看。文本文件请使用 file_reader 读取", absPath, mimeStr),
+	}
 }

@@ -40,9 +40,9 @@ func (c *Compressor) Compress(
 	}
 
 	// 3. 获取压缩模型
-	chatModel := c.registry.Get(ctxCfg.Model)
+	chatModel := c.registry.Get(ctxCfg.Backend)
 	if chatModel == nil {
-		logger.Warn("压缩模型后端不可用，降级为移除最早轮次", logger.S("model", ctxCfg.Model))
+		logger.Warn("压缩模型后端不可用，降级为移除最早轮次", logger.S("model", ctxCfg.Backend))
 		return c.fallbackRemoveEarliestRound(mem)
 	}
 

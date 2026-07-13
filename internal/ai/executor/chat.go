@@ -106,11 +106,18 @@ func (e *Executor) prepareChat(
 	return ctx, sessionID, toolCB, nil
 }
 
-// finalizeChat 对话收尾：追加 assistant 回复、持久化记忆、保存快照、触发习惯总结。
+// finalizeChat 对话收尾：追加 assistant 回复、持久化记忆、自动重命名、保存快照、触发习惯总结。
 func (e *Executor) finalizeChat(lastMsg, userMsg string) {
 	e.Humen.Prompt.Memory.AppendAssistant(lastMsg)
 	if err := e.Humen.Prompt.Memory.Save(); err != nil {
 		logger.Error("保存记忆失败", logger.C(err))
+	}
+
+	// 首次对话结束后自动用首条用户消息前缀重命名会话
+	if e.Humen.Prompt.Memory.FileCreated() {
+		if err := e.Humen.Prompt.Memory.AutoRenameFromFirstMessage(); err != nil {
+			logger.Warn("自动重命名失败", logger.C(err))
+		}
 	}
 
 	// 轮次结束后保存文件快照（需在配置中启用 snapshot_enabled）
@@ -125,7 +132,7 @@ func (e *Executor) finalizeChat(lastMsg, userMsg string) {
 	}
 
 	// 异步总结用户习惯（fire-and-forget，不阻塞对话响应）
-	if e.Humen.HabitGraph != nil {
+	if e.Humen.Graphs.Habit != nil {
 		go e.summarizeHabits(userMsg, lastMsg)
 	}
 }
@@ -148,7 +155,7 @@ func (e *Executor) summarizeHabits(userMsg, assistantReply string) {
 		)),
 	}
 
-	if _, err := e.Humen.HabitGraph.Invoke(ctx, msgs); err != nil {
+	if _, err := e.Humen.Graphs.Habit.Invoke(ctx, msgs); err != nil {
 		logger.Warn("用户习惯总结失败", logger.C(err))
 	}
 }

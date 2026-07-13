@@ -37,7 +37,7 @@ func (e *Executor) runPlanFlow(
 	_ = callback("system", "正在分析项目并制定计划...")
 
 	// 3. 执行 PlanGraph（阻塞等用户确认）
-	planContent, err := e.Humen.PlanGraph.Invoke(planCtx, planMsgs)
+	planContent, err := e.Humen.Graphs.Plan.Invoke(planCtx, planMsgs)
 	if err != nil {
 		if errors.Is(err, agent.ErrPlanRejected) {
 			_ = callback("system", "计划已取消")

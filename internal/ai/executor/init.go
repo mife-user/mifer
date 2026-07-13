@@ -40,25 +40,25 @@ func Init(c context.Context) (*Executor, error) {
 	}
 
 	// 仅当 Agent 已成功创建时才初始化 Runner
-	// api_key 未配置时 ag.Agent 为 nil，Runner 保持 nil，Chat 中将返回友好提示
+	// api_key 未配置时 ag.Agents.Mifer 为 nil，Runner 保持 nil，Chat 中将返回友好提示
 	var runner *adk.Runner
 	var qqRunner *adk.Runner
-	if ag.Agent != nil {
+	if ag.Agents.Mifer != nil {
 		runner = adk.NewRunner(c, adk.RunnerConfig{
-			Agent:           ag.Agent,
+			Agent:           ag.Agents.Mifer,
 			EnableStreaming: true,
 		})
 	}
-	if ag.QQAgent != nil {
+	if ag.Agents.QQ != nil {
 		qqRunner = adk.NewRunner(c, adk.RunnerConfig{
-			Agent:           ag.QQAgent,
+			Agent:           ag.Agents.QQ,
 			EnableStreaming: true,
 		})
 	}
 	var planRunner *adk.Runner
-	if ag.PlanAgent != nil {
+	if ag.Agents.Plan != nil {
 		planRunner = adk.NewRunner(c, adk.RunnerConfig{
-			Agent:           ag.PlanAgent,
+			Agent:           ag.Agents.Plan,
 			EnableStreaming: true,
 		})
 	}

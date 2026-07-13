@@ -14,18 +14,15 @@
 
 基于 CloudWeGo Eino ADK 构建了 5 子 Agent + 1 Orchestrator 的协作体系，按任务类型和复杂度自动路由到不同模型：
 
-| Agent         | 职责               | 模型   |
+| Agent         | 职责               | 后端（agent_backends） |
 | ------------- | ------------------ | ------ |
-| **MiEditer**  | 文件读写与创建     | sonnet |
-| **MiSummarizer** | 文档摘要 + 知识库检索 | sonnet |
-| **MiPlanner**  | 项目计划与方案设计 | opus   |
-| **MiCommander** | 终端命令执行（白名单约束） | sonnet |
-| **MiAuditor**  | 代码与配置安全审计 | opus   |
-| **MiQQ**       | QQ 通道专用助手（无工具，纯文本对话） | default |
-| **PlanAgent**  | 计划制定助手（只读工具：file_reader/file_viewer/web_search/web_fetch/knowledge_search） | sonnet |
-| **Mifer**      | 编排器，协调子 Agent，由模型自主控制迭代次数 | default |
+| **Mifer**      | 编排器，协调子 Agent，由模型自主控制迭代次数 | `agent_backends.mifer` |
+| **MiQQ**       | QQ 通道专用助手（无工具，纯文本对话） | `agent_backends.qq_agent` |
+| **PlanAgent**  | 计划制定助手（只读工具：file_reader/file_viewer/web_search/web_fetch/knowledge_search） | `agent_backends.plan_agent` |
+| **HabitGraph** | 用户习惯总结（异步、fire-and-forget） | `agent_backends.habit_summarizer` |
+| **Compressor** | 上下文压缩 | `agent_backends.context_compressor` |
 
-所有 Agent 通过 `adk.Runner` 统一启动，Agent / ChatModel / Tool 三层接口解耦。
+所有 Agent 后端由配置文件 `ai.agent_backends` 映射到 `ai.backends` 中用户自由命名的后端，不再硬编码模型名。后端名称完全由用户定义（如 `main`、`fast-model`、`claude-opus` 等）。
 
 ### RAG 检索增强（一）：懒加载 + 工具闭包注入
 
@@ -106,8 +103,7 @@ _snapshots/
 
 ### 多模态与工具生态
 
-- **文件查看器**：支持图片（多模态模型描述）、PDF / Word / Markdown / 纯文本的加载与读取，自动 MIME 检测
-- **图片生成器**：通过多模态模型 API 调用图片生成服务
+- **文件查看器**：使用 Eino `EnhancedInvokableTool` + `*schema.ToolResult` 返回图片数据（base64 + MIME），图片以 `UserInputMultiContent` 直接注入 LLM 上下文，LLM 原生识别多模态内容，无需独立的多模态模型。支持 PDF / Word / Markdown / 纯文本的加载与读取，自动 MIME 检测
 - **知识库工具**：`knowledge_search` 检索（含上下文扩展）+ `knowledge_store` 入库，文档自动切分（递归分块 + SHA256 去重）与向量化
 
 ### 系统提示词管理
@@ -166,7 +162,7 @@ Skills 允许用户通过 **YAML frontmatter + Markdown 指令** 声明式定义
 name: my-skill
 description: 我的自定义技能
 context: fork
-agent: MiEditer
+agent: MiTest
 ---
 
 # 技能指令
@@ -203,7 +199,7 @@ agent: MiEditer
 
 ### 用户习惯总结（HabitGraph）
 
-每轮对话末尾异步触发 `HabitGraph`（Eino Graph）：`ChatModel(haiku) → Lambda(全量覆盖 MIFER.md)`，分析本轮对话并增量更新用户画像。
+每轮对话末尾异步触发 `HabitGraph`（Eino Graph）：`ChatModel → Lambda(全量覆盖 MIFER.md)`，分析本轮对话并增量更新用户画像。后端由 `agent_backends.habit_summarizer` 配置。
 
 - 分析维度：编程语言偏好、技术栈、工作习惯、常用工具、项目类型、沟通风格
 - 写入 `{CfgPath}/MIFER.md`（用户级），自动拼接到系统提示词
@@ -309,9 +305,7 @@ docker-compose up -d mifer
 
 | 变量名                  | 说明                       |
 | ----------------------- | -------------------------- |
-| `MIFER_AI_BASEURL`      | AI API 地址                |
-| `MIFER_AI_APIKEY`       | AI API 密钥                |
-| `MIFER_AI_MODEL`        | 默认模型名称               |
+| `MIFER_AI_BACKENDS_<NAME>_APIKEY` | 覆盖任意后端的 API Key（如 `MIFER_AI_BACKENDS_MAIN_APIKEY`） |
 | `MIFER_JWT_SECRET`      | JWT 签名密钥               |
 | `MIFER_ENV`             | 运行模式（dev / prod）     |
 
@@ -324,13 +318,13 @@ docker-compose up -d mifer
 ### 对话
 
 - 流式 SSE 响应（`text/event-stream`），实时逐词输出，事件类型区分内容与推理
-- 多后端 ChatModel：OpenAI 兼容 / Claude / Gemini / Ollama，缺失的后端自动 fallback
-- 模型按能力分级：haiku（轻量对话）、sonnet（文件 / 命令）、opus（计划 / 审计），多模态模型独立配置
+- 多后端 ChatModel：OpenAI 兼容 / Claude / Gemini / Ollama，后端名称由用户自由定义
+- 模型按需分配：通过 `agent_backends` 映射各 Agent 到不同后端，缺失时自动 fallback 到第一个注册的后端
 - Token 消耗按会话累计统计，persist 到记忆文件
 
 ### Agent 编排
 
-- Eino ADK Orchestrator 协调 5 个子 Agent，`MaxIteration=0` 由模型自主控制迭代次数
+- Eino ADK Orchestrator 协调子 Agent，`MaxIteration=100` 由模型自主控制迭代次数
 - `domain.AgentService` 接口隔离 HTTP 层与 AI 核心，方便 mock 与替换实现
 - 子 Agent 事件（工具调用、状态变更）通过 `EmitInternalEvents` 转发到 CLI 侧边栏
 
@@ -388,7 +382,7 @@ Eino ADK 自带内存记忆，但它绑定于进程生命周期，重启即丢�
 
 ### 2. LLM 后端为什么用 Registry 模式？
 
-项目需要同时接入多个模型（日常用 DeepSeek，复杂任务用 Claude，本地测试用 Ollama），且各提供商的 ChatModel 创建方式不同。Registry 模式将模型实例按名称索引（default/haiku/sonnet/opus/multi_modal），业务代码通过 `registry.Get("sonnet")` 获取，**切换模型不改业务代码**。缺失后端自动 fallback 到 default，保证可用性。
+项目需要同时接入多个模型（日常用 DeepSeek，复杂任务用 Claude，本地测试用 Ollama），且各提供商的 ChatModel 创建方式不同。Registry 模式将模型实例按用户定义的名称索引（如 `main`、`fast-model`、`claude-opus` 等），业务代码通过 `getBackendModel(reg, "<agent_name>")` 获取——后端名和 Agent 的映射由 `ai.agent_backends` 配置决定，**切换模型不改业务代码**。缺失后端自动 fallback 到第一个注册的后端，保证可用性。
 
 ### 3. 为什么 Agent 编排设 0 轮迭代？
 
@@ -501,9 +495,8 @@ mifer/
 │   │       ├── commandexecutor/  #     终端命令执行（白名单约束）
 │   │       ├── filecreator/      #     文件创建
 │   │       ├── filereader/       #     文件读取
-│   │       ├── fileviewer/       #     文件查看（含图片多模态描述）
+│   │       ├── fileviewer/       #     文件查看（图片以 EnhancedInvokableTool 返回多模态数据）
 │   │       ├── filewriter/       #     文件写入
-│   │       ├── imagegenerator/   #     图片生成
 │   │       ├── knowledgesearch/  #     知识库检索（含上下文扩展）
 │   │       ├── knowledgestore/   #     文档入库
 │   │       └── qq/               #     QQ 消息发送（包名 qqtools）
@@ -526,7 +519,6 @@ mifer/
 │   ├── qdrant/                   #   Qdrant gRPC 客户端初始化
 │   ├── res/                      #   统一 HTTP 响应格式
 │   ├── skill/                    #   技能系统（Manager + Tool + AgentHub）
-│   ├── snapshot/                 #   文件快照（增量 + 内容寻址 + GC）
 │   ├── snapshot/                 #   文件快照（增量 + 内容寻址 + 按需写入 + GC）
 │   ├── sse/                      #   SSE 流式响应工具
 │   ├── task/                     #   异步任务管理

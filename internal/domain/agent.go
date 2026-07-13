@@ -137,6 +137,17 @@ type ToolConfirmResp struct {
 	Action   string // 执行的动作
 }
 
+// RenameMemoryReq 重命名记忆会话请求
+type RenameMemoryReq struct {
+	Name string
+}
+
+// RenameMemoryResp 重命名记忆会话响应
+type RenameMemoryResp struct {
+	OldName string
+	NewName string
+}
+
 // ToolAddAllowListReq 添加命令到白名单的请求（域类型，无 JSON 标签）
 type ToolAddAllowListReq struct {
 	Command string // 要加入白名单的命令

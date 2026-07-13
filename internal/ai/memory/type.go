@@ -12,10 +12,11 @@ import (
 )
 
 type Memory struct {
-	mu         sync.Mutex
-	messages   []*schema.Message // 未导出，外部必须通过 Messages() 访问以防止 data race
-	savedCount int               // 已持久化到文件的消息数量
-	Cfg        MemCfg
+	mu          sync.Mutex
+	messages    []*schema.Message // 未导出，外部必须通过 Messages() 访问以防止 data race
+	savedCount  int               // 已持久化到文件的消息数量
+	Cfg         MemCfg
+	fileCreated bool // Save() 首次创建文件后置为 true，SwitchSession/Rename 时重置
 }
 
 // Messages 返回当前记忆消息切片的只读引用（持有锁）。
@@ -24,6 +25,13 @@ func (m *Memory) Messages() []*schema.Message {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.messages
+}
+
+// FileCreated 返回 fileCreated 标记（持有锁），供 executor 判断是否为首次持久化。
+func (m *Memory) FileCreated() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.fileCreated
 }
 
 // Len 返回当前记忆中的消息数量（持有锁）。

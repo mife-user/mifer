@@ -6,6 +6,7 @@ type AgentService interface {
 	Chat(ctx context.Context, req *TalkReq, callback func(event, content string) error) error
 	LoadMemory(ctx context.Context, req *MemoryReq) (*MemoryResp, error)
 	ExchangeMemory(ctx context.Context, req *MemoryReq) error
+	RenameMemory(ctx context.Context, req *RenameMemoryReq) (*RenameMemoryResp, error)
 	ListMemories(ctx context.Context) (*MemoryListResp, error)
 	ClearMemory(ctx context.Context) (*ClearMemoryResp, error)
 	ListRebackEntries(ctx context.Context) (*RebackListResp, error)
@@ -26,6 +27,7 @@ type Agent interface {
 	Chat(ctx context.Context, req *TalkReq, callback func(event, content string) error) error
 	LoadMemory(ctx context.Context, req *MemoryReq) (*MemoryResp, error)
 	ExchangeMemory(ctx context.Context, req *MemoryReq) error
+	RenameMemory(ctx context.Context, req *RenameMemoryReq) (*RenameMemoryResp, error)
 	ListMemories(ctx context.Context) (*MemoryListResp, error)
 	ClearMemory(ctx context.Context) (*ClearMemoryResp, error)
 	ListRebackEntries(ctx context.Context) (*RebackListResp, error)

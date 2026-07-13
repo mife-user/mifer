@@ -20,6 +20,7 @@ func (m *Memory) Save() error {
 		return errorer.NewS(errorer.ErrCreateMemoryDirFailed, err)
 	}
 
+	wasEmpty := m.savedCount == 0
 	newMsgs := m.messages[m.savedCount:]
 	if len(newMsgs) == 0 {
 		return nil
@@ -52,5 +53,6 @@ func (m *Memory) Save() error {
 		}
 	}
 	m.savedCount = len(m.messages)
+	m.fileCreated = wasEmpty
 	return nil
 }

@@ -72,7 +72,8 @@ func (r *Router) Setup() *gin.Engine {
 			memory.GET("/reback", r.agentHandler.ListRebackEntries)
 			memory.POST("/reback/:index", r.agentHandler.Reback)
 			memory.POST("/clear", r.agentHandler.ClearMemory)
-				memory.POST("/compact", r.agentHandler.Compact)
+			memory.POST("/rename", r.agentHandler.RenameMemory)
+			memory.POST("/compact", r.agentHandler.Compact)
 		}
 		prompt := api.Group("/prompt")
 		{
@@ -84,8 +85,8 @@ func (r *Router) Setup() *gin.Engine {
 		admin := api.Group("/admin")
 		{
 			admin.POST("/reload", r.ReloadHandler)
-				admin.GET("/status", r.agentHandler.Status)
-			}
+			admin.GET("/status", r.agentHandler.Status)
+		}
 		plan := api.Group("/plan")
 		{
 			plan.GET("", r.agentHandler.ListPlans)

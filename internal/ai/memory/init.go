@@ -23,6 +23,7 @@ func (m *Memory) SwitchSession(newID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Cfg.Id = newID
+	m.fileCreated = false
 	msgs, err := load(&m.Cfg)
 	if err != nil {
 		logger.Error("切换会话时加载记忆失败", logger.C(err))

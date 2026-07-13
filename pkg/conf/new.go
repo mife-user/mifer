@@ -321,6 +321,8 @@ cli:
         description: "显示已配置的Agent列表"
       - command: "/compact"          # 手动触发上下文压缩
         description: "手动压缩当前对话上下文"
+      - command: "/rename"          # 重命名当前会话记忆
+        description: "重命名当前会话"
     content_margin: 4                # 消息内容左右留白列数
     min_height: 10                   # 终端最小行数，低于此值显示"窗口太小"提示
     editor: ""                       # 配置文件编辑器，为空时自动检测（$VISUAL > $EDITOR > 系统默认）

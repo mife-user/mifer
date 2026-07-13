@@ -53,6 +53,8 @@ const (
 
 	// Memory
 	ErrIDIllegalChars        = "id 包含非法字符: %s"
+	ErrIDTooLong             = "ID 长度超过限制（最多 %d 字符）"
+	ErrIDConflict            = "会话名称已存在: %s"
 	ErrIndexOutOfRange       = "%s"
 	ErrCreateMemoryDirFailed = "创建内存目录失败"
 	ErrOpenFileFailed        = "打开文件失败"

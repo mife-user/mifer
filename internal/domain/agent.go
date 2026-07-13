@@ -92,9 +92,9 @@ type PlanLoadResp struct {
 // AgentInfo agent 基础信息
 type AgentInfo struct {
 	Name         string   // agent 名称
-	ModelBackend string   // 模型后端 key（如 "sonnet", "opus"）
+	ModelBackend string   // 模型后端 key（如 "main", "fast-model"）
 	Provider     string   // 模型提供商（如 "openai", "claude"）
-	Model        string   // 具体模型名（如 "deepseek-v4-pro"）
+	Model        string   // 具体模型名（如 "deepseek-v4-flash"）
 	Description  string   // agent 描述
 	Tools        []string // 工具名称列表
 }
@@ -111,7 +111,7 @@ type CompactResp struct {
 
 // BackendStatusEntry 单个后端的加载状态
 type BackendStatusEntry struct {
-	Name   string // 后端名称（如 "default", "sonnet"）
+	Name   string // 后端名称（如 "main", "fast-model"）
 	Status string // "ok" | "failed" | "not_configured"
 	Model  string // 模型名
 	Error  string // 错误信息（失败时）
@@ -119,7 +119,7 @@ type BackendStatusEntry struct {
 
 // BackendStatusResp 后端状态查询响应
 type BackendStatusResp struct {
-	Ready    bool                 // default 后端是否就绪
+	Ready    bool                 // 是否有任意聊天后端就绪
 	Backends []BackendStatusEntry // 各后端状态
 	Warnings []string             // 警告信息（如 api_key 未配置）
 }

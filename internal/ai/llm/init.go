@@ -15,11 +15,6 @@ func InitRegistry(ctx context.Context) (*Registry, error) {
 		return nil, errorer.New(errorer.ErrNoBackendConfig)
 	}
 
-	// default 后端必须存在
-	if _, ok := backends["default"]; !ok {
-		return nil, errorer.New(errorer.ErrDefaultBackendConfig)
-	}
-
 	registry := NewRegistry()
 
 	for key, backendCfg := range backends {
@@ -29,23 +24,23 @@ func InitRegistry(ctx context.Context) (*Registry, error) {
 		}
 		chatModel, err := registry.initBackend(ctx, key, backendCfg)
 		if err != nil {
-			// default 后端因 api_key 缺失导致初始化失败时，不阻止启动
-			// 程序将在运行时通过 /api/admin/status 提示用户配置
-			if key == "default" {
-				if backendCfg.APIKey == "" {
-					logger.Warn("默认后端api_key未配置，AI对话功能暂不可用，请在/config中设置api_key",
-						logger.S("provider", backendCfg.Provider))
-					continue
-				}
-				return nil, err
+			if backendCfg.APIKey == "" {
+				logger.Warn("后端 api_key 未配置，AI 对话功能暂不可用",
+					logger.S("backend", key),
+					logger.S("provider", backendCfg.Provider))
+				continue
 			}
 			logger.Info("初始化后端失败，跳过", logger.S("backend", key), logger.C(err))
 			continue
 		}
-		registry.models[key] = chatModel
+		registry.registerModel(key, chatModel)
 	}
 
-	logger.Info("模型后端初始化完成", logger.S("backends", fmt.Sprintf("%v", registry.Keys())))
+	if len(registry.models) > 0 {
+		logger.Info("模型后端初始化完成", logger.S("backends", fmt.Sprintf("%v", registry.Keys())))
+	} else {
+		logger.Warn("没有成功初始化任何模型后端，AI 对话功能不可用")
+	}
 
 	return registry, nil
 }

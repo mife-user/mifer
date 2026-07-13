@@ -19,6 +19,7 @@ type Provider interface {
 type Registry struct {
 	models    map[string]model.BaseChatModel
 	providers map[string]Provider
+	keysOrder []string // 维护注册顺序，用于 First()/FirstKey() 回退
 }
 
 // NewRegistry 创建一个新的 Registry，并注册所有内置的模型提供商
@@ -26,6 +27,7 @@ func NewRegistry() *Registry {
 	r := &Registry{
 		models:    make(map[string]model.BaseChatModel),
 		providers: make(map[string]Provider),
+		keysOrder: make([]string, 0),
 	}
 	r.RegisterProvider(&openAIProvider{})
 	r.RegisterProvider(&claudeProvider{})
@@ -39,12 +41,12 @@ func (r *Registry) RegisterProvider(p Provider) {
 	r.providers[p.Name()] = p
 }
 
-// Get 按名称获取后端模型，不存在时 fallback 到 default
+// Get 按名称获取后端模型，不存在时返回 nil（调用方自行处理回退）
 func (r *Registry) Get(name string) model.BaseChatModel {
 	if m, ok := r.models[name]; ok {
 		return m
 	}
-	return r.models["default"]
+	return nil
 }
 
 // Has 检查指定名称的后端是否已加载
@@ -53,9 +55,9 @@ func (r *Registry) Has(name string) bool {
 	return ok
 }
 
-// IsReady 检查 default 后端是否已加载（即 AI 对话功能是否可用）
+// IsReady 检查是否有任意后端已加载（即 AI 对话功能是否可用）
 func (r *Registry) IsReady() bool {
-	return r.Has("default")
+	return len(r.models) > 0
 }
 
 // Keys 返回所有已注册的后端名称
@@ -65,4 +67,26 @@ func (r *Registry) Keys() []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// First 返回第一个注册的模型实例，用于回退
+func (r *Registry) First() model.BaseChatModel {
+	if len(r.keysOrder) == 0 {
+		return nil
+	}
+	return r.models[r.keysOrder[0]]
+}
+
+// FirstKey 返回第一个注册的后端名称，用于回退时的名称获取
+func (r *Registry) FirstKey() string {
+	if len(r.keysOrder) == 0 {
+		return ""
+	}
+	return r.keysOrder[0]
+}
+
+// registerModel 内部注册模型，记录顺序
+func (r *Registry) registerModel(key string, m model.BaseChatModel) {
+	r.models[key] = m
+	r.keysOrder = append(r.keysOrder, key)
 }

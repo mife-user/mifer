@@ -83,14 +83,14 @@ func buildReloadResp(exec *executor.Executor) *adminresp.ReloadResp {
 	}
 
 	for key, cfg := range backends {
-		// embedder 由 RAG 管理，不属于聊天模型注册中心
-		if key == "embedder" {
+		// embedding 类型后端由 RAG 管理，不属于聊天模型注册中心
+		if cfg.Type == "embedding" {
 			continue
 		}
 		status := adminresp.BackendStatus{Name: key, Model: cfg.Model}
 		if loadedSet[key] {
 			status.Status = "ok"
-		} else if key == "default" && cfg.APIKey == "" {
+		} else if cfg.APIKey == "" {
 			status.Status = "failed"
 			status.Error = "api_key 未配置，请在 /config 中设置后重载"
 		} else {

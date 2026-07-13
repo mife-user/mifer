@@ -23,7 +23,8 @@ func (e *Executor) BackendStatus(ctx context.Context) (*domain.BackendStatusResp
 	}
 
 	for key, backendCfg := range cfg.Ai.Backends {
-		if key == "embedder" {
+		// embedding 类型的后端不属于聊天模型，跳过状态展示
+		if backendCfg.Type == "embedding" {
 			continue
 		}
 		entry := domain.BackendStatusEntry{
@@ -33,7 +34,7 @@ func (e *Executor) BackendStatus(ctx context.Context) (*domain.BackendStatusResp
 		if loadedSet[key] {
 			entry.Status = "ok"
 		} else {
-			if backendCfg.APIKey == "" && key == "default" {
+			if backendCfg.APIKey == "" {
 				entry.Status = "not_configured"
 				entry.Error = "api_key 未配置，请在 /config 中设置"
 			} else {
@@ -44,10 +45,16 @@ func (e *Executor) BackendStatus(ctx context.Context) (*domain.BackendStatusResp
 		resp.Backends = append(resp.Backends, entry)
 	}
 
-	// 收集警告信息
-	defaultCfg, ok := cfg.Ai.Backends["default"]
-	if ok && defaultCfg.APIKey == "" {
-		resp.Warnings = append(resp.Warnings, "当前apikey未配置，请输入/config配置")
+	// 收集警告信息 — 检查是否有任何 chat 后端缺 api_key
+	hasMissingKey := false
+	for _, backendCfg := range cfg.Ai.Backends {
+		if backendCfg.Type != "embedding" && backendCfg.APIKey == "" {
+			hasMissingKey = true
+			break
+		}
+	}
+	if hasMissingKey {
+		resp.Warnings = append(resp.Warnings, "当前部分后端 api_key 未配置，请输入 /config 配置")
 	}
 
 	return resp, nil

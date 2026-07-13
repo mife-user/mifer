@@ -220,3 +220,14 @@ func compactCmd(client *client.Client) tea.Cmd {
 		return systemMsg{content: result}
 	}
 }
+
+// renameCmd 异步请求服务端重命名当前会话
+func renameCmd(client *client.Client, name string) tea.Cmd {
+	return func() tea.Msg {
+		result, err := client.Rename.Rename(name)
+		if err != nil {
+			return systemMsg{err: err}
+		}
+		return systemMsg{content: result}
+	}
+}

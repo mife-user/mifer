@@ -14,6 +14,7 @@ import (
 	"mifer/cli/client/prompthandler"
 	"mifer/cli/client/rebackhandler"
 	"mifer/cli/client/reloadhandler"
+	"mifer/cli/client/renamehandler"
 	"mifer/cli/client/skillhandler"
 	"mifer/cli/client/statushandler"
 	"mifer/cli/client/toolconfirmhandler"
@@ -29,6 +30,7 @@ const (
 	APIRebackPath  = "/api/memory/reback"
 	APIReloadPath  = "/api/admin/reload"
 	APIPlanPath    = "/api/plan"
+	APIRenamePath  = "/api/memory/rename"
 	APIMCPPath     = "/api/mcp"
 	APISkillPath   = "/api/skill"
 	APIAgentsPath  = "/api/agents"
@@ -49,6 +51,7 @@ type Client struct {
 	Skill        *skillhandler.SkillHandler
 	Agents       *agentshandler.AgentsHandler
 	Status       *statushandler.StatusHandler
+	Rename       *renamehandler.RenameHandler
 	ToolConfirm  *toolconfirmhandler.ConfirmHandler
 	AllowlistAdd *toolconfirmhandler.AllowlistHandler
 }
@@ -70,6 +73,7 @@ func New(baseURL string) *Client {
 		Skill:        skillhandler.New(httpClient, baseURL+APISkillPath+"/list"),
 		Agents:       agentshandler.New(httpClient, baseURL+APIAgentsPath),
 		Status:       statushandler.New(httpClient, baseURL),
+		Rename:       renamehandler.New(httpClient, baseURL+APIRenamePath),
 		ToolConfirm:  toolconfirmhandler.New(httpClient, baseURL),
 		AllowlistAdd: toolconfirmhandler.NewAllowlist(httpClient, baseURL),
 	}

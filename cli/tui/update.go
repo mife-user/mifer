@@ -1,4 +1,4 @@
-﻿package tui
+package tui
 
 // ============================================================================
 // update.go — Bubble Tea 消息分发器与核心交互逻辑
@@ -530,6 +530,10 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		var spCmd tea.Cmd
 		m.spinner, spCmd = m.spinner.Update(m.spinner.Tick())
 		return m, tea.Batch(compactCmd(m.client), spCmd)
+
+	case strings.HasPrefix(input, "/rename "):
+		name := strings.TrimSpace(strings.TrimPrefix(input, "/rename "))
+		return m, renameCmd(m.client, name)
 
 	case input == "/reload":
 		return m, reloadCmd(m.client)

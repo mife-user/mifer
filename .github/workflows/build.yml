@@ -106,11 +106,22 @@ jobs:
             - Agent 初始化流程重构，支持配置驱动的后端分配
             - `AgentInfo.Name` 为空时不再追加到列表
 
-            ## 🐛 其他修复
-            - `buildPlanMessages` 消息切片初始化确保包含所有历史消息
-            - 系统提示词优化为英文
-            - 后端状态检查跳过 embedding 类型、警告信息优化
-            - 错误常量更新（`ErrNoBackendAvailable`/`ErrNoEmbeddingBackend`）
+            ## 💾 工具调用持久化
+            - **工具持久化中间件** — 拦截 ReAct 循环中的工具调用，将 ToolCall + ToolResult 写入 Memory JSONL
+            - **中间件链** — `eventSender → errorMw → confirmMiddleware → persistenceMw`，仅持久化通过确认的调用
+            - **`Memory.AppendToolExchange`** — 新增工具交互消息对追加方法，Save/Load 自动兼容
+            - **接口解耦** — `ToolExchangeWriter` 接口定义在消费侧（tools 包），memory 隐式实现
+
+            ## 📦 Offload 存储
+            - **`Offloader` 接口** — 支持 Save/Load/Delete，默认 `LocalOffloader` 存本地文件
+            - **配置项 `offload_dir`** — 自定义存储路径，为空时自动推导
+            - **三层记忆压缩** — Layer1（N 轮完整保留）+ Layer2（M 轮保留 ToolCall + 截断/offload 大结果）+ Layer3（摘要）
+            - **配置项 `slim_rounds`** — 控制 Layer2 精简轮数
+
+            ## 🐛 修复
+            - **QQ 会话自动重命名** — 结构化 ID（含 `/`）跳过自动重命名，防止 QQ 会话文件路径错乱
+            - **后端状态检查跳过 embedding 类型**，警告信息优化
+            - **错误常量更新**（`ErrNoBackendAvailable`/`ErrNoEmbeddingBackend`）
           files: artifacts/**/*
           draft: false
           prerelease: false

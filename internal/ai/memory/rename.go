@@ -26,9 +26,15 @@ func (m *Memory) Rename(newID string) error {
 }
 
 // AutoRenameFromFirstMessage 取首条用户消息前缀作为新会话名称，静默失败。
+// 若当前 ID 含 "/"（如 qq_private/xxx），说明是外部系统管理的结构化 ID，跳过自动重命名。
 func (m *Memory) AutoRenameFromFirstMessage() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	// 结构化 ID（含 "/"）由外部系统管理，跳过自动重命名
+	if strings.Contains(m.Cfg.Id, "/") {
+		return nil
+	}
 
 	for _, msg := range m.messages {
 		if msg.Role == schema.User {

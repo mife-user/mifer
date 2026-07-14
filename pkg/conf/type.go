@@ -177,8 +177,10 @@ type ConfirmConfig struct {
 type ContextConfig struct {
 	Length       int     `mapstructure:"length"`        // 上下文长度阈值（token数），默认 1000000
 	Threshold    float64 `mapstructure:"threshold"`     // 触发压缩的比例，默认 0.8
-	Backend     string  `mapstructure:"backend"`       // 压缩用模型后端名，默认取第一个注册后端
-	RecentRounds int    `mapstructure:"recent_rounds"` // 压缩后保留的最近完整对话轮数，默认 3
+	Backend      string  `mapstructure:"backend"`       // 压缩用模型后端名，默认取第一个注册后端
+	RecentRounds int     `mapstructure:"recent_rounds"` // N: 压缩后保留的最近完整对话轮数，默认 3
+	SlimRounds   int     `mapstructure:"slim_rounds"`   // M: 精简保留的中间轮数（保留 ToolCall 名称 + 截断结果），默认 5
+	OffloadDir   string  `mapstructure:"offload_dir"`   // offload 文件存储目录，为空时自动使用 memory 目录下的 offload 子目录
 }
 
 // RAG配置结构体

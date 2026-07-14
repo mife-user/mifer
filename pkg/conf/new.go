@@ -220,12 +220,14 @@ ai:
 
   # ── 上下文压缩 ──
   # 当对话历史超过阈值时，自动使用指定后端将早期对话压缩为摘要
-  # 压缩后仍保留最近 recent_rounds 轮完整对话
+      # 三层记忆模型：最近 recent_rounds 轮完整保留，中间 slim_rounds 轮保留 ToolCall + 截断结果，更早轮次压缩为摘要
   context:
     length: 1000000                      # 上下文长度阈值（Prompt Tokens 数）
     threshold: 0.8                       # 触发压缩的比例（当前 Tokens > length * threshold 时压缩）
     backend: "fast-model"                # 执行压缩的模型后端（建议用轻量模型减少耗时）
-    recent_rounds: 3                     # 压缩后保留的最近对话轮数
+    recent_rounds: 3                     # 压缩后完整保留的最近对话轮数（含 ToolCall + ToolResult 原文）
+    slim_rounds: 5                       # 精简保留的中间轮数（保留 ToolCall 名称 + 截断结果）
+    offload_dir: ""                      # offload 文件目录，为空时默认使用 memory 目录下的 offload 子目录
 
 # ── 自定义 Agent ──
 # 可在下方定义额外的专用 Agent（作为 Mifer 的子 Agent 运行）

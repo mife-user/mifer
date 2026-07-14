@@ -44,7 +44,7 @@ func (h *Humen) createCustomAgents(ctx context.Context, reg *llm.Registry) ([]ad
 			ToolsConfig: adk.ToolsConfig{
 				ToolsNodeConfig: compose.ToolsNodeConfig{
 					Tools:               agentTools,
-					ToolCallMiddlewares: []compose.ToolMiddleware{h.errorMw, confirmMiddleware},
+					ToolCallMiddlewares: []compose.ToolMiddleware{h.errorMw, confirmMiddleware, h.persistenceMw},
 				},
 			},
 			MaxIterations: 100,
@@ -102,7 +102,7 @@ func (h *Humen) createMiferAgent(ctx context.Context, reg *llm.Registry, subagen
 			EmitInternalEvents: true,
 			ToolsNodeConfig: compose.ToolsNodeConfig{
 				Tools:               orchTools,
-				ToolCallMiddlewares: []compose.ToolMiddleware{h.errorMw, confirmMiddleware},
+				ToolCallMiddlewares: []compose.ToolMiddleware{h.errorMw, confirmMiddleware, h.persistenceMw},
 			},
 		},
 		SubAgents:    subagents,

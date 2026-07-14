@@ -17,10 +17,11 @@ import (
 	"mifer/pkg/skill"
 
 	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/compose"
 )
 
 // initInfra 初始化所有基础设施服务，结果直接写入 Humen 对应字段。
-// 同时设置包级 confirmMiddleware，供 Agent 配置复用。
+// 同时设置包级 confirmMiddleware 和 persistenceMw，供 Agent 配置复用。
 func (h *Humen) initInfra(c context.Context) {
 	// RAG 懒加载服务，无网络调用，即时返回
 	h.ragSvc = rag.NewLazyService(c)
@@ -45,6 +46,9 @@ func (h *Humen) initInfra(c context.Context) {
 		time.Duration(confirmCfg.TimeoutSec)*time.Second,
 	)
 	h.errorMw = tools.NewErrorHandleMiddleware()
+
+	// 工具持久化中间件
+	h.persistenceMw = newPersistenceMiddleware(h.Prompt.Memory)
 }
 
 // getBackendModel 根据 Agent 名称从配置中获取对应的模型实例。
@@ -61,7 +65,7 @@ func getBackendModel(reg *llm.Registry, agentName string) model.BaseChatModel {
 	return reg.Get(backendName)
 }
 
-// Init 初始化 Humen：LLM 注册中心 → 基础设施 → Agent/Graph → 记忆与提示词。
+// Init 初始化 Humen：LLM 注册中心 → Memory + Prompt → 基础设施 → Agent/Graph。
 func Init(c context.Context) (*Humen, error) {
 	reg, err := llm.InitRegistry(c)
 	if err != nil {
@@ -70,6 +74,21 @@ func Init(c context.Context) (*Humen, error) {
 	}
 
 	h := &Humen{Registry: reg}
+
+	// Memory 提前创建，供 persistenceMw 初始化时引用
+	id, ok := c.Value("id").(string)
+	if !ok {
+		logger.Error("id is not string")
+		return nil, errorer.New(errorer.ErrIDNotString)
+	}
+	mem, err := memory.Init(id)
+	if err != nil {
+		logger.Error("init memory failed", logger.C(err))
+		return nil, err
+	}
+	h.Prompt = prompt.New(mem)
+
+	// 初始化基础设施（含 persistenceMw，可通过 h.Prompt.Memory 访问 Memory）
 	h.initInfra(c)
 
 	if reg.IsReady() {
@@ -108,17 +127,10 @@ func Init(c context.Context) (*Humen, error) {
 		h.AgentInfos = append(h.AgentInfos, AgentInfo{Name: "Mifer", ModelBackend: "", Description: "Mifer 智能助手（未配置可用后端，暂不可用）"})
 	}
 
-	id, ok := c.Value("id").(string)
-	if !ok {
-		logger.Error("id is not string")
-		return nil, errorer.New(errorer.ErrIDNotString)
-	}
-	mem, err := memory.Init(id)
-	if err != nil {
-		logger.Error("init memory failed", logger.C(err))
-		return nil, err
-	}
-
-	h.Prompt = prompt.New(mem)
 	return h, nil
+}
+
+// newPersistenceMiddleware 创建工具持久化中间件实例。
+func newPersistenceMiddleware(mem *memory.Memory) compose.ToolMiddleware {
+	return tools.NewPersistenceMiddleware(mem)
 }

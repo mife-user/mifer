@@ -6,6 +6,7 @@ import (
 
 	"mifer/internal/ai/agent"
 	"mifer/internal/ai/compressor"
+	"mifer/internal/ai/offload"
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"mifer/pkg/snapshot"
@@ -88,6 +89,20 @@ func Init(c context.Context) (*Executor, error) {
 		logger.Debug("文件快照功能未启用（snapshot_enabled=false）")
 	}
 
+	// 初始化 offload 存储
+	offloadDir := cfg.Ai.Context.OffloadDir
+	if offloadDir == "" {
+		offloadDir = filepath.Join(cfg.Path.CfgPath, "memory",
+			filepath.Base(cfg.Path.Workdir), "offload")
+	}
+	offloader := offload.NewLocal(offloadDir)
+	logger.Debug("Offload 存储已初始化", logger.S("dir", offloadDir))
+
+	// 初始化上下文压缩器（含 offload + 三层记忆支持）
+	ctxCfg := cfg.Ai.Context
+	comp := compressor.NewCompressor(ag.Registry, ag.SkillManager, offloader,
+		ctxCfg.RecentRounds, ctxCfg.SlimRounds)
+
 	return &Executor{
 		Runner:     runner,
 		QQRunner:   qqRunner,
@@ -95,7 +110,7 @@ func Init(c context.Context) (*Executor, error) {
 		Humen:      ag,
 		Token:    tokens,
 		compress: compressState{
-			compressor: compressor.NewCompressor(ag.Registry, ag.SkillManager),
+			compressor: comp,
 		},
 		Snapshot: snapSvc,
 	}, nil

@@ -26,7 +26,7 @@ func (h *Humen) createPlanAgent(ctx context.Context, reg *llm.Registry) (adk.Age
 		ToolsConfig: adk.ToolsConfig{
 			ToolsNodeConfig: compose.ToolsNodeConfig{
 				Tools:               tools.ReadOnlyTools(h.ragSvc),
-				ToolCallMiddlewares: []compose.ToolMiddleware{h.errorMw, confirmMiddleware},
+				ToolCallMiddlewares: []compose.ToolMiddleware{h.errorMw, confirmMiddleware, h.persistenceMw},
 			},
 		},
 		MaxIterations: 20,

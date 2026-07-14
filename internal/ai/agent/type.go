@@ -44,6 +44,7 @@ type Humen struct {
 	ragSvc   rag.RAGService          // RAG 服务
 	skillHub *skill.AgentHub         // Agent 注册中心
 	errorMw  compose.ToolMiddleware  // 错误处理中间件
+	persistenceMw compose.ToolMiddleware // 工具持久化中间件
 }
 
 // qqInstruction QQ 通道 Agent 的系统指令。

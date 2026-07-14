@@ -2,10 +2,10 @@ package knowledgesearch
 
 import (
 	"context"
-	"mifer/internal/ai/rag"
 
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
+	"github.com/cloudwego/eino/schema"
 )
 
 // KnowledgeSearchInput 知识库检索输入
@@ -21,8 +21,15 @@ type KnowledgeSearchOutput struct {
 	Error   string `json:"error,omitempty"`
 }
 
-// New 创建知识库检索工具，通过闭包注入 RAG 服务
-func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
+// retriever 知识检索接口，仅包含本工具所需的方法。
+// rag.RAGService 接口实现了此接口。
+type retriever interface {
+	RetrieveWithContext(ctx context.Context, query string, contextSize int) ([]*schema.Document, error)
+	FormatDocs(docs []*schema.Document) string
+}
+
+// New 创建知识库检索工具，通过闭包注入实现了 retriever 接口的服务。
+func New(ragSvc retriever) (tool.InvokableTool, error) {
 	return utils.InferTool("knowledge_search", "检索知识库中的相关文档内容。当你不确定某个知识点或需要查找已有文档中的信息时，使用此工具搜索知识库。注意：知识库存放的是文档资料，不是代码——如需查看代码文件请使用 file_reader。", func(ctx context.Context, input KnowledgeSearchInput) (KnowledgeSearchOutput, error) {
 		docs, err := ragSvc.RetrieveWithContext(ctx, input.Query, input.ContextSize)
 		if err != nil {

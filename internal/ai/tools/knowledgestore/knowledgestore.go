@@ -3,7 +3,6 @@ package knowledgestore
 import (
 	"context"
 	"fmt"
-	"mifer/internal/ai/rag"
 
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
@@ -20,8 +19,14 @@ type KnowledgeStoreOutput struct {
 	Error   string `json:"error,omitempty"`
 }
 
-// New 创建知识库存储工具，通过闭包注入 RAG 服务
-func New(ragSvc rag.RAGService) (tool.InvokableTool, error) {
+// ingester 知识入库接口，仅包含本工具所需的方法。
+// rag.RAGService 接口实现了此接口。
+type ingester interface {
+	Ingest(ctx context.Context, paths []string) error
+}
+
+// New 创建知识库存储工具，通过闭包注入实现了 ingester 接口的服务。
+func New(ragSvc ingester) (tool.InvokableTool, error) {
 	return utils.InferTool("knowledge_store", "将文档文件存入知识库。读取文件内容后自动分块、去重、向量化并存储到向量数据库，供后续检索使用。注意：知识库用于存放文档资料（如技术文档、会议纪要、需求说明等），不要用来存储代码文件——代码文件直接通过 file_reader 读取即可。", func(ctx context.Context, input KnowledgeStoreInput) (KnowledgeStoreOutput, error) {
 		if err := ragSvc.Ingest(ctx, input.FilePaths); err != nil {
 			return KnowledgeStoreOutput{Error: "存入知识库失败: " + err.Error()}, nil

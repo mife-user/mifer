@@ -6,22 +6,16 @@ import (
 	"go.uber.org/zap"
 )
 
-// extractFields 从 context 中提取 traceID / sessionID，追加到 fields 前面
+// extractFields 从 context 中提取 traceID，追加到 fields 前面
 func extractFields(ctx context.Context, fields []zap.Field) []zap.Field {
 	tid := TraceID(ctx)
-	sid := SessionID(ctx)
-	if tid == "" && sid == "" {
+	if tid == "" {
 		return fields
 	}
 
-	// 预分配容量，将 trace/session 置顶
-	out := make([]zap.Field, 0, len(fields)+2)
-	if tid != "" {
-		out = append(out, zap.String("trace_id", tid))
-	}
-	if sid != "" {
-		out = append(out, zap.String("session_id", sid))
-	}
+	// 预分配容量，将 trace 置顶
+	out := make([]zap.Field, 0, len(fields)+1)
+	out = append(out, zap.String("trace_id", tid))
 	out = append(out, fields...)
 	return out
 }

@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"context"
+
 	"mifer/pkg/logger"
 	"os"
 	"path/filepath"
@@ -39,7 +41,7 @@ func (m *Memory) ListIDs() ([]string, error) {
 		return nil, nil
 	}
 	if err != nil {
-		logger.Error("读取记忆目录失败", logger.C(err))
+		logger.Error(context.Background(), "读取记忆目录失败", logger.C(err))
 		return nil, err
 	}
 	return ids, nil

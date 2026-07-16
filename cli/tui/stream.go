@@ -101,7 +101,7 @@ func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
 
 		case "tool_start":
 			// 仅更新侧边栏，不在对话框显示（避免与 tool_confirm 重复）
-			logger.Info("调用工具", logger.S("name", msg.name), logger.S("arg", msg.arg))
+			logger.Info(context.Background(), "调用工具", logger.S("name", msg.name), logger.S("arg", msg.arg))
 
 		case "tool_end":
 			// 仅更新侧边栏
@@ -242,7 +242,7 @@ func startSSECmd(client *client.Client, content, mode string, ch chan<- tea.Msg,
 			defer close(ch) // 确保 channel 始终关闭，防止 listenStreamCmd 永久阻塞
 			defer func() {
 				if r := recover(); r != nil {
-					logger.Error("SSE goroutine panic", logger.S("panic", fmt.Sprintf("%v", r)))
+					logger.Error(ctx, "SSE goroutine panic", logger.S("panic", fmt.Sprintf("%v", r)))
 				}
 			}()
 			err := client.Chat.Send(ctx, content, mode, func(event, chunk string) error {
@@ -274,7 +274,7 @@ func startSSECmd(client *client.Client, content, mode string, ch chan<- tea.Msg,
 					if err := exc.ExcJSONToFile(chunk, &prompt); err == nil {
 						ch <- toolConfirmMsg{prompt: &prompt}
 					} else {
-						logger.Error("tool_confirm JSON解析失败",
+						logger.Error(ctx, "tool_confirm JSON解析失败",
 							logger.C(err),
 							logger.S("chunk_preview", chunk[:min(len(chunk), 200)]))
 					}
@@ -283,7 +283,7 @@ func startSSECmd(client *client.Client, content, mode string, ch chan<- tea.Msg,
 							if err := exc.ExcJSONToFile(chunk, &confirm); err == nil {
 								ch <- planConfirmMsg{event: &confirm}
 							} else {
-								logger.Error("plan_confirm JSON解析失败",
+								logger.Error(ctx, "plan_confirm JSON解析失败",
 									logger.C(err),
 									logger.S("chunk_preview", chunk[:min(len(chunk), 200)]))
 							}

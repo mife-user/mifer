@@ -16,7 +16,7 @@ func (s *AgentService) ListMemories(ctx context.Context) (*domain.MemoryListResp
 		return err
 	})
 	if err != nil {
-		logger.Error("列出记忆列表失败", logger.C(err))
+		logger.Error(ctx, "列出记忆列表失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

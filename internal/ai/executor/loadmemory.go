@@ -19,7 +19,7 @@ func (e *Executor) LoadMemory(c context.Context, req *domain.MemoryReq) (*domain
 		var err error
 		msgs, err = e.Humen.Prompt.Memory.LoadByID(req.ID)
 		if err != nil {
-			logger.Error("加载记忆失败", logger.C(err))
+			logger.Error(c, "加载记忆失败", logger.C(err))
 			return nil, err
 		}
 	}

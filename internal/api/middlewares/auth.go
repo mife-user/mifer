@@ -17,7 +17,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 从Authorization头获取token
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			logger.Warn("缺少认证头")
+			logger.Warn(c.Request.Context(), "缺少认证头")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "缺少认证token"})
 			c.Abort()
 			return
@@ -26,7 +26,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 检查Bearer前缀
 		parts := strings.SplitN(authHeader, " ", 2)
 		if !(len(parts) == 2 && strings.ToLower(parts[0]) == "bearer") {
-			logger.Warn("认证头格式错误")
+			logger.Warn(c.Request.Context(), "认证头格式错误")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "认证格式错误"})
 			c.Abort()
 			return
@@ -37,19 +37,19 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 验证token
 		claims, err := auth.ValidateToken(tokenString, config.JWT.Secret)
 		if err != nil {
-			logger.Warn("Token验证失败", logger.C(err))
+			logger.Warn(c.Request.Context(), "Token验证失败", logger.C(err))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的token: " + err.Error()})
 			c.Abort()
 			return
 		}
 		if claims.UserID == 0 {
-			logger.Warn("Token中缺少UserID")
+			logger.Warn(c.Request.Context(), "Token中缺少UserID")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token中缺少用户ID"})
 			c.Abort()
 			return
 		}
 		if claims.Name == "" {
-			logger.Warn("Token中缺少用户名")
+			logger.Warn(c.Request.Context(), "Token中缺少用户名")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token中缺少用户名"})
 			c.Abort()
 			return

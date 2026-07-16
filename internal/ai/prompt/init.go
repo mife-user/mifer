@@ -1,12 +1,14 @@
 package prompt
 
 import (
-	"mifer/internal/ai/memory"
-	"mifer/pkg/conf"
-	"mifer/pkg/logger"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"mifer/internal/ai/memory"
+	"mifer/pkg/conf"
+	"mifer/pkg/logger"
 
 	"github.com/cloudwego/eino/components/prompt"
 	"github.com/cloudwego/eino/schema"
@@ -46,7 +48,7 @@ func (p *Prompty) buildSystemPrompt() {
 func readMiferFile(path string) (string, bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		logger.Debug("未找到MIFER.md文件，跳过")
+		logger.Debug(context.Background(), "未找到MIFER.md文件，跳过")
 		return "", false
 	}
 	content := strings.TrimSpace(string(data))

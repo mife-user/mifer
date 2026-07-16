@@ -24,6 +24,6 @@ func (e *Executor) ListSkills(ctx context.Context) (*domain.SkillListResp, error
 		skills = []domain.SkillInfo{}
 	}
 
-	logger.Debug("技能列表查询完成")
+	logger.Debug(ctx, "技能列表查询完成")
 	return &domain.SkillListResp{Skills: skills}, nil
 }

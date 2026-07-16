@@ -16,7 +16,7 @@ func (s *AgentService) GetPrompt(ctx context.Context) (*domain.PromptResp, error
 		return err
 	})
 	if err != nil {
-		logger.Error("获取提示词失败", logger.C(err))
+		logger.Error(ctx, "获取提示词失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil
@@ -31,7 +31,7 @@ func (s *AgentService) SetPrompt(ctx context.Context, req *domain.PromptReq) (*d
 		return err
 	})
 	if err != nil {
-		logger.Error("设置提示词失败", logger.C(err))
+		logger.Error(ctx, "设置提示词失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil
@@ -46,7 +46,7 @@ func (s *AgentService) ResetPrompt(ctx context.Context) (*domain.PromptResp, err
 		return err
 	})
 	if err != nil {
-		logger.Error("重置提示词失败", logger.C(err))
+		logger.Error(ctx, "重置提示词失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

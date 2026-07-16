@@ -1,0 +1,42 @@
+# Promtail 配置 — 采集 Mifer 日志并发送到 Loki
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: mifer-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: mifer
+          __path__: /var/log/mifer/*.log
+    pipeline_stages:
+      # 解析每一行，提取 level / time / caller / msg
+      - regex:
+          expression: '^(?P<time>[^\s]+)\s+(?P<level>\w+)\s+(?P<caller>[^\s]+)\s+(?P<msg>.*)$'
+      - labels:
+          level:
+      - timestamp:
+          source: time
+          format: "01-02 15:04:05.000"
+      # 解析 msg 中的附加字段（以 || 结尾的行）
+      - regex:
+          source: msg
+          expression: '^(?P<message>.*?)\|\|$'
+      - output:
+          source: message
+
+  - job_name: mifer-gin-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: mifer-gin
+          __path__: /var/log/mifer/gin.log

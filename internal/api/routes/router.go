@@ -52,10 +52,11 @@ func (r *Router) Setup() *gin.Engine {
 		gin.DefaultWriter = log
 		gin.DefaultErrorWriter = log
 	} else {
-		logger.Warn("创建Gin日志文件失败，使用标准输出", logger.C(err))
+		logger.Warn(context.Background(), "创建Gin日志文件失败，使用标准输出", logger.C(err))
 	}
 
 	router := gin.Default()
+	router.Use(middlewares.TraceMiddleware())
 	router.Use(middlewares.CORSMiddleware())
 
 	api := router.Group("/api")

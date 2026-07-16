@@ -25,7 +25,7 @@ func resolveToolNames(ctx context.Context, tools []tool.BaseTool) []string {
 		}
 		info, err := t.Info(ctx)
 		if err != nil || info == nil {
-			logger.Warn("获取工具信息失败，跳过该工具", logger.C(err))
+			logger.Warn(ctx, "获取工具信息失败，跳过该工具", logger.C(err))
 			continue
 		}
 		names = append(names, info.Name)

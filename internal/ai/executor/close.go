@@ -1,6 +1,10 @@
 package executor
 
-import "mifer/pkg/logger"
+import (
+	"context"
+
+	"mifer/pkg/logger"
+)
 
 // Close 释放 Executor 持有的所有资源（MCP 子进程、确认存储 actor 等）。
 // 调用后 Executor 不应再被使用。
@@ -9,12 +13,12 @@ func (e *Executor) Close() {
 		return
 	}
 	if e.Humen.MCPManager != nil {
-		logger.Debug("关闭 MCP Manager")
+		logger.Debug(context.Background(), "关闭 MCP Manager")
 		e.Humen.MCPManager.Close()
 	}
 	if e.Humen.ConfirmStore != nil {
-		logger.Debug("关闭确认存储")
+		logger.Debug(context.Background(), "关闭确认存储")
 		e.Humen.ConfirmStore.Close()
 	}
-	logger.Debug("Executor 资源已释放")
+	logger.Debug(context.Background(), "Executor 资源已释放")
 }

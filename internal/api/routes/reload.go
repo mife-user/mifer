@@ -36,13 +36,13 @@ func (r *Router) Reload(ctx context.Context) (*adminresp.ReloadResp, error) {
 
 	// 重新读取配置文件
 	if _, err := conf.LoadConfig(); err != nil {
-		logger.Error("配置重载失败", logger.C(err))
+		logger.Error(ctx, "配置重载失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrConfigReloadFailed, err)
 	}
 
 	// 校验新配置
 	if err := conf.StatusConfig(); err != nil {
-		logger.Error("新配置校验失败，回滚配置", logger.C(err))
+		logger.Error(ctx, "新配置校验失败，回滚配置", logger.C(err))
 		*conf.GetConfig() = oldConfig
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (r *Router) Reload(ctx context.Context) (*adminresp.ReloadResp, error) {
 	// 重建执行器
 	newExec, err := executor.Init(r.appCtx)
 	if err != nil {
-		logger.Error("重建执行器失败，回滚配置", logger.C(err))
+		logger.Error(ctx, "重建执行器失败，回滚配置", logger.C(err))
 		*conf.GetConfig() = oldConfig
 		return nil, errorer.NewS(errorer.ErrRebuildExecutorFailed, err)
 	}
@@ -68,7 +68,7 @@ func (r *Router) Reload(ctx context.Context) (*adminresp.ReloadResp, error) {
 	oldToolSvc := r.toolHandler.SwapService(toolservice.NewToolService(newExec.Humen.ConfirmStore, conf.GetConfig().Path.Workdir))
 	_ = oldToolSvc
 
-	logger.Info("配置重载成功", logger.S("backends", fmt.Sprintf("%v", newExec.Humen.Registry.Keys())))
+	logger.Info(ctx, "配置重载成功", logger.S("backends", fmt.Sprintf("%v", newExec.Humen.Registry.Keys())))
 	return resp, nil
 }
 

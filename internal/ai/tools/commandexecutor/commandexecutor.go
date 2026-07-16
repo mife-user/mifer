@@ -119,7 +119,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 	// 2. 危险命令检测
 	for _, pattern := range dangerousPatterns {
 		if pattern.MatchString(input.Command) {
-			logger.Warn("拦截危险命令", logger.S("command", input.Command), logger.S("pattern", pattern.String()))
+			logger.Warn(ctx, "拦截危险命令", logger.S("command", input.Command), logger.S("pattern", pattern.String()))
 			return CommandExecutorOutput{
 				Error: "命令包含危险操作，已拒绝执行。匹配规则: " + pattern.String(),
 			}, nil
@@ -128,7 +128,7 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 
 	// 4. 系统电源命令检测
 	if systemPowerPattern.MatchString(input.Command) {
-		logger.Warn("拦截系统电源命令", logger.S("command", input.Command))
+		logger.Warn(ctx, "拦截系统电源命令", logger.S("command", input.Command))
 		return CommandExecutorOutput{
 			Error: "禁止执行系统电源管理命令（reboot/shutdown/halt/poweroff/init），已拒绝执行",
 		}, nil
@@ -223,12 +223,12 @@ func executeCommand(ctx context.Context, input CommandExecutorInput) (CommandExe
 func resolveSandboxDir(workDir, projectDir string) (string, error) {
 	abs, err := filepath.Abs(filepath.Clean(workDir))
 	if err != nil {
-		logger.Error("解析沙箱工作目录失败", logger.C(err))
+		logger.Error(context.Background(), "解析沙箱工作目录失败", logger.C(err))
 		return "", err
 	}
 	absProject, err := filepath.Abs(filepath.Clean(projectDir))
 	if err != nil {
-		logger.Error("解析项目目录失败", logger.C(err))
+		logger.Error(context.Background(), "解析项目目录失败", logger.C(err))
 		return "", err
 	}
 	// 规范化路径分隔符比较

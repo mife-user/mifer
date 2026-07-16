@@ -22,7 +22,7 @@ import (
 // Chat 执行一次对话，通过 callback 将事件实时传递到上层。
 // 根据 req.Mode 路由："" 为普通对话，"plan" 为先制定计划等确认再执行。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
-	logger.Debug("Chat", logger.S("mode", req.Mode), logger.S("content_preview", req.Content[:min(len(req.Content), 50)]))
+	logger.Debug(c, "Chat", logger.S("mode", req.Mode), logger.S("content_preview", req.Content[:min(len(req.Content), 50)]))
 
 	// 检查模型是否可用（api_key 未配置时 Runner 为 nil）
 	if e.Runner == nil {
@@ -45,17 +45,17 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 
 	result, err := e.runConversation(ctx, req, toolCB, callback)
 	if err != nil {
-		logger.Info("chat", logger.C(err))
+		logger.Info(ctx, "chat", logger.C(err))
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}
 		return err
 	}
 
-	logger.Debug("chat", logger.I("eventCount", result.eventCount))
+	logger.Debug(ctx, "chat", logger.I("eventCount", result.eventCount))
 
 	if result.lastMsg == "" {
-		logger.Error("chat", logger.S("lastmsg", result.lastMsg))
+		logger.Error(ctx, "chat", logger.S("lastmsg", result.lastMsg))
 		return errorer.New(errorer.ErrCallBackNull)
 	}
 
@@ -75,7 +75,7 @@ func (e *Executor) prepareChat(
 			c, e.Humen.Prompt.Memory, e.Humen.Prompt.SystemPrompt,
 			e.compress.lastPromptTokens, callback,
 		); err != nil {
-			logger.Error("compress", logger.C(err))
+			logger.Error(c, "compress", logger.C(err))
 		}
 		e.compress.needsCompression = false
 	}
@@ -83,7 +83,7 @@ func (e *Executor) prepareChat(
 	// 指定了 sessionID 时先切换记忆，保证 switch + chat 原子执行
 	if req.SessionID != "" {
 		if err := e.Humen.Prompt.Memory.SwitchSession(req.SessionID); err != nil {
-			logger.Error("memory", logger.S("session", req.SessionID), logger.C(err))
+			logger.Error(c, "memory", logger.S("session", req.SessionID), logger.C(err))
 		}
 	}
 
@@ -109,24 +109,24 @@ func (e *Executor) prepareChat(
 func (e *Executor) finalizeChat(lastMsg, userMsg string) {
 	e.Humen.Prompt.Memory.AppendAssistant(lastMsg)
 	if err := e.Humen.Prompt.Memory.Save(); err != nil {
-		logger.Error("memory", logger.C(err))
+		logger.Error(context.Background(), "memory", logger.C(err))
 	}
 
 	// 首次对话结束后自动用首条用户消息前缀重命名会话
 	if e.Humen.Prompt.Memory.FileCreated() {
 		if err := e.Humen.Prompt.Memory.AutoRenameFromFirstMessage(); err != nil {
-			logger.Warn("memory", logger.C(err))
+			logger.Warn(context.Background(), "memory", logger.C(err))
 		}
 	}
 
 	// 轮次结束后保存文件快照（需在配置中启用 snapshot_enabled）
 	if e.Snapshot != nil {
 		round := e.Humen.Prompt.Memory.CountUserMessages()
-		logger.Debug("snapshot", logger.I("round", round))
+		logger.Debug(context.Background(), "snapshot", logger.I("round", round))
 		if err := e.Snapshot.SaveRound(round); err != nil {
-			logger.Warn("snapshot", logger.C(err), logger.I("round", round))
+			logger.Warn(context.Background(), "snapshot", logger.C(err), logger.I("round", round))
 		} else {
-			logger.Debug("snapshot", logger.I("round", round))
+			logger.Debug(context.Background(), "snapshot", logger.I("round", round))
 		}
 	}
 
@@ -155,7 +155,7 @@ func (e *Executor) summarizeHabits(userMsg, assistantReply string) {
 	}
 
 	if _, err := e.Humen.Graphs.Habit.Invoke(ctx, msgs); err != nil {
-		logger.Warn("用户习惯总结失败", logger.C(err))
+		logger.Warn(ctx, "用户习惯总结失败", logger.C(err))
 	}
 }
 
@@ -172,7 +172,7 @@ func (e *Executor) checkCompressionThreshold() {
 	if e.Token.Prompt >= thresholdTokens {
 		e.compress.needsCompression = true
 		e.compress.lastPromptTokens = e.Token.Prompt
-		logger.Warn("上下文超过压缩阈值",
+		logger.Warn(context.Background(), "上下文超过压缩阈值",
 			logger.I("prompt_tokens", e.Token.Prompt),
 			logger.I("threshold", thresholdTokens),
 			logger.I("limit", ctxCfg.Length),

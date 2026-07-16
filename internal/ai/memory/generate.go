@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"context"
+
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"mifer/pkg/utils"
@@ -11,7 +13,7 @@ import (
 func (m *Memory) GenerateID() (string, error) {
 	random, err := utils.RandomStr(3)
 	if err != nil {
-		logger.Error("生成随机ID失败", logger.C(err))
+		logger.Error(context.Background(), "生成随机ID失败", logger.C(err))
 		return "", err
 	}
 	id := []byte(conf.GetConfig().Path.Workdir + random)

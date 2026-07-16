@@ -38,6 +38,6 @@ func (e *Executor) ListAgents(ctx context.Context) (*domain.AgentListResp, error
 		agents = []domain.AgentInfo{}
 	}
 
-	logger.Debug("Agent列表查询完成")
+	logger.Debug(ctx, "Agent列表查询完成")
 	return &domain.AgentListResp{Agents: agents}, nil
 }

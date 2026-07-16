@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -31,27 +32,27 @@ func (s *SidebarState) update(msg streamStatusMsg) {
 	// 处理不同事件类型
 	switch msg.event {
 	case "agent_start":
-		logger.Info("agent_start:", logger.S("agentName", msg.name))
+		logger.Info(context.Background(), "agent_start:", logger.S("agentName", msg.name))
 		if s.Current != "" {
 			append("%s 完成", s.Current)
 		}
 		s.Current = msg.name
 		append("%s 开始", msg.name)
 	case "agent_end":
-		logger.Info("agent_end:", logger.S("agentName", msg.name))
+		logger.Info(context.Background(), "agent_end:", logger.S("agentName", msg.name))
 		if s.Current == msg.name {
 			append("%s 完成", s.Current)
 			s.Current = ""
 		}
 	case "tool_start":
-		logger.Info("tool_start:", logger.S("toolName", msg.name))
+		logger.Info(context.Background(), "tool_start:", logger.S("toolName", msg.name))
 		if s.Current != "" && s.Current != "  "+msg.name {
 			// 工具切换：先结束上一个工具
 		}
 		s.Current = "  " + msg.name
 		append("%s 开始", msg.name)
 	case "tool_end":
-		logger.Info("tool_end:", logger.S("toolName", msg.name))
+		logger.Info(context.Background(), "tool_end:", logger.S("toolName", msg.name))
 		suffix := ""
 		if msg.arg != "" {
 			suffix = " [ERROR]"
@@ -61,7 +62,7 @@ func (s *SidebarState) update(msg streamStatusMsg) {
 			s.Current = ""
 		}
 	case "tool_error":
-		logger.Info("tool_error:", logger.S("toolErr", msg.arg))
+		logger.Info(context.Background(), "tool_error:", logger.S("toolErr", msg.arg))
 		// 错误已在 tool_end 中标记，此处记录详情
 		if msg.arg != "" {
 			append("  E: %s", msg.arg)

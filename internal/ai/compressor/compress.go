@@ -34,7 +34,7 @@ func (c *Compressor) Compress(
 
 	notifyMsg := fmt.Sprintf("当前上下文超限（%d/%d），正在压缩中...", lastPromptTokens, ctxCfg.Length)
 	if err := callback("system", notifyMsg); err != nil {
-		logger.Warn("发送压缩通知失败", logger.C(err))
+		logger.Warn(ctx, "发送压缩通知失败", logger.C(err))
 	}
 
 	allMsgs := mem.Messages()
@@ -43,7 +43,7 @@ func (c *Compressor) Compress(
 	rounds := splitRounds(allMsgs)
 	if len(rounds) <= c.recentRounds {
 		// 消息总轮数不足，跳过压缩
-		logger.Debug("上下文轮次不足，跳过压缩")
+		logger.Debug(ctx, "上下文轮次不足，跳过压缩")
 		return nil
 	}
 
@@ -61,7 +61,7 @@ func (c *Compressor) Compress(
 	layer2Rounds := rounds[layer2Start:layer1Start] // 需精简处理
 	layer1Rounds := rounds[layer1Start:]  // 完整保留
 
-	logger.Debug("三层压缩边界",
+	logger.Debug(ctx, "三层压缩边界",
 		logger.I("total_rounds", len(rounds)),
 		logger.I("layer3_summarize", len(layer3Rounds)),
 		logger.I("layer2_slim", len(layer2Rounds)),
@@ -75,7 +75,7 @@ func (c *Compressor) Compress(
 		layer3Msgs := flattenRounds(layer3Rounds)
 		summary, err := c.summarizeLayer3(ctx, systemPrompt, layer3Msgs)
 		if err != nil {
-			logger.Error("Layer3 摘要生成失败，降级为移除最早轮次", logger.C(err))
+			logger.Error(ctx, "Layer3 摘要生成失败，降级为移除最早轮次", logger.C(err))
 			return c.fallbackRemoveEarliestRounds(mem, rounds, c.recentRounds)
 		}
 		newMessages = append(newMessages, summary...)
@@ -97,7 +97,7 @@ func (c *Compressor) Compress(
 		return errorer.NewS(errorer.ErrCompressorReplaceFailed, err)
 	}
 
-	logger.Info("上下文压缩完成",
+	logger.Info(ctx, "上下文压缩完成",
 		logger.I("layer3_count", len(layer3Rounds)),
 		logger.I("layer2_count", len(layer2Rounds)),
 		logger.I("layer1_count", len(layer1Rounds)),
@@ -245,7 +245,7 @@ func (c *Compressor) offloadToolResult(msg *schema.Message) *schema.Message {
 
 	filePath, err := c.offloader.Save(context.Background(), key, []byte(originalContent))
 	if err != nil {
-		logger.Warn("Offload 工具结果失败，保留截断原文", logger.S("tool", msg.ToolName), logger.C(err))
+		logger.Warn(context.Background(), "Offload 工具结果失败，保留截断原文", logger.S("tool", msg.ToolName), logger.C(err))
 		// 降级：截断保留前 maxToolResultLen 字符
 		if len(originalContent) > maxToolResultLen {
 			copied.Content = originalContent[:maxToolResultLen] + fmt.Sprintf("\n\n...（已截断，原长度 %d 字符）", len(originalContent))
@@ -262,7 +262,7 @@ func (c *Compressor) offloadToolResult(msg *schema.Message) *schema.Message {
 		truncateContent(originalContent, 1000),
 	)
 
-	logger.Debug("已 offload 超长工具结果",
+	logger.Debug(context.Background(), "已 offload 超长工具结果",
 		logger.S("tool", msg.ToolName),
 		logger.S("callID", msg.ToolCallID),
 		logger.S("offloadPath", filePath),
@@ -290,7 +290,7 @@ func (c *Compressor) fallbackRemoveEarliestRounds(
 		return errorer.NewS(errorer.ErrCompressorReplaceFailed, err)
 	}
 
-	logger.Info("压缩降级：已移除最早轮次",
+	logger.Info(context.Background(), "压缩降级：已移除最早轮次",
 		logger.I("removed_rounds", len(rounds)-keepRounds),
 		logger.I("remaining_rounds", keepRounds),
 	)

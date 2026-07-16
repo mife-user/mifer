@@ -16,7 +16,7 @@ func (s *AgentService) MCPStatus(ctx context.Context) (*domain.MCPStatusResp, er
 		return err
 	})
 	if err != nil {
-		logger.Error("获取MCP状态失败", logger.C(err))
+		logger.Error(ctx, "获取MCP状态失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

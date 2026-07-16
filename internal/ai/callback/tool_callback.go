@@ -40,7 +40,7 @@ func newOnStart(cb func(event, content string) error) func(context.Context, *cal
 
 		// 与 executor 原有格式保持一致：工具名\x00参数JSON
 		if err := cb("tool_start", info.Name+"\x00"+ti.ArgumentsInJSON); err != nil {
-			logger.Debug("tool_start 回调失败", logger.S("tool", info.Name), logger.C(err))
+			logger.Debug(ctx, "tool_start 回调失败", logger.S("tool", info.Name), logger.C(err))
 		}
 		return ctx
 	}
@@ -56,7 +56,7 @@ func newOnEnd(cb func(event, content string) error) func(context.Context, *callb
 
 		// 发送 tool_end
 		if err := cb("tool_end", info.Name); err != nil {
-			logger.Debug("tool_end 回调失败", logger.S("tool", info.Name), logger.C(err))
+			logger.Debug(ctx, "tool_end 回调失败", logger.S("tool", info.Name), logger.C(err))
 		}
 
 		// 检查工具返回值中是否包含 error 字段
@@ -80,7 +80,7 @@ func newOnError(cb func(event, content string) error) func(context.Context, *cal
 		}
 
 		if cbErr := cb("tool_error", info.Name+"\x00"+err.Error()); cbErr != nil {
-			logger.Debug("tool_error 回调失败", logger.S("tool", info.Name), logger.C(cbErr))
+			logger.Debug(ctx, "tool_error 回调失败", logger.S("tool", info.Name), logger.C(cbErr))
 		}
 		return ctx
 	}

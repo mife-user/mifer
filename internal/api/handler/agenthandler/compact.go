@@ -13,7 +13,7 @@ import (
 func (h *AgentHandler) Compact(c *gin.Context) {
 	resp, err := h.getService().Compact(c.Request.Context())
 	if err != nil {
-		logger.Error("手动压缩上下文失败", logger.C(err))
+		logger.Error(c.Request.Context(), "手动压缩上下文失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

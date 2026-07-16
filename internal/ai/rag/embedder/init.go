@@ -36,7 +36,7 @@ func NewEmbedder(ctx context.Context) (*ollama.Embedder, error) {
 		Model:   backend.Model,
 	})
 	if err != nil {
-		logger.Error("创建Ollama嵌入器失败", logger.C(err))
+		logger.Error(ctx, "创建Ollama嵌入器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrCreateEmbedderFailed, err)
 	}
 	return emb, nil

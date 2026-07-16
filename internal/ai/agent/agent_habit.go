@@ -21,7 +21,7 @@ func createHabitGraph(ctx context.Context, chatModel model.BaseChatModel) compos
 	g := compose.NewGraph[[]*schema.Message, string]()
 
 	if err := g.AddChatModelNode("habit_chat", chatModel); err != nil {
-		logger.Warn("创建习惯总结图 ChatModel 节点失败", logger.C(err))
+		logger.Warn(ctx, "创建习惯总结图 ChatModel 节点失败", logger.C(err))
 		return nil
 	}
 	if err := g.AddLambdaNode("habit_writer", compose.InvokableLambda(
@@ -30,29 +30,29 @@ func createHabitGraph(ctx context.Context, chatModel model.BaseChatModel) compos
 			if err := os.WriteFile(miferPath, []byte(msg.Content), 0644); err != nil {
 				return "", fmt.Errorf("写入 MIFER.md 失败: %w", err)
 			}
-			logger.Debug("用户画像已更新", logger.I("len", len(msg.Content)))
+			logger.Debug(ctx, "用户画像已更新", logger.I("len", len(msg.Content)))
 			return msg.Content, nil
 		},
 	)); err != nil {
-		logger.Warn("创建习惯总结图 Lambda 节点失败", logger.C(err))
+		logger.Warn(ctx, "创建习惯总结图 Lambda 节点失败", logger.C(err))
 		return nil
 	}
 	if err := g.AddEdge(compose.START, "habit_chat"); err != nil {
-		logger.Warn("创建习惯总结图边失败", logger.C(err))
+		logger.Warn(ctx, "创建习惯总结图边失败", logger.C(err))
 		return nil
 	}
 	if err := g.AddEdge("habit_chat", "habit_writer"); err != nil {
-		logger.Warn("创建习惯总结图边失败", logger.C(err))
+		logger.Warn(ctx, "创建习惯总结图边失败", logger.C(err))
 		return nil
 	}
 	if err := g.AddEdge("habit_writer", compose.END); err != nil {
-		logger.Warn("创建习惯总结图边失败", logger.C(err))
+		logger.Warn(ctx, "创建习惯总结图边失败", logger.C(err))
 		return nil
 	}
 
 	compiled, err := g.Compile(ctx)
 	if err != nil {
-		logger.Warn("编译习惯总结图失败", logger.C(err))
+		logger.Warn(ctx, "编译习惯总结图失败", logger.C(err))
 		return nil
 	}
 	return compiled

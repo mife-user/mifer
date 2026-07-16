@@ -17,7 +17,7 @@ func (s *AgentService) RenameMemory(ctx context.Context, req *domain.RenameMemor
 		return err
 	})
 	if err != nil {
-		logger.Error("重命名记忆失败", logger.C(err))
+		logger.Error(ctx, "重命名记忆失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

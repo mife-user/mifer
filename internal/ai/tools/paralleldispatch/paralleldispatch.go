@@ -129,7 +129,7 @@ func New(agentHub *skill.AgentHub) (tool.InvokableTool, error) {
 
 	t, err := utils.InferTool("parallel_dispatch", desc, dispatch)
 	if err != nil {
-		logger.Error("创建 parallel_dispatch 工具失败", logger.C(err))
+		logger.Error(context.Background(), "创建 parallel_dispatch 工具失败", logger.C(err))
 		return nil, err
 	}
 	return t, nil

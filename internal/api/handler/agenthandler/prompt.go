@@ -1,11 +1,12 @@
 package agenthandler
 
 import (
+	"net/http"
+
 	"mifer/internal/api/dto/request/agentreq"
 	"mifer/internal/api/dto/response/agentresp"
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ import (
 func (h *AgentHandler) GetPrompt(c *gin.Context) {
 	resp, err := h.getService().GetPrompt(c.Request.Context())
 	if err != nil {
-		logger.Error("获取提示词失败", logger.C(err))
+		logger.Error(c.Request.Context(), "获取提示词失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -25,7 +26,7 @@ func (h *AgentHandler) GetPrompt(c *gin.Context) {
 func (h *AgentHandler) SetPrompt(c *gin.Context) {
 	var body agentreq.SetPromptReq
 	if err := c.ShouldBindJSON(&body); err != nil {
-		logger.Warn("解析提示词请求失败", logger.C(err))
+		logger.Warn(c.Request.Context(), "解析提示词请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求体格式错误"})
 		return
 	}
@@ -38,7 +39,7 @@ func (h *AgentHandler) SetPrompt(c *gin.Context) {
 		Prompt: body.Prompt,
 	})
 	if err != nil {
-		logger.Error("设置提示词失败", logger.C(err))
+		logger.Error(c.Request.Context(), "设置提示词失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -49,7 +50,7 @@ func (h *AgentHandler) SetPrompt(c *gin.Context) {
 func (h *AgentHandler) ResetPrompt(c *gin.Context) {
 	resp, err := h.getService().ResetPrompt(c.Request.Context())
 	if err != nil {
-		logger.Error("重置提示词失败", logger.C(err))
+		logger.Error(c.Request.Context(), "重置提示词失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -143,7 +143,7 @@ func webFetch(ctx context.Context, input WebFetchInput) (WebFetchOutput, error) 
 func extractText(htmlContent string) (title string, text string) {
 	doc, err := html.Parse(strings.NewReader(htmlContent))
 	if err != nil {
-		logger.Warn("解析 HTML 失败", logger.S("error", err.Error()))
+		logger.Warn(context.Background(), "解析 HTML 失败", logger.S("error", err.Error()))
 		return "", ""
 	}
 

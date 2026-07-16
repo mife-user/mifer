@@ -43,7 +43,7 @@ func (e *Executor) runPlanFlow(
 			_ = callback("system", "计划已取消")
 			return nil
 		}
-		logger.Error("计划制定失败", logger.C(err))
+		logger.Error(ctx, "计划制定失败", logger.C(err))
 		_ = callback("system", "计划制定失败: "+err.Error())
 		return nil
 	}
@@ -52,7 +52,7 @@ func (e *Executor) runPlanFlow(
 	planMsg := fmt.Sprintf("已制定计划并写入文件。\n\n%s", planContent)
 	e.Humen.Prompt.Memory.AppendAssistant(planMsg)
 	if err := e.Humen.Prompt.Memory.Save(); err != nil {
-		logger.Error("保存计划记忆失败", logger.C(err))
+		logger.Error(ctx, "保存计划记忆失败", logger.C(err))
 	}
 
 	// 4. 执行阶段：复用 runConversation（内存已含 plan 的 assistant 消息）
@@ -64,7 +64,7 @@ func (e *Executor) runPlanFlow(
 		return err
 	}
 
-	logger.Debug("plan 执行完成", logger.I("eventCount", result.eventCount), logger.I("msgLen", len(result.lastMsg)))
+	logger.Debug(ctx, "plan 执行完成", logger.I("eventCount", result.eventCount), logger.I("msgLen", len(result.lastMsg)))
 
 	if result.lastMsg == "" {
 		return nil

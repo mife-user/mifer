@@ -79,7 +79,7 @@ func persistToolExchange(writer ToolExchangeWriter, toolName, arguments, callID,
 
 	writer.AppendToolExchange(assistantMsg, toolResultMsg)
 
-	logger.Debug("已持久化工具调用",
+	logger.Debug(context.Background(), "已持久化工具调用",
 		logger.S("tool", toolName),
 		logger.S("callID", callID),
 		logger.I("resultLen", len(resultText)),

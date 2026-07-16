@@ -71,7 +71,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 				EnableStreaming: true,
 			}
 			cb, hasCB := confirm.CallbackFromCtx(ctx)
-			logger.Info("plan_agent 开始运行",
+			logger.Info(ctx, "plan_agent 开始运行",
 				logger.S("has_cb", fmt.Sprintf("%v", hasCB)),
 				logger.S("streaming", "true"))
 
@@ -128,7 +128,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 						chunk, chunkErr := msgOutput.MessageStream.Recv()
 						if chunkErr != nil {
 							if !errors.Is(chunkErr, io.EOF) {
-								logger.Warn("plan_agent 流式读取异常", logger.C(chunkErr))
+								logger.Warn(ctx, "plan_agent 流式读取异常", logger.C(chunkErr))
 							}
 							break
 						}
@@ -167,7 +167,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 				_ = cb("agent_end", "PlanAgent")
 			}
 
-			logger.Info("plan_agent 事件迭代完成",
+			logger.Info(ctx, "plan_agent 事件迭代完成",
 				logger.I("total_events", eventCount),
 				logger.I("content_parts", len(contents)),
 				logger.I("forwarded_agent", agentFwd),
@@ -180,7 +180,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 			return schema.AssistantMessage(strings.Join(contents, ""), nil), nil
 		},
 	)); err != nil {
-		logger.Warn("创建 plan_agent 节点失败", logger.C(err))
+		logger.Warn(ctx, "创建 plan_agent 节点失败", logger.C(err))
 		return nil
 	}
 
@@ -199,11 +199,11 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 				return planGraphResult{}, fmt.Errorf("写入计划文件失败: %w", err)
 			}
 
-			logger.Debug("计划文件已写入", logger.S("path", planPath), logger.I("len", len(msg.Content)))
+			logger.Debug(ctx, "计划文件已写入", logger.S("path", planPath), logger.I("len", len(msg.Content)))
 			return planGraphResult{FilePath: planPath, Content: msg.Content}, nil
 		},
 	)); err != nil {
-		logger.Warn("创建 plan_write 节点失败", logger.C(err))
+		logger.Warn(ctx, "创建 plan_write 节点失败", logger.C(err))
 		return nil
 	}
 
@@ -212,7 +212,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 		func(ctx context.Context, result planGraphResult) (string, error) {
 			cb, ok := confirm.CallbackFromCtx(ctx)
 			if !ok || cb == nil {
-				logger.Warn("plan_confirm 节点未找到 callback，跳过用户确认")
+				logger.Warn(ctx, "plan_confirm 节点未找到 callback，跳过用户确认")
 				return result.Content, nil
 			}
 
@@ -239,7 +239,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 				"content":   result.Content,
 			})
 			if err := cb("plan_confirm", string(eventJSON)); err != nil {
-				logger.Warn("发送 plan_confirm 事件失败", logger.C(err))
+				logger.Warn(ctx, "发送 plan_confirm 事件失败", logger.C(err))
 				store.Remove(confirmID)
 				return result.Content, nil
 			}
@@ -247,14 +247,14 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 			select {
 			case res := <-entry.ResultCh:
 				if res.Approved {
-					logger.Debug("计划已确认", logger.S("plan", result.FilePath))
+					logger.Debug(ctx, "计划已确认", logger.S("plan", result.FilePath))
 					return result.Content, nil
 				}
-				logger.Debug("计划被拒绝", logger.S("action", res.Action))
+				logger.Debug(ctx, "计划被拒绝", logger.S("action", res.Action))
 				return "", ErrPlanRejected
 			case <-time.After(30 * time.Minute):
 				store.Remove(confirmID)
-				logger.Warn("计划确认超时")
+				logger.Warn(ctx, "计划确认超时")
 				return "", ErrPlanRejected
 			case <-ctx.Done():
 				store.Remove(confirmID)
@@ -262,7 +262,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 			}
 		},
 	)); err != nil {
-		logger.Warn("创建 plan_confirm 节点失败", logger.C(err))
+		logger.Warn(ctx, "创建 plan_confirm 节点失败", logger.C(err))
 		return nil
 	}
 
@@ -273,7 +273,7 @@ func newPlanGraph(ctx context.Context, planAgent adk.Agent, store *confirm.Store
 
 	compiled, err := g.Compile(ctx)
 	if err != nil {
-		logger.Warn("编译计划图失败", logger.C(err))
+		logger.Warn(ctx, "编译计划图失败", logger.C(err))
 		return nil
 	}
 	return compiled

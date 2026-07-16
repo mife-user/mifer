@@ -32,7 +32,7 @@ func (h *Humen) initInfra(c context.Context) {
 	// 技能管理器
 	skillMgr, err := skill.NewManager(conf.GetConfig().Skill)
 	if err != nil {
-		logger.Warn("技能管理器初始化失败，技能功能不可用", logger.C(err))
+		logger.Warn(c, "技能管理器初始化失败，技能功能不可用", logger.C(err))
 	}
 	h.SkillManager = skillMgr
 	h.skillHub = skill.NewAgentHub()
@@ -69,7 +69,7 @@ func getBackendModel(reg *llm.Registry, agentName string) model.BaseChatModel {
 func Init(c context.Context) (*Humen, error) {
 	reg, err := llm.InitRegistry(c)
 	if err != nil {
-		logger.Error("初始化LLM注册中心失败", logger.C(err))
+		logger.Error(c, "初始化LLM注册中心失败", logger.C(err))
 		return nil, err
 	}
 
@@ -78,12 +78,12 @@ func Init(c context.Context) (*Humen, error) {
 	// Memory 提前创建，供 persistenceMw 初始化时引用
 	id, ok := c.Value("id").(string)
 	if !ok {
-		logger.Error("id is not string")
+		logger.Error(c, "id is not string")
 		return nil, errorer.New(errorer.ErrIDNotString)
 	}
 	mem, err := memory.Init(id)
 	if err != nil {
-		logger.Error("init memory failed", logger.C(err))
+		logger.Error(c, "init memory failed", logger.C(err))
 		return nil, err
 	}
 	h.Prompt = prompt.New(mem)
@@ -123,7 +123,7 @@ func Init(c context.Context) (*Humen, error) {
 			h.Graphs.Habit = createHabitGraph(c, habitModel)
 		}
 	} else {
-		logger.Warn("没有可用的模型后端，跳过Agent初始化，请配置 ai.backends 后通过 /config 重载启用")
+		logger.Warn(c, "没有可用的模型后端，跳过Agent初始化，请配置 ai.backends 后通过 /config 重载启用")
 		h.AgentInfos = append(h.AgentInfos, AgentInfo{Name: "Mifer", ModelBackend: "", Description: "Mifer 智能助手（未配置可用后端，暂不可用）"})
 	}
 

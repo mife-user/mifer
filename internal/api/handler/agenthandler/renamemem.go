@@ -1,11 +1,12 @@
 package agenthandler
 
 import (
+	"net/http"
+
 	"mifer/internal/api/dto/request/agentreq"
 	"mifer/internal/api/dto/response/agentresp"
 	"mifer/internal/domain"
 	"mifer/pkg/logger"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ import (
 func (h *AgentHandler) RenameMemory(c *gin.Context) {
 	var body agentreq.RenameMemoryReq
 	if err := c.ShouldBindJSON(&body); err != nil {
-		logger.Warn("解析重命名请求失败", logger.C(err))
+		logger.Warn(c.Request.Context(), "解析重命名请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求体格式错误"})
 		return
 	}
@@ -27,7 +28,7 @@ func (h *AgentHandler) RenameMemory(c *gin.Context) {
 		Name: body.Name,
 	})
 	if err != nil {
-		logger.Error("重命名记忆失败", logger.C(err))
+		logger.Error(c.Request.Context(), "重命名记忆失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

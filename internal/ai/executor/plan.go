@@ -17,10 +17,10 @@ func (e *Executor) ListPlans(ctx context.Context) (*domain.PlanListResp, error) 
 	entries, err := os.ReadDir(plansDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Debug("计划目录不存在，返回空列表", logger.C(err))
+			logger.Debug(ctx, "计划目录不存在，返回空列表", logger.C(err))
 			return &domain.PlanListResp{Files: []string{}}, nil
 		}
-		logger.Error("读取计划目录失败", logger.C(err))
+		logger.Error(ctx, "读取计划目录失败", logger.C(err))
 		return nil, err
 	}
 
@@ -45,25 +45,25 @@ func (e *Executor) LoadPlan(ctx context.Context, name string) (*domain.PlanLoadR
 	// 安全检查：确保文件在 plansDir 内
 	absPath, err := filepath.Abs(filepath.Clean(filePath))
 	if err != nil {
-		logger.Error("解析计划文件路径失败", logger.C(err))
+		logger.Error(ctx, "解析计划文件路径失败", logger.C(err))
 		return nil, err
 	}
 	absDir, err := filepath.Abs(filepath.Clean(plansDir))
 	if err != nil {
-		logger.Error("解析计划目录路径失败", logger.C(err))
+		logger.Error(ctx, "解析计划目录路径失败", logger.C(err))
 		return nil, err
 	}
 	if !strings.HasPrefix(filepath.ToSlash(absPath), filepath.ToSlash(absDir)+"/") {
-		logger.Warn("尝试读取计划目录外的文件: " + name)
+		logger.Warn(ctx, "尝试读取计划目录外的文件: "+name)
 		return nil, os.ErrNotExist
 	}
 
 	content, err := os.ReadFile(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Warn("计划文件不存在: " + name)
+			logger.Warn(ctx, "计划文件不存在: "+name)
 		} else {
-			logger.Error("读取计划文件失败", logger.C(err))
+			logger.Error(ctx, "读取计划文件失败", logger.C(err))
 		}
 		return nil, err
 	}

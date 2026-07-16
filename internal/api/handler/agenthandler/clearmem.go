@@ -1,9 +1,10 @@
 package agenthandler
 
 import (
+	"net/http"
+
 	"mifer/internal/api/dto/response/agentresp"
 	"mifer/pkg/logger"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,7 +13,7 @@ import (
 func (h *AgentHandler) ClearMemory(c *gin.Context) {
 	resp, err := h.getService().ClearMemory(c.Request.Context())
 	if err != nil {
-		logger.Error("清空记忆失败", logger.C(err))
+		logger.Error(c.Request.Context(), "清空记忆失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

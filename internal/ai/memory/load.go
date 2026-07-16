@@ -2,10 +2,12 @@ package memory
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"os"
+
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
-	"os"
 
 	"github.com/cloudwego/eino/schema"
 )
@@ -17,7 +19,7 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 	}
 
 	if err := os.MkdirAll(cfg.MemPath, 0755); err != nil {
-		logger.Error("创建记忆目录失败", logger.C(err))
+		logger.Error(context.Background(), "创建记忆目录失败", logger.C(err))
 		return nil, errorer.New(errorer.ErrPathCannotCreate)
 	}
 
@@ -30,7 +32,7 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		logger.Error("打开记忆文件失败", logger.C(err))
+		logger.Error(context.Background(), "打开记忆文件失败", logger.C(err))
 		return nil, errorer.New(errorer.ErrArgUnknowid)
 	}
 	defer f.Close()
@@ -44,13 +46,13 @@ func load(cfg *MemCfg) ([]*schema.Message, error) {
 		}
 		var msg schema.Message
 		if err := json.Unmarshal(line, &msg); err != nil {
-			logger.Error("解析记忆行失败", logger.C(err))
+			logger.Error(context.Background(), "解析记忆行失败", logger.C(err))
 			return nil, errorer.NewS(errorer.ErrParseLineFailed, err)
 		}
 		messages = append(messages, &msg)
 	}
 	if err := scanner.Err(); err != nil {
-		logger.Error("读取记忆文件失败", logger.C(err))
+		logger.Error(context.Background(), "读取记忆文件失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrReadFileFailed, err)
 	}
 	return messages, nil

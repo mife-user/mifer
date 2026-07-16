@@ -22,21 +22,21 @@ func (s *ToolService) Confirm(ctx context.Context, req *domain.ToolConfirmReq) (
 		case "deny":
 			result = confirm.ConfirmResult{Approved: false, Action: "deny"}
 		default:
-			logger.Warn("无效的确认动作", logger.S("action", req.Action))
+			logger.Warn(ctx, "无效的确认动作", logger.S("action", req.Action))
 			resp = &domain.ToolConfirmResp{ID: req.ID, Resolved: false, Action: req.Action}
 			return nil
 		}
 
 		entry, ok := s.store.Get(req.ID)
 		if !ok {
-			logger.Warn("确认条目未找到或已过期", logger.S("id", req.ID))
+			logger.Warn(ctx, "确认条目未找到或已过期", logger.S("id", req.ID))
 			resp = &domain.ToolConfirmResp{ID: req.ID, Resolved: false, Action: req.Action}
 			return nil
 		}
 
 		s.store.Resolve(req.ID, result)
 
-		logger.Info("工具确认已处理",
+		logger.Info(ctx, "工具确认已处理",
 			logger.S("id", req.ID),
 			logger.S("action", req.Action),
 			logger.S("tool", entry.ToolName))
@@ -49,7 +49,7 @@ func (s *ToolService) Confirm(ctx context.Context, req *domain.ToolConfirmReq) (
 		return nil
 	})
 	if err != nil {
-		logger.Error("处理工具确认失败", logger.C(err))
+		logger.Error(ctx, "处理工具确认失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

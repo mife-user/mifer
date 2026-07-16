@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"context"
+
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"os"
@@ -43,10 +45,10 @@ func (m *Memory) AutoRenameFromFirstMessage() error {
 				return nil
 			}
 			if err := m.renameLocked(newName); err != nil {
-				logger.Warn("自动重命名失败", logger.C(err))
+				logger.Warn(context.Background(), "自动重命名失败", logger.C(err))
 				return err
 			}
-			logger.Info("会话自动重命名", logger.S("new_name", newName))
+			logger.Info(context.Background(), "会话自动重命名", logger.S("new_name", newName))
 			return nil
 		}
 	}
@@ -92,7 +94,7 @@ func (m *Memory) renameLocked(newID string) error {
 		return err
 	}
 	if err := os.Rename(oldPath, newPath); err != nil {
-		logger.Error("重命名记忆文件失败", logger.C(err), logger.S("old", oldPath), logger.S("new", newPath))
+		logger.Error(context.Background(), "重命名记忆文件失败", logger.C(err), logger.S("old", oldPath), logger.S("new", newPath))
 		return err
 	}
 
@@ -103,7 +105,7 @@ func (m *Memory) renameLocked(newID string) error {
 	newSnapPath := strings.Replace(newPath, newID+".jsonl", newSnapDir, 1)
 	if _, err := os.Stat(oldSnapPath); err == nil {
 		if err := os.Rename(oldSnapPath, newSnapPath); err != nil {
-			logger.Warn("重命名快照目录失败，已回滚记忆文件重命名", logger.C(err))
+			logger.Warn(context.Background(), "重命名快照目录失败，已回滚记忆文件重命名", logger.C(err))
 			// 回滚 .jsonl 重命名
 			_ = os.Rename(newPath, oldPath)
 			return err

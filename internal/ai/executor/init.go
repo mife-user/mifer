@@ -35,7 +35,7 @@ func Init(c context.Context) (*Executor, error) {
 
 	ag, err := agent.Init(c)
 	if err != nil {
-		logger.Error("初始化agent失败", logger.C(err))
+		logger.Error(c, "初始化agent失败", logger.C(err))
 		return nil, err
 	}
 
@@ -66,19 +66,19 @@ func Init(c context.Context) (*Executor, error) {
 		memPath := filepath.Join(cfg.Path.CfgPath, "memory", filepath.Base(cfg.Path.Workdir))
 		id, _ := c.Value("id").(string)
 		baseDir := filepath.Join(memPath, id+"_snapshots")
-		logger.Debug("初始化文件快照服务",
+		logger.Debug(c, "初始化文件快照服务",
 			logger.S("workdir", cfg.Path.Workdir),
 			logger.S("baseDir", baseDir),
 		)
 		snapSvc = snapshot.New(cfg.Path.Workdir, baseDir)
 		if err := snapSvc.InitBaseline(); err != nil {
-			logger.Warn("初始化快照基线失败，禁用快照功能", logger.C(err))
+			logger.Warn(c, "初始化快照基线失败，禁用快照功能", logger.C(err))
 			snapSvc = nil
 		} else {
-			logger.Info("文件快照服务初始化成功", logger.S("baseDir", baseDir))
+			logger.Info(c, "文件快照服务初始化成功", logger.S("baseDir", baseDir))
 		}
 	} else {
-		logger.Debug("文件快照功能未启用（snapshot_enabled=false）")
+		logger.Debug(c, "文件快照功能未启用（snapshot_enabled=false）")
 	}
 
 	// 初始化 offload 存储
@@ -88,7 +88,7 @@ func Init(c context.Context) (*Executor, error) {
 			filepath.Base(cfg.Path.Workdir), "offload")
 	}
 	offloader := offload.NewLocal(offloadDir)
-	logger.Debug("Offload 存储已初始化", logger.S("dir", offloadDir))
+	logger.Debug(c, "Offload 存储已初始化", logger.S("dir", offloadDir))
 
 	// 初始化上下文压缩器（含 offload + 三层记忆支持）
 	ctxCfg := cfg.Ai.Context

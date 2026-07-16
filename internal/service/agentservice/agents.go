@@ -17,7 +17,7 @@ func (s *AgentService) ListAgents(ctx context.Context) (*domain.AgentListResp, e
 		return err
 	})
 	if err != nil {
-		logger.Error("获取Agent列表失败", logger.C(err))
+		logger.Error(ctx, "获取Agent列表失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

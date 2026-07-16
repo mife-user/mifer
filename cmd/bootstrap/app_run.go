@@ -32,12 +32,12 @@ func NewApplication(ctx context.Context) (*Application, error) {
 	// }
 
 	if err = app.initRouter(); err != nil {
-		logger.Error("初始化路由失败", logger.C(err))
+		logger.Error(ctx, "初始化路由失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitRouterFailed, err)
 	}
 
 	if err = app.initCli(); err != nil {
-		logger.Error("初始化CLI失败", logger.C(err))
+		logger.Error(ctx, "初始化CLI失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrInitCLIFailed, err)
 	}
 	return app, nil
@@ -54,23 +54,23 @@ func (a *Application) Run() error {
 			ReadTimeout:  5 * time.Minute,
 			WriteTimeout: 0, // SSE 长连接不设写入超时
 		}
-		logger.Info("HTTP 服务器启动", logger.I("port", conf.GetConfig().Gin.Port))
+		logger.Info(context.Background(), "HTTP 服务器启动", logger.I("port", conf.GetConfig().Gin.Port))
 		err = a.server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			logger.Error("端口绑定失败，切换端口重试", logger.I("port", conf.GetConfig().Gin.Port), logger.C(err))
+			logger.Error(context.Background(), "端口绑定失败，切换端口重试", logger.I("port", conf.GetConfig().Gin.Port), logger.C(err))
 			conf.GetConfig().Gin.Port += 10
 			continue
 		}
 		return nil
 	}
-	logger.Error("所有端口均不可用，服务启动失败", logger.C(err))
+	logger.Error(context.Background(), "所有端口均不可用，服务启动失败", logger.C(err))
 	return errorer.NewS(errorer.ErrServerRunFailed, err)
 }
 
 // printStartupInfo 打印启动信息
 func (a *Application) printStartupInfo() {
-	logger.Info("应用初始化成功！")
-	logger.Info("配置环境:", logger.S("env", conf.GetConfig().Env))
-	logger.Info("Gin 模式:", logger.S("mode", conf.GetConfig().Gin.Mode))
-	logger.Info("服务端口:", logger.I("port", conf.GetConfig().Gin.Port))
+	logger.Info(context.Background(), "应用初始化成功！")
+	logger.Info(context.Background(), "配置环境:", logger.S("env", conf.GetConfig().Env))
+	logger.Info(context.Background(), "Gin 模式:", logger.S("mode", conf.GetConfig().Gin.Mode))
+	logger.Info(context.Background(), "服务端口:", logger.I("port", conf.GetConfig().Gin.Port))
 }

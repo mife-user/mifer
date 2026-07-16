@@ -17,7 +17,7 @@ func (s *AgentService) Compact(ctx context.Context) (*domain.CompactResp, error)
 		return err
 	})
 	if err != nil {
-		logger.Error("手动压缩上下文失败", logger.C(err))
+		logger.Error(ctx, "手动压缩上下文失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

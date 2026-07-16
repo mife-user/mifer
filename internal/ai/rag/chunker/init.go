@@ -33,7 +33,7 @@ func NewChunker(ctx context.Context) (document.Transformer, error) {
 		OverlapSize: chunkOverlap,
 	})
 	if err != nil {
-		logger.Error("创建递归分块器失败", logger.C(err))
+		logger.Error(ctx, "创建递归分块器失败", logger.C(err))
 		return nil, errorer.NewS(errorer.ErrCreateRecursiveChunkerFailed, err)
 	}
 	return &dedupSplitter{
@@ -45,7 +45,7 @@ func NewChunker(ctx context.Context) (document.Transformer, error) {
 func (d *dedupSplitter) Transform(ctx context.Context, docs []*schema.Document, opts ...document.TransformerOption) ([]*schema.Document, error) {
 	chunks, err := d.splitter.Transform(ctx, docs, opts...)
 	if err != nil {
-		logger.Error("文档切分失败", logger.C(err))
+		logger.Error(ctx, "文档切分失败", logger.C(err))
 		return nil, err
 	}
 

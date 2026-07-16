@@ -10,7 +10,7 @@ import (
 func (e *Executor) ListMemories(c context.Context) (*domain.MemoryListResp, error) {
 	ids, err := e.Humen.Prompt.Memory.ListIDs()
 	if err != nil {
-		logger.Error("列出记忆失败", logger.C(err))
+		logger.Error(c, "列出记忆失败", logger.C(err))
 		return nil, err
 	}
 	return &domain.MemoryListResp{

@@ -125,16 +125,16 @@ func sendConfirmEvent(cb ExecutorCallback, id, toolName, arguments string) {
 		ID: id, ToolName: toolName, Arguments: arguments,
 	})
 	if err != nil {
-		logger.Error("序列化 tool_confirm 事件失败", logger.C(err))
+		logger.Error(context.Background(), "序列化 tool_confirm 事件失败", logger.C(err))
 		return
 	}
 
-	logger.Info("发送 tool_confirm SSE 事件",
+	logger.Info(context.Background(), "发送 tool_confirm SSE 事件",
 		logger.S("id", id), logger.S("tool", toolName),
 		logger.I("argsLen", len(arguments)))
 
 	if sendErr := cb("tool_confirm", string(eventData)); sendErr != nil {
-		logger.Error("发送 tool_confirm SSE 事件失败",
+		logger.Error(context.Background(), "发送 tool_confirm SSE 事件失败",
 			logger.S("tool", toolName), logger.C(sendErr))
 	}
 }
@@ -159,7 +159,7 @@ func awaitConfirmation(ctx context.Context, cb ExecutorCallback, store *Store,
 	if cb != nil {
 		sendConfirmEvent(cb, id, toolName, arguments)
 	} else {
-		logger.Warn("tool_confirm 无法发送：callback 为 nil",
+		logger.Warn(ctx, "tool_confirm 无法发送：callback 为 nil",
 			logger.S("tool", toolName), logger.S("id", id))
 	}
 

@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"context"
+
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"path/filepath"
@@ -17,7 +19,7 @@ func (m *Memory) GetCurrentID() string {
 func (m *Memory) SwitchSession(newID string) error {
 	// 先持久化当前会话（Save 内部加锁）
 	if err := m.Save(); err != nil {
-		logger.Error("切换会话时保存记忆失败", logger.C(err))
+		logger.Error(context.Background(), "切换会话时保存记忆失败", logger.C(err))
 		return err
 	}
 	m.mu.Lock()
@@ -26,7 +28,7 @@ func (m *Memory) SwitchSession(newID string) error {
 	m.fileCreated = false
 	msgs, err := load(&m.Cfg)
 	if err != nil {
-		logger.Error("切换会话时加载记忆失败", logger.C(err))
+		logger.Error(context.Background(), "切换会话时加载记忆失败", logger.C(err))
 		return err
 	}
 	if msgs == nil {
@@ -45,7 +47,7 @@ func Init(id string) (*Memory, error) {
 	// 加载已有的对话历史
 	msgs, err := load(&memory.Cfg)
 	if err != nil {
-		logger.Error("加载记忆文件失败", logger.C(err))
+		logger.Error(context.Background(), "加载记忆文件失败", logger.C(err))
 		return nil, err
 	}
 	if msgs == nil {

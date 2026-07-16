@@ -21,10 +21,10 @@ func (e *Executor) Compact(ctx context.Context) (*domain.CompactResp, error) {
 		func(event, content string) error { return nil },
 	)
 	if err != nil {
-		logger.Error("手动压缩上下文失败", logger.C(err))
+		logger.Error(ctx, "手动压缩上下文失败", logger.C(err))
 		return nil, err
 	}
 
-	logger.Info("手动压缩上下文完成")
+	logger.Info(ctx, "手动压缩上下文完成")
 	return &domain.CompactResp{Message: "上下文压缩完成"}, nil
 }

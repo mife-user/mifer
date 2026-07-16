@@ -1,6 +1,7 @@
 package confirm
 
 import (
+	"context"
 	"time"
 
 	"mifer/pkg/logger"
@@ -48,7 +49,7 @@ func (s *Store) runActor(state *storeState) {
 					default:
 					}
 					delete(state.pending, id)
-					logger.Debug("清理超时确认项", logger.S("id", id),
+					logger.Debug(context.Background(), "清理超时确认项", logger.S("id", id),
 						logger.S("tool", entry.ToolName))
 				}
 			}
@@ -100,7 +101,7 @@ func (s *Store) Resolve(id string, result ConfirmResult) {
 			select {
 			case entry.ResultCh <- result:
 			default:
-				logger.Warn("确认结果通道已满，可能已超时",
+				logger.Warn(context.Background(), "确认结果通道已满，可能已超时",
 					logger.S("id", id), logger.S("action", result.Action))
 			}
 		}

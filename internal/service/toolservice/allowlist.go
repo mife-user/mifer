@@ -18,7 +18,7 @@ func (s *ToolService) AddAllowList(ctx context.Context, req *domain.ToolAddAllow
 		// 检查是否已在白名单中
 		existing, err := conf.LoadAllowList()
 		if err != nil {
-			logger.Warn("加载命令白名单失败", logger.C(err))
+			logger.Warn(ctx, "加载命令白名单失败", logger.C(err))
 		}
 		if err == nil && slices.Contains(existing, req.Command) {
 			resp = &domain.ToolAddAllowListResp{
@@ -30,13 +30,13 @@ func (s *ToolService) AddAllowList(ctx context.Context, req *domain.ToolAddAllow
 
 		// 添加命令到白名单文件
 		if err := conf.AddToAllowList(s.workdir, req.Command); err != nil {
-			logger.Error("添加命令到白名单失败",
+			logger.Error(ctx, "添加命令到白名单失败",
 				logger.S("command", req.Command),
 				logger.C(err))
 			return err
 		}
 
-		logger.Info("命令已添加到白名单", logger.S("command", req.Command))
+		logger.Info(ctx, "命令已添加到白名单", logger.S("command", req.Command))
 		resp = &domain.ToolAddAllowListResp{
 			Command: req.Command,
 			Added:   true,
@@ -44,7 +44,7 @@ func (s *ToolService) AddAllowList(ctx context.Context, req *domain.ToolAddAllow
 		return nil
 	})
 	if err != nil {
-		logger.Error("添加白名单失败", logger.C(err))
+		logger.Error(ctx, "添加白名单失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

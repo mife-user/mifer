@@ -1,6 +1,7 @@
 package confirm
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 
@@ -47,7 +48,7 @@ func NeedConfirm(store *Store) func(toolName, arguments, sessionID string) bool 
 func loadAllowlist() []string {
 	list, err := conf.LoadAllowList()
 	if err != nil {
-		logger.Warn("加载白名单配置失败，使用空列表", logger.C(err))
+		logger.Warn(context.Background(), "加载白名单配置失败，使用空列表", logger.C(err))
 		return nil
 	}
 	return list

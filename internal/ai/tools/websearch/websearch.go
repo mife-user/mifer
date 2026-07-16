@@ -142,7 +142,7 @@ func searxngSearch(ctx context.Context, query string, maxResults int, timeoutSec
 	}
 
 	if len(results) == 0 {
-		logger.Warn("SearXNG 搜索未返回结果", logger.S("query", query))
+		logger.Warn(ctx,"SearXNG 搜索未返回结果", logger.S("query", query))
 	}
 
 	return WebSearchOutput{
@@ -213,7 +213,7 @@ func bingAPISearch(ctx context.Context, query string, maxResults int, timeoutSec
 	}
 
 	if len(results) == 0 {
-		logger.Warn("Bing API 搜索未返回结果", logger.S("query", query))
+		logger.Warn(ctx,"Bing API 搜索未返回结果", logger.S("query", query))
 	}
 
 	return WebSearchOutput{
@@ -317,7 +317,7 @@ func duckduckgoSearch(ctx context.Context, query string, maxResults int, timeout
 	}
 
 	if len(results) == 0 {
-		logger.Warn("DuckDuckGo 搜索未返回有效结果", logger.S("query", query))
+		logger.Warn(ctx,"DuckDuckGo 搜索未返回有效结果", logger.S("query", query))
 	}
 
 	return WebSearchOutput{

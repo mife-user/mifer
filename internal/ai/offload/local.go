@@ -25,16 +25,16 @@ func (l *LocalOffloader) Save(ctx context.Context, key string, content []byte) (
 	fullPath := filepath.Join(l.baseDir, key)
 
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-		logger.Error("创建 offload 目录失败", logger.S("path", filepath.Dir(fullPath)), logger.C(err))
+		logger.Error(ctx, "创建 offload 目录失败", logger.S("path", filepath.Dir(fullPath)), logger.C(err))
 		return "", errorer.NewS(errorer.ErrCreateMemoryDirFailed, err)
 	}
 
 	if err := os.WriteFile(fullPath, content, 0644); err != nil {
-		logger.Error("写入 offload 文件失败", logger.S("path", fullPath), logger.C(err))
+		logger.Error(ctx, "写入 offload 文件失败", logger.S("path", fullPath), logger.C(err))
 		return "", errorer.NewS(errorer.ErrWriteFileFailed, err)
 	}
 
-	logger.Debug("Offload 文件已保存", logger.S("path", fullPath), logger.I("size", len(content)))
+	logger.Debug(ctx, "Offload 文件已保存", logger.S("path", fullPath), logger.I("size", len(content)))
 	return fullPath, nil
 }
 
@@ -42,7 +42,7 @@ func (l *LocalOffloader) Save(ctx context.Context, key string, content []byte) (
 func (l *LocalOffloader) Load(ctx context.Context, filePath string) ([]byte, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		logger.Error("读取 offload 文件失败", logger.S("path", filePath), logger.C(err))
+		logger.Error(ctx, "读取 offload 文件失败", logger.S("path", filePath), logger.C(err))
 		return nil, errorer.NewS(errorer.ErrReadFileFailed, err)
 	}
 	return data, nil
@@ -51,7 +51,7 @@ func (l *LocalOffloader) Load(ctx context.Context, filePath string) ([]byte, err
 // Delete 删除 filePath 对应的 offload 文件，文件不存在时静默成功。
 func (l *LocalOffloader) Delete(ctx context.Context, filePath string) error {
 	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-		logger.Error("删除 offload 文件失败", logger.S("path", filePath), logger.C(err))
+		logger.Error(ctx, "删除 offload 文件失败", logger.S("path", filePath), logger.C(err))
 		return errorer.NewS(errorer.ErrWriteFileFailed, err)
 	}
 	return nil

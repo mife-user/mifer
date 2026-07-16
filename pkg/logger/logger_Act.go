@@ -1,43 +1,67 @@
 package logger
 
-import "go.uber.org/zap"
+import (
+	"context"
 
-// Info 打印info日志
-func Info(msg string, fields ...zap.Field) {
-	if loggerInstance == nil {
-		return
+	"go.uber.org/zap"
+)
+
+// extractFields 从 context 中提取 traceID / sessionID，追加到 fields 前面
+func extractFields(ctx context.Context, fields []zap.Field) []zap.Field {
+	tid := TraceID(ctx)
+	sid := SessionID(ctx)
+	if tid == "" && sid == "" {
+		return fields
 	}
-	loggerInstance.Info(msg, fields...)
+
+	// 预分配容量，将 trace/session 置顶
+	out := make([]zap.Field, 0, len(fields)+2)
+	if tid != "" {
+		out = append(out, zap.String("trace_id", tid))
+	}
+	if sid != "" {
+		out = append(out, zap.String("session_id", sid))
+	}
+	out = append(out, fields...)
+	return out
 }
 
-// Error 打印error日志
-func Error(msg string, fields ...zap.Field) {
+// Info 打印 info 日志
+func Info(ctx context.Context, msg string, fields ...zap.Field) {
 	if loggerInstance == nil {
 		return
 	}
-	loggerInstance.Error(msg, fields...)
+	loggerInstance.Info(msg, extractFields(ctx, fields)...)
 }
 
-// Debug 打印debug日志
-func Debug(msg string, fields ...zap.Field) {
+// Error 打印 error 日志
+func Error(ctx context.Context, msg string, fields ...zap.Field) {
 	if loggerInstance == nil {
 		return
 	}
-	loggerInstance.Debug(msg, fields...)
+	loggerInstance.Error(msg, extractFields(ctx, fields)...)
 }
 
-// Warn 打印warn日志
-func Warn(msg string, fields ...zap.Field) {
+// Debug 打印 debug 日志
+func Debug(ctx context.Context, msg string, fields ...zap.Field) {
 	if loggerInstance == nil {
 		return
 	}
-	loggerInstance.Warn(msg, fields...)
+	loggerInstance.Debug(msg, extractFields(ctx, fields)...)
 }
 
-// Fatal 打印fatal日志
-func Fatal(msg string, fields ...zap.Field) {
+// Warn 打印 warn 日志
+func Warn(ctx context.Context, msg string, fields ...zap.Field) {
 	if loggerInstance == nil {
 		return
 	}
-	loggerInstance.Fatal(msg, fields...)
+	loggerInstance.Warn(msg, extractFields(ctx, fields)...)
+}
+
+// Fatal 打印 fatal 日志
+func Fatal(ctx context.Context, msg string, fields ...zap.Field) {
+	if loggerInstance == nil {
+		return
+	}
+	loggerInstance.Fatal(msg, extractFields(ctx, fields)...)
 }

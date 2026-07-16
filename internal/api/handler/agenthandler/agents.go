@@ -1,10 +1,10 @@
 package agenthandler
 
 import (
-	"mifer/pkg/logger"
 	"net/http"
 
 	agentres "mifer/internal/api/dto/response/agentresp"
+	"mifer/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +13,7 @@ import (
 func (h *AgentHandler) ListAgents(c *gin.Context) {
 	resp, err := h.getService().ListAgents(c.Request.Context())
 	if err != nil {
-		logger.Error("获取Agent列表失败", logger.C(err))
+		logger.Error(c.Request.Context(), "获取Agent列表失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

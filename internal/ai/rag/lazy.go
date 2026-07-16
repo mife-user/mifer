@@ -19,19 +19,19 @@ import (
 func NewLazyService(ctx context.Context) *LazyService {
 	emb, err := embedder.NewEmbedder(ctx)
 	if err != nil {
-		logger.Error("初始化嵌入模型失败，RAG服务不可用", logger.C(err))
+		logger.Error(ctx, "初始化嵌入模型失败，RAG服务不可用", logger.C(err))
 		return &LazyService{initErr: err}
 	}
 
 	fileLoader, err := loader.NewFileLoader(ctx)
 	if err != nil {
-		logger.Error("初始化文件加载器失败，RAG服务不可用", logger.C(err))
+		logger.Error(ctx, "初始化文件加载器失败，RAG服务不可用", logger.C(err))
 		return &LazyService{initErr: err}
 	}
 
 	chunk, err := chunker.NewChunker(ctx)
 	if err != nil {
-		logger.Error("初始化文本分块器失败，RAG服务不可用", logger.C(err))
+		logger.Error(ctx, "初始化文本分块器失败，RAG服务不可用", logger.C(err))
 		return &LazyService{initErr: err}
 	}
 
@@ -68,21 +68,21 @@ func (s *LazyService) ensureReady(ctx context.Context) error {
 	qdrantClient, err := qdrantCfg.Init(ctx)
 	if err != nil {
 		s.initErr = errorer.New(errorer.ErrRAGNotReady)
-		logger.Warn("Qdrant客户端连接失败，知识库暂时不可用", logger.C(err))
+		logger.Warn(ctx, "Qdrant客户端连接失败，知识库暂时不可用", logger.C(err))
 		return errorer.New(errorer.ErrRAGNotReady)
 	}
 
 	idx, err := vectorstore.NewIndexer(ctx, qdrantClient, s.embedder)
 	if err != nil {
 		s.initErr = errorer.New(errorer.ErrRAGNotReady)
-		logger.Warn("向量索引器初始化失败，知识库暂时不可用", logger.C(err))
+		logger.Warn(ctx, "向量索引器初始化失败，知识库暂时不可用", logger.C(err))
 		return errorer.New(errorer.ErrRAGNotReady)
 	}
 
 	ret, err := vectorstore.NewRetriever(ctx, qdrantClient, s.embedder)
 	if err != nil {
 		s.initErr = errorer.New(errorer.ErrRAGNotReady)
-		logger.Warn("向量检索器初始化失败，知识库暂时不可用", logger.C(err))
+		logger.Warn(ctx, "向量检索器初始化失败，知识库暂时不可用", logger.C(err))
 		return errorer.New(errorer.ErrRAGNotReady)
 	}
 
@@ -95,7 +95,7 @@ func (s *LazyService) ensureReady(ctx context.Context) error {
 		qdrantClient: qdrantClient,
 	}
 	s.initErr = nil
-	logger.Info("RAG知识库服务已就绪")
+	logger.Info(ctx, "RAG知识库服务已就绪")
 	return nil
 }
 

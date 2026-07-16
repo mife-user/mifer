@@ -16,7 +16,7 @@ func (s *AgentService) ListPlans(ctx context.Context) (*domain.PlanListResp, err
 		return err
 	})
 	if err != nil {
-		logger.Error("列出计划文件失败", logger.C(err))
+		logger.Error(ctx, "列出计划文件失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil
@@ -31,7 +31,7 @@ func (s *AgentService) LoadPlan(ctx context.Context, name string) (*domain.PlanL
 		return err
 	})
 	if err != nil {
-		logger.Error("加载计划文件失败", logger.C(err))
+		logger.Error(ctx, "加载计划文件失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

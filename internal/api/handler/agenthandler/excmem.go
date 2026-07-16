@@ -1,11 +1,12 @@
 package agenthandler
 
 import (
+	"net/http"
+
 	"mifer/internal/api/dto/response/agentresp"
 	"mifer/internal/domain"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,13 +14,13 @@ import (
 func (h *AgentHandler) ExchangeMemory(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		logger.Error(errorer.ErrIdEmpty)
+		logger.Error(c.Request.Context(), errorer.ErrIdEmpty)
 		c.JSON(http.StatusBadRequest, gin.H{"error": errorer.ErrIdEmpty})
 		return
 	}
 	req := &domain.MemoryReq{ID: id}
 	if err := h.getService().ExchangeMemory(c.Request.Context(), req); err != nil {
-		logger.Error("记忆交换失败", logger.C(err))
+		logger.Error(c.Request.Context(), "记忆交换失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -15,13 +15,13 @@ import (
 func (h *ToolHandler) AddAllowList(c *gin.Context) {
 	var req agentreq.AddAllowListReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.Warn("解析白名单请求失败", logger.C(err))
+		logger.Warn(c.Request.Context(), "解析白名单请求失败", logger.C(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数: " + err.Error()})
 		return
 	}
 
 	if req.Command == "" {
-		logger.Warn("命令不能为空")
+		logger.Warn(c.Request.Context(), "命令不能为空")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少命令参数"})
 		return
 	}
@@ -30,7 +30,7 @@ func (h *ToolHandler) AddAllowList(c *gin.Context) {
 		Command: req.Command,
 	})
 	if err != nil {
-		logger.Error("添加命令到白名单失败", logger.C(err))
+		logger.Error(c.Request.Context(), "添加命令到白名单失败", logger.C(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "写入白名单失败: " + err.Error()})
 		return
 	}

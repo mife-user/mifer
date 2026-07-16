@@ -1,6 +1,10 @@
 package mark
 
-import "mifer/pkg/logger"
+import (
+	"context"
+
+	"mifer/pkg/logger"
+)
 
 // Render 将 markdown 文本渲染为终端 ANSI 字符串。
 //
@@ -13,9 +17,9 @@ import "mifer/pkg/logger"
 func (m *Mark) Render(content string) (string, error) {
 	rendered, err := m.Renderer.Render(content)
 	if err != nil && m.Fallback != nil {
-		logger.Info("Markdown renderer failed, fallback to notty renderer")
+		logger.Info(context.Background(), "Markdown renderer failed, fallback to notty renderer")
 		return m.Fallback.Render(content)
 	}
-	logger.Info("Markdown renderer success")
+	logger.Info(context.Background(), "Markdown renderer success")
 	return rendered, err
 }

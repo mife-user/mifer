@@ -34,7 +34,7 @@ func (e *Executor) runConversation(
 ) (*runResult, error) {
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
-			logger.Warn("AI调用失败，重试中",
+			logger.Warn(ctx, "AI调用失败，重试中",
 				logger.I("attempt", attempt+1),
 				logger.I("maxRetries", maxRetries))
 			timer := time.NewTimer(time.Duration(attempt) * time.Second)
@@ -48,7 +48,7 @@ func (e *Executor) runConversation(
 
 		msgs, err := e.Humen.Prompt.Build(ctx, req.Content)
 		if err != nil {
-			logger.Error("构建提示词失败", logger.C(err))
+			logger.Error(ctx, "构建提示词失败", logger.C(err))
 			return nil, err
 		}
 
@@ -88,14 +88,14 @@ func (e *Executor) runAgentOnce(
 
 		if event.Err != nil {
 			if errors.Is(event.Err, context.Canceled) {
-				logger.Debug("AI事件被取消（客户端断开）", logger.C(event.Err))
+				logger.Debug(ctx, "AI事件被取消（客户端断开）", logger.C(event.Err))
 				return nil, false, context.Canceled
 			}
 			if isRetryable(event.Err) {
-				logger.Warn("AI调用临时错误，将重试", logger.C(event.Err))
+				logger.Warn(ctx, "AI调用临时错误，将重试", logger.C(event.Err))
 				return nil, true, nil
 			}
-			logger.Error("AI事件错误", logger.C(event.Err))
+			logger.Error(ctx, "AI事件错误", logger.C(event.Err))
 			return nil, false, event.Err
 		}
 
@@ -119,7 +119,7 @@ func (e *Executor) runAgentOnce(
 	}
 
 	// 发送最后一个 agent 的结束事件
-	logger.Debug("callback", logger.S("agent_end", currentAgent))
+	logger.Debug(ctx, "callback", logger.S("agent_end", currentAgent))
 	if currentAgent != "" {
 		_ = callback("agent_end", currentAgent)
 	}

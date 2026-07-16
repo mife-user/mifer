@@ -12,7 +12,7 @@ import (
 func (e *Executor) ListRebackEntries(c context.Context) (*domain.RebackListResp, error) {
 	entries, err := e.Humen.Prompt.Memory.ListRebackEntries()
 	if err != nil {
-		logger.Error("获取回退列表失败", logger.C(err))
+		logger.Error(c, "获取回退列表失败", logger.C(err))
 		return nil, err
 	}
 	domainEntries := make([]domain.RebackEntry, len(entries))
@@ -31,25 +31,25 @@ func (e *Executor) Reback(c context.Context, req *domain.RebackReq) (*domain.Reb
 	totalRounds := e.Humen.Prompt.Memory.CountUserMessages()
 	summary, content, err := e.Humen.Prompt.Memory.Reback(req.Index)
 	if err != nil {
-		logger.Error("执行回退失败", logger.C(err))
+		logger.Error(c, "执行回退失败", logger.C(err))
 		return nil, err
 	}
 	// 从文件快照恢复（需在配置中启用 snapshot_enabled）
 	if e.Snapshot != nil {
 		targetRound := req.Index - 1 // 恢复到目标轮次之前的状态
-		logger.Debug("开始从快照恢复文件",
+		logger.Debug(c, "开始从快照恢复文件",
 			logger.I("reqIndex", req.Index),
 			logger.I("targetRound", targetRound),
 			logger.I("totalRounds", totalRounds),
 		)
 		if err := e.Snapshot.RestoreToRound(targetRound); err != nil {
-			logger.Warn("从快照恢复文件失败", logger.C(err))
+			logger.Warn(c, "从快照恢复文件失败", logger.C(err))
 		} else {
-			logger.Info("从快照恢复文件成功", logger.I("targetRound", targetRound))
+			logger.Info(c, "从快照恢复文件成功", logger.I("targetRound", targetRound))
 		}
 		// 删除被回退的后续快照
 		for i := req.Index; i <= totalRounds; i++ {
-			logger.Debug("删除被回退的快照轮次", logger.I("round", i))
+			logger.Debug(c, "删除被回退的快照轮次", logger.I("round", i))
 			e.Snapshot.RemoveRound(i)
 		}
 	}

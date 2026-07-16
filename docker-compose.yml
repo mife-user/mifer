@@ -92,6 +92,64 @@ services:
     networks:
       - mifer-net
 
+  # ==========================================
+  # Loki — 日志聚合服务（Grafana Loki）
+  # ==========================================
+  # 接收 Promtail 推送的日志，提供 LogQL 查询接口
+  # Web UI: http://localhost:3100
+  loki:
+    image: grafana/loki:latest
+    container_name: mifer-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/tmp/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - mifer-net
+
+  # ==========================================
+  # Promtail — 日志采集代理
+  # ==========================================
+  # 采集 Mifer 日志文件并推送到 Loki
+  promtail:
+    image: grafana/promtail:latest
+    container_name: mifer-promtail
+    volumes:
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/mifer:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - mifer-net
+
+  # ==========================================
+  # Grafana — 监控可视化面板
+  # ==========================================
+  # Loki 已预配置为默认数据源，启动后即可查询日志
+  # Web UI: http://localhost:3000 (admin / admin)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mifer-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - mifer-net
+
 volumes:
   qdrant_data:
     name: mifer_qdrant_data
@@ -101,6 +159,10 @@ volumes:
     name: mifer_searxng_data
   searxng_cache:
     name: mifer_searxng_cache
+  loki_data:
+    name: mifer_loki_data
+  grafana_data:
+    name: mifer_grafana_data
 
 networks:
   mifer-net:

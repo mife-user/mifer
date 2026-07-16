@@ -16,7 +16,7 @@ func (s *AgentService) ListRebackEntries(ctx context.Context) (*domain.RebackLis
 		return err
 	})
 	if err != nil {
-		logger.Error("获取回退列表失败", logger.C(err))
+		logger.Error(ctx, "获取回退列表失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil
@@ -31,7 +31,7 @@ func (s *AgentService) Reback(ctx context.Context, req *domain.RebackReq) (*doma
 		return err
 	})
 	if err != nil {
-		logger.Error("回退对话失败", logger.C(err))
+		logger.Error(ctx, "回退对话失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

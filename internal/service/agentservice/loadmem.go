@@ -15,7 +15,7 @@ func (s *AgentService) LoadMemory(ctx context.Context, req *domain.MemoryReq) (*
 		return err
 	})
 	if err != nil {
-		logger.Error("加载记忆失败", logger.C(err))
+		logger.Error(ctx, "加载记忆失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

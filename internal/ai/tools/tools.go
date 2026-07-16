@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"path/filepath"
 
 	"mifer/internal/ai/rag"
@@ -28,28 +29,28 @@ func FileTools() []tool.BaseTool {
 
 	fr, err := filereader.New()
 	if err != nil {
-		logger.Error("创建 file_reader 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_reader 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fr)
 	}
 
 	fw, err := filewriter.New()
 	if err != nil {
-		logger.Error("创建 file_writer 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_writer 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fw)
 	}
 
 	fc, err := filecreator.New()
 	if err != nil {
-		logger.Error("创建 file_creator 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_creator 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fc)
 	}
 
 	fv, err := fileviewer.New()
 	if err != nil {
-		logger.Error("创建 file_viewer 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_viewer 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fv)
 	}
@@ -63,7 +64,7 @@ func CommandTools() []tool.BaseTool {
 
 	ce, err := commandexecutor.New()
 	if err != nil {
-		logger.Error("创建 command_executor 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 command_executor 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, ce)
 	}
@@ -77,14 +78,14 @@ func AuditTools() []tool.BaseTool {
 
 	fr, err := filereader.New()
 	if err != nil {
-		logger.Error("创建 file_reader 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_reader 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fr)
 	}
 
 	fv, err := fileviewer.New()
 	if err != nil {
-		logger.Error("创建 file_viewer 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_viewer 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fv)
 	}
@@ -99,14 +100,14 @@ func PlannerTools() []tool.BaseTool {
 
 	fc, err := filecreator.New(plansDir)
 	if err != nil {
-		logger.Error("创建 planner file_creator 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 planner file_creator 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fc)
 	}
 
 	fw, err := filewriter.New(plansDir)
 	if err != nil {
-		logger.Error("创建 planner file_writer 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 planner file_writer 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, fw)
 	}
@@ -123,14 +124,14 @@ func KnowledgeTools(ragSvc rag.RAGService) []tool.BaseTool {
 
 	ks, err := knowledgesearch.New(ragSvc)
 	if err != nil {
-		logger.Error("创建 knowledge_search 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 knowledge_search 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, ks)
 	}
 
 	kst, err := knowledgestore.New(ragSvc)
 	if err != nil {
-		logger.Error("创建 knowledge_store 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 knowledge_store 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, kst)
 	}
@@ -144,14 +145,14 @@ func WebTools() []tool.BaseTool {
 
 	ws, err := websearch.New()
 	if err != nil {
-		logger.Error("创建 web_search 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 web_search 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, ws)
 	}
 
 	wf, err := webfetch.New()
 	if err != nil {
-		logger.Error("创建 web_fetch 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 web_fetch 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, wf)
 	}
@@ -165,7 +166,7 @@ func ParallelDispatch(agentHub *skill.AgentHub) []tool.BaseTool {
 
 	pd, err := paralleldispatch.New(agentHub)
 	if err != nil {
-		logger.Error("创建 parallel_dispatch 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 parallel_dispatch 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, pd)
 	}
@@ -179,14 +180,14 @@ func ReadOnlyTools(ragSvc rag.RAGService) []tool.BaseTool {
 
 	fr, err := filereader.New()
 	if err != nil {
-		logger.Error("创建 file_reader 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_reader 工具失败", logger.C(err))
 	} else {
 		ts = append(ts, fr)
 	}
 
 	fv, err := fileviewer.New()
 	if err != nil {
-		logger.Error("创建 file_viewer 工具失败", logger.C(err))
+		logger.Error(context.Background(),"创建 file_viewer 工具失败", logger.C(err))
 	} else {
 		ts = append(ts, fv)
 	}
@@ -198,7 +199,7 @@ func ReadOnlyTools(ragSvc rag.RAGService) []tool.BaseTool {
 	if ragSvc != nil {
 		ks, err := knowledgesearch.New(ragSvc)
 		if err != nil {
-			logger.Error("创建 knowledge_search 工具失败", logger.C(err))
+			logger.Error(context.Background(),"创建 knowledge_search 工具失败", logger.C(err))
 		} else {
 			ts = append(ts, ks)
 		}
@@ -214,63 +215,63 @@ func NewWithName(name []string, ragSvc rag.RAGService) ([]tool.BaseTool, error) 
 		case "file_reader":
 			fr, err := filereader.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fr)
 		case "file_writer":
 			fw, err := filewriter.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fw)
 		case "file_creator":
 			fc, err := filecreator.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fc)
 		case "file_viewer":
 			fv, err := fileviewer.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, fv)
 		case "command_executor":
 			ce, err := commandexecutor.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ce)
 		case "knowledge_search":
 			ks, err := knowledgesearch.New(ragSvc)
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ks)
 		case "knowledge_store":
 			kst, err := knowledgestore.New(ragSvc)
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, kst)
 		case "web_search":
 			ws, err := websearch.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, ws)
 		case "web_fetch":
 			wf, err := webfetch.New()
 			if err != nil {
-				logger.Error("创建工具失败", logger.S("tool", n), logger.C(err))
+				logger.Error(context.Background(),"创建工具失败", logger.S("tool", n), logger.C(err))
 				return nil, err
 			}
 			tools = append(tools, wf)

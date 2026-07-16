@@ -16,7 +16,7 @@ func (s *AgentService) ListSkills(ctx context.Context) (*domain.SkillListResp, e
 		return err
 	})
 	if err != nil {
-		logger.Error("获取技能列表失败", logger.C(err))
+		logger.Error(ctx, "获取技能列表失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

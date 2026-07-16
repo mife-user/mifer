@@ -23,17 +23,17 @@ func (h *Humen) createCustomAgents(ctx context.Context, reg *llm.Registry) ([]ad
 	for _, cfg := range conf.GetConfig().Agents {
 		agentTools, err := tools.NewWithName(cfg.Tools, h.ragSvc)
 		if err != nil {
-			logger.Error("创建自定义Agent工具失败", logger.S("agent", cfg.Name), logger.C(err))
+			logger.Error(ctx, "创建自定义Agent工具失败", logger.S("agent", cfg.Name), logger.C(err))
 			return nil, nil, err
 		}
 		agentModel := reg.Get(cfg.Model)
 		if agentModel == nil {
 			agentModel = reg.First()
 			if agentModel == nil {
-				logger.Warn("自定义Agent无可用模型", logger.S("agent", cfg.Name))
+				logger.Warn(ctx, "自定义Agent无可用模型", logger.S("agent", cfg.Name))
 				continue
 			}
-			logger.Warn("自定义Agent指定后端不存在，使用默认后端", logger.S("agent", cfg.Name), logger.S("backend", cfg.Model))
+			logger.Warn(ctx, "自定义Agent指定后端不存在，使用默认后端", logger.S("agent", cfg.Name), logger.S("backend", cfg.Model))
 		}
 		extraAgent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
 			Name:        cfg.Name,
@@ -49,7 +49,7 @@ func (h *Humen) createCustomAgents(ctx context.Context, reg *llm.Registry) ([]ad
 			MaxIterations: 100,
 		})
 		if err != nil {
-			logger.Error("创建自定义Agent失败", logger.S("name", cfg.Name), logger.C(err))
+			logger.Error(ctx, "创建自定义Agent失败", logger.S("name", cfg.Name), logger.C(err))
 			return nil, nil, err
 		}
 		subagents = append(subagents, extraAgent)
@@ -85,7 +85,7 @@ func (h *Humen) createMiferAgent(ctx context.Context, reg *llm.Registry, subagen
 
 	agentModel := getBackendModel(reg, "mifer")
 	if agentModel == nil {
-		logger.Error("Mifer Agent 无可用模型")
+		logger.Error(ctx, "Mifer Agent 无可用模型")
 		return nil, AgentInfo{}, nil
 	}
 
@@ -105,7 +105,7 @@ func (h *Humen) createMiferAgent(ctx context.Context, reg *llm.Registry, subagen
 		MaxIteration: 100,
 	})
 	if err != nil {
-		logger.Error("init agent failed", logger.C(err))
+		logger.Error(ctx, "init agent failed", logger.C(err))
 		return nil, AgentInfo{}, err
 	}
 

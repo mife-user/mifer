@@ -15,7 +15,7 @@ func (s *Service) Ingest(ctx context.Context, paths []string) error {
 	for _, p := range paths {
 		docs, err := s.loader.Load(ctx, document.Source{URI: p})
 		if err != nil {
-			logger.Error("加载文档失败", logger.C(err))
+			logger.Error(ctx, "加载文档失败", logger.C(err))
 			return errorer.NewS(errorer.ErrLoadFileFailed, err)
 		}
 		allDocs = append(allDocs, docs...)
@@ -23,17 +23,17 @@ func (s *Service) Ingest(ctx context.Context, paths []string) error {
 
 	chunks, err := s.chunker.Transform(ctx, allDocs)
 	if err != nil {
-		logger.Error("文档分块失败", logger.C(err))
+		logger.Error(ctx, "文档分块失败", logger.C(err))
 		return errorer.NewS(errorer.ErrChunkProcessFailed, err)
 	}
 
 	ids, err := s.indexer.Store(ctx, chunks)
 	if err != nil {
-		logger.Error("存储向量失败", logger.C(err))
+		logger.Error(ctx, "存储向量失败", logger.C(err))
 		return errorer.NewS(errorer.ErrVectorStoreFailed, err)
 	}
 
-	logger.Info("文档摄入完成",
+	logger.Info(ctx, "文档摄入完成",
 		logger.I("files", len(paths)),
 		logger.I("chunks", len(ids)),
 	)

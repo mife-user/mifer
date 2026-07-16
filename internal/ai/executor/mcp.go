@@ -24,6 +24,6 @@ func (e *Executor) MCPStatus(ctx context.Context) (*domain.MCPStatusResp, error)
 		servers = []domain.MCPServerStatus{}
 	}
 
-	logger.Debug("MCP状态查询完成", logger.S("count", string(rune(len(servers)+'0'))))
+	logger.Debug(ctx, "MCP状态查询完成", logger.S("count", string(rune(len(servers)+'0'))))
 	return &domain.MCPStatusResp{Servers: servers}, nil
 }

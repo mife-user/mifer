@@ -16,7 +16,7 @@ func (s *AgentService) ClearMemory(ctx context.Context) (*domain.ClearMemoryResp
 		return err
 	})
 	if err != nil {
-		logger.Error("清空记忆失败", logger.C(err))
+		logger.Error(ctx, "清空记忆失败", logger.C(err))
 		return nil, err
 	}
 	return resp, nil

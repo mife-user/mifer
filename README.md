@@ -12,12 +12,11 @@
 
 ### 多 Agent 编排与模型路由
 
-基于 CloudWeGo Eino ADK 构建了 5 子 Agent + 1 Orchestrator 的协作体系，按任务类型和复杂度自动路由到不同模型：
+基于 CloudWeGo Eino ADK 构建了 4 子 Agent + 1 Orchestrator 的协作体系，按任务类型和复杂度自动路由到不同模型：
 
 | Agent         | 职责               | 后端（agent_backends） |
 | ------------- | ------------------ | ------ |
 | **Mifer**      | 编排器，协调子 Agent，由模型自主控制迭代次数 | `agent_backends.mifer` |
-| **MiQQ**       | QQ 通道专用助手（无工具，纯文本对话） | `agent_backends.qq_agent` |
 | **PlanAgent**  | 计划制定助手（只读工具：file_reader/file_viewer/web_search/web_fetch/knowledge_search） | `agent_backends.plan_agent` |
 | **HabitGraph** | 用户习惯总结（异步、fire-and-forget） | `agent_backends.habit_summarizer` |
 | **Compressor** | 上下文压缩 | `agent_backends.context_compressor` |
@@ -225,33 +224,6 @@ agent: MiTest
 
 TUI 模式下支持 `Ctrl+C` 中断正在生成的 SSE 流——取消后对话记录保留已生成的部分内容，不会丢失上下文。
 
-### QQ Bot（QQ 消息通道）
-
-通过 NapCatQQ（OneBot v11 协议桥）将 Mifer 接入 QQ，支持私聊和群聊（@ 检测），每个用户独立记忆会话。
-
-**架构**：
-```
-QQ 消息 → NapCatQQ WebSocket → qq/adapter.go → POST /api/ai/chat {channel:"qq", session_id:"qq_private/123"}
-                                                     │
-                                              executor.Chat() → 选择 QQRunner（MiQQ 无工具 Agent）
-                                                     │
-                                                   纯文本响应 → onebotClient.sendReply()
-```
-
-**关键设计**：
-- **独立 Agent 隔离** — QQ 通道使用专用 MiQQ Agent（`ChatModelAgent`，无任何工具），与 Mifer 编排器完全分离。从源头消除"AI 调 file_reader → confirm 拒绝 → AI 重试 → 死循环"的问题
-- **记忆切换原子化** — QQ adapter 不再单独调用 `/api/memory/exchange`，改为在 Chat 请求体中传递 `session_id`，服务端 `chatMu` 保护下一次完成 switch + chat
-- **层级 Session ID** — 私聊 `qq_private/{userID}`，群聊 `qq_group/{groupID}/{userID}`，`validateID` 允许路径分隔符，`buildFilePath` 自动创建嵌套目录
-- **工具确认自动处理** — `miferClient.confirmTool()` 根据 `Config.AllowedTools` 自动确认/拒绝：`qq_send_message` 自动通过，其余拒绝（实际上 MiQQ 无工具，此机制作为防护兜底）
-- **去全局变量设计** — `qq/` 包通过构造函数注入 `httpClient`、`allowedTools`；`qqtools.NewSendMessage(getSender)` 通过 `func() qq.Sender` 延迟获取依赖
-- **语义方法** — `oneBotEvent` 提供 `IsPrivate()`/`IsGroup()`/`IsMessage()`，`Config` 提供 `IsMentionOnly()`
-
-**使用方式**：
-1. `docker-compose up -d napcat` 启动 NapCatQQ
-2. 浏览器打开 `http://localhost:6099` 扫码登录 QQ
-3. 网络配置 → 新建 WebSocket 服务端 → 主机 0.0.0.0 端口 3001 → 启用
-4. 配置 `qq.enabled: true` 和 `qq.bot.qq: 你的QQ号`
-
 ---
 
 ## 快速开始
@@ -430,8 +402,6 @@ RAG 的 Qdrant 连接需要网络，如果 Agent 初始化时强行连接，不�
 │           rag (chunker / embedder / loader / vectorstore)    │
 │           (AI 核心，不含 HTTP 依赖)                            │
 ├──────────────────────────────────────────────────────────────┤
-│                     qq                                       │
-│   (QQ 消息通道客户端，HTTP+WS 消费者，不依赖 internal/)        │
 ├──────────────────────────────────────────────────────────────┤
 │                     pkg                                      │
 │   conf / logger / auth / errorer / res / task / utils        │
@@ -466,16 +436,8 @@ mifer/
 │   └── tui/                      #   TUI 界面（Bubble Tea）
 ├── cmd/
 │   ├── main/                     #   服务主入口
-│   ├── bootstrap/                #   启动引导（配置→日志→路由→CLI→QQ）
+│   ├── bootstrap/                #   启动引导（配置→日志→路由→CLI）
 │   └── mcp-demo/                 #   MCP 内置演示 Server
-├── qq/                           # QQ 消息通道客户端（不依赖 internal/）
-│   ├── adapter.go                #   消息分发器（私聊/群聊路由）
-│   ├── ws_client.go              #   NapCat WebSocket 客户端（自动重连）
-│   ├── mifer_client.go           #   Mifer HTTP API 客户端（Chat SSE + 工具确认）
-│   ├── onebot_client.go          #   OneBot WebSocket 消息发送器
-│   ├── onebot_http.go            #   OneBot HTTP 消息发送器（实现 Sender 接口）
-│   ├── parser.go                 #   CQ 码清洗
-│   └── type.go                   #   类型定义 + Sender 接口 + 语义方法
 ├── config/
 │   └── dev.yaml                  #   开发环境配置（自动生成）
 ├── internal/
@@ -499,7 +461,6 @@ mifer/
 │   │       ├── filewriter/       #     文件写入
 │   │       ├── knowledgesearch/  #     知识库检索（含上下文扩展）
 │   │       ├── knowledgestore/   #     文档入库
-│   │       └── qq/               #     QQ 消息发送（包名 qqtools）
 │   ├── api/
 │   │   ├── dto/                  #   请求 / 响应 DTO
 │   │   │   ├── request/          #     请求 DTO（按模块分子目录）

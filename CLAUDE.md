@@ -36,7 +36,6 @@ docker-compose exec ollama ollama pull nomic-embed-text  # 拉取嵌入模型
 | Qdrant | localhost:6333 (HTTP) / 6334 (gRPC) | 向量数据库，RAG 知识库存储 |
 | SearXNG | localhost:18080 | 元搜索引擎，web_search 工具后端 |
 | Ollama | localhost:11434 | 本地嵌入模型（默认 `nomic-embed-text`），可选 GPU |
-| NapCatQQ | localhost:6099 (WebUI) / 3001 (WS) | QQ Bot 桥接服务（OneBot v11 协议），通过 WebSocket 收发 QQ 消息 |
 
 ### CI/CD
 
@@ -51,7 +50,7 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 `cmd/main/main.go` → `bootstrap.NewApplication()`:
 1. `loadConfig` — Viper 加载 YAML 配置，首次运行自动生成默认配置文件
 2. `initontext` — 创建带 session ID 的 context（基于 workdir 哈希，用于记忆隔离；可通过 `--<id>` 参数手动指定）
-3. `initLogger` — 初始化 Zap 日志
+3. `initLogger` — 初始化 Zap 日志（含 TraceID 支持，用于请求链路追踪）
 4. `initRouter` — 初始化 Gin 路由（内部创建 `executor → agentservice → agenthandler` 依赖链）
 5. `initCli` — 初始化 CLI 客户端（连接到 HTTP 服务）
 
@@ -60,7 +59,7 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 ### 各层职责
 
 - **`pkg/conf/`** — Viper 配置管理。首次运行自动生成 `./config/dev.yaml`（或 `~/mifer/config/prod.yaml`），无需手动创建配置文件。`LoadConfig()` 根据 `MIFER_ENV`加载对应的 YAML 文件，环境变量覆盖：`MIFER_AI_BACKENDS_<NAME>_APIKEY` 覆盖任意后端的 `api_key`（仅敏感字段支持环境变量，其他字段通过配置文件管理）。`LoadAllowList()` 从 `.mifer/allowlist.yaml` 加载命令白名单（用于 `MiCommander` 终端命令工具的安全审计）。全局配置通过 `conf.GetConfig()` 获取。`PathConfig` 包含 `Workdir`（工作目录，用于 plans/allowlist 定位）、`CfgPath`（配置文件路径，日志和 Gin 日志输出目录）、`SnapshotEnabled`（文件快照开关）。
-- **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），由自定义 `rotatingFile` 实现按文件大小自动轮换和备份淘汰，ConsoleEncoder 编码，dev 模式 Debug 级别，prod 模式 Info 级别。
+- **`pkg/logger/`** — Uber Zap 日志。按级别分文件输出（debug/info/warn/error.log），由自定义 `rotatingFile` 实现按文件大小自动轮换和备份淘汰，ConsoleEncoder 编码，dev 模式 Debug 级别，prod 模式 Info 级别。支持 TraceID 字段，便于请求链路追踪和问题排查。
 - **`pkg/auth/`** — JWT Token 生成与验证。
 - **`pkg/errorer/`** — 统一错误码与错误包装。
 - **`pkg/task/`** — 异步任务管理，`task.Do(ctx, fn)` 提供 context 感知的任务执行。
@@ -71,8 +70,8 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **`pkg/exc/`** — 类型转换与 JSON 编组工具函数（`StrToUint`、`UintToStr`、`IsUint`、`IsString` 等）。
 - **`internal/domain/`** — 核心接口定义。`agent.go` 定义 DTO（`TalkReq`, `MemoryReq/Resp`, `RebackReq/Resp` 等）和 `Agent` 接口（executor 层），`bridge.go` 定义 `AgentService` 和 `ToolService` 接口（service 层），`AgentService` 与 `Agent` 方法签名完全相同（含 `ListAgents`），实现 service ↔ executor 解耦。
 - **`internal/api/routes/`** — Gin 路由注册。完整路由表：
-  - `POST /api/ai/chat` — 流式对话（SSE），支持 `channel`（通道类型）和 `session_id`（自动切换记忆）字段
-  - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear`, `POST /api/memory/compact` — 记忆管理与手动压缩。`exchange/:id` 保留供 TUI 使用，QQ 通道改为在 Chat 请求中传递 `session_id` 原子完成
+  - **POST /api/ai/chat** — 流式对话（SSE），支持 `channel`（通道类型）和 `session_id`（自动切换记忆）字段
+  - `GET /api/memory`, `GET /api/memory/:id`, `POST /api/memory/exchange/:id`, `POST /api/memory/clear`, `POST /api/memory/compact` — 记忆管理与手动压缩
   - `GET /api/memory/reback`, `POST /api/memory/reback/:index` — 对话回退
   - `GET /api/prompt`, `POST /api/prompt`, `POST /api/prompt/reset` — 系统提示词管理
   - `GET /api/plan`, `GET /api/plan/:name` — 计划文件管理
@@ -88,18 +87,17 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **`internal/service/agentservice/`** — Agent 服务层，实现 `domain.AgentService`，每个方法 1:1 委托给 executor，`Chat` 通过 `task.Do` 包装调用。
 - **`internal/service/toolservice/`** — 工具操作服务层，实现 `domain.ToolService`。`Confirm` 调用确认存储检查/更新确认状态，`AddAllowList` 管理命令白名单，依赖 `confirm.Store` 和 `PathConfig.Workdir`。
 - **`internal/ai/agent/`** — Eino ADK 多 Agent 编排。自定义 Agent 通过 `conf.GetConfig().Agents` 配置驱动创建，加上内置 Agent，按任务复杂度模型分级：
-  - **MiQQ** (ChatModelAgent) — QQ 通道专用 Agent，无任何工具，纯文本对话。MaxIterations=1。通过 `Humen.QQAgent` 和 `Executor.QQRunner` 独立运行，后端由 `agent_backends.qq_agent` 配置
   - **PlanAgent** (ChatModelAgent) — 计划制定助手，只读工具（file_reader/file_viewer/web_search/web_fetch/knowledge_search），MaxIterations=20。由 `PlanGraph` 编排：`plan_agent(Lambda) → plan_write(Lambda) → plan_confirm(Lambda)`，复用 `errorMiddleware` + `confirmMiddleware`。详见 `plan_graph.go`，后端由 `agent_backends.plan_agent` 配置
-  - **Mifer** (Orchestrator) — `deep.New` 编排器，MaxIteration=100，`EmitInternalEvents: true`。工具包含 `SkillTool` + MCP 工具 + WebTools + QQTools + FileTools + CommandTools + ParallelDispatch + KnowledgeTools，后端由 `agent_backends.mifer` 配置
+  - **Mifer** (Orchestrator) — `deep.New` 编排器，MaxIteration=100，`EmitInternalEvents: true`。工具包含 `SkillTool` + MCP 工具 + WebTools + FileTools + CommandTools + ParallelDispatch + KnowledgeTools，后端由 `agent_backends.mifer` 配置
   - 所有 Agent 创建后通过 `skillHub.Register()` 注册到 `AgentHub`，供技能 fork 和 parallel_dispatch 路由
-  - **Humen** 结构体：`Agent`、`QQAgent`、`PlanAgent`＋`Prompt`、`Registry`、`MCPManager`、`SkillManager`、`ConfirmStore`、`AgentInfos`、`HabitGraph`、`PlanGraph`
+  - **Humen** 结构体：`Agent`、`PlanAgent`＋`Prompt`、`Registry`、`MCPManager`、`SkillManager`、`ConfirmStore`、`AgentInfos`、`HabitGraph`、`PlanGraph`
   - `init.go` 导出 `HabitInstruction`、`PlanInstruction` 常量；`plan_graph.go` 导出 `PlanInstruction`、`ErrPlanRejected`
-- **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 按 `req.Mode` 路由：`"plan"` → `runPlanFlow()`（计划制定→确认→执行），默认 → `runConversation()`（普通对话）。拆分三个文件：`chat.go`（prepareChat/finalizeChat/Chat 编排）、`chat_run.go`（runConversation/runAgentOnce/handleEvent）、`chat_plan.go`（runPlanFlow/buildPlanMessages）。`Runner`/`QQRunner`/`PlanRunner` 三种 Runner。`pickRunner(channel)` 按通道选择。已移除 `chatMu` 全局锁（Memory 自带锁）。
+- **`internal/ai/executor/`** — `adk.Runner` 包装器。`Chat()` 按 `req.Mode` 路由：`"plan"` → `runPlanFlow()`（计划制定→确认→执行），默认 → `runConversation()`（普通对话）。拆分三个文件：`chat.go`（prepareChat/finalizeChat/Chat 编排）、`chat_run.go`（runConversation/runAgentOnce/handleEvent）、`chat_plan.go`（runPlanFlow/buildPlanMessages）。`Runner`/`PlanRunner` 两种 Runner。`pickRunner(channel)` 按通道选择。已移除 `chatMu` 全局锁（Memory 自带锁）。
 - **`internal/ai/callback/`** — Tool 回调处理器。`NewHandler(cb)` 工厂函数按请求构建 handler，callback 通过闭包捕获而非 context 注入。每次 `Runner.Run()` 通过 `adk.WithCallbacks()` 按调用注入（per-invocation），替代早期的 `callbacks.AppendGlobalHandlers` 全局注册。三个事件处理函数（`onToolStart/onToolEnd/onToolError`）通过 `newOnStart(cb)/newOnEnd(cb)/newOnError(cb)` 闭包捕获 callback，零依赖 context。
 - **`internal/ai/llm/`** — 多后端 ChatModel 管理（Registry 模式）。支持 openai/claude/gemini/ollama 四种 provider，后端名称由用户自由定义（通过 `ai.backends` 配置），不再硬编码。`agent_backends` 映射决定各 Agent 使用哪个后端，缺失时自动 fallback 到第一个注册的后端。`BackendConfig.Type` 区分 `chat` / `embedding`。provider 实现在各自文件中（`openai.go`、`claude.go`、`gemini.go`、`ollama.go`），`providers.go` 包含 `initBackend()` 工厂方法。
 - **`internal/ai/prompt/`** — 系统提示词管理。`build.go` 构建完整提示词（系统提示词 + 记忆上下文），支持模板格式 `{system_prompt}`、`{history}`、`{query}`，运行时可通过 API 动态修改。
 - **`internal/ai/memory/`** — JSONL 文件持久化对话历史。dev 模式存 `./memory/{workdir_basename}/{id}.jsonl`，prod 模式存 `~/.mifer/memory/...`。支持列表、加载、切换、清除、回退、按 ID 加载（不修改当前会话）。
-- **`internal/ai/tools/`** — 工具定义（Function Calling）。每个工具独立子目录（`filereader/`、`filewriter/`、`filecreator/`、`fileviewer/`、`commandexecutor/`、`knowledgesearch/`、`knowledgestore/`、`websearch/`、`webfetch/`、`qq/`），通过 `utils.InferTool` 或 `utils.InferEnhancedTool` 创建。`file_viewer` 使用 `InferEnhancedTool` 返回 `*schema.ToolResult`，图片以 `ToolOutputImage`（base64 + MIME）直接注入 LLM 多模态上下文，无需独立的多模态模型。工具工厂函数不再接收 `mmModel` 参数。`tools.go` 提供按角色分组的工具工厂函数：`FileTools()` — file_reader/file_writer/file_creator/file_viewer；`CommandTools()` — command_executor；`AuditTools()` — file_reader/file_viewer；`PlannerTools()` — file_creator/file_writer（限制目录）；`ReadOnlyTools(ragSvc)` — file_reader/file_viewer/web_search/web_fetch/knowledge_search（供 PlanAgent 使用）；`KnowledgeTools(ragSvc)` — knowledge_search/knowledge_store；`WebTools()` — web_search/web_fetch；`QQTools()` — qq_send_message；`NewWithName(names)` — 按名称构造自定义工具集。
+- **`internal/ai/tools/`** — 工具定义（Function Calling）。每个工具独立子目录（`filereader/`、`filewriter/`、`filecreator/`、`fileviewer/`、`commandexecutor/`、`knowledgesearch/`、`knowledgestore/`、`websearch/`、`webfetch/`），通过 `utils.InferTool` 或 `utils.InferEnhancedTool` 创建。`file_viewer` 使用 `InferEnhancedTool` 返回 `*schema.ToolResult`，图片以 `ToolOutputImage`（base64 + MIME）直接注入 LLM 多模态上下文，无需独立的多模态模型。工具工厂函数不再接收 `mmModel` 参数。`tools.go` 提供按角色分组的工具工厂函数：`FileTools()` — file_reader/file_writer/file_creator/file_viewer；`CommandTools()` — command_executor；`AuditTools()` — file_reader/file_viewer；`PlannerTools()` — file_creator/file_writer（限制目录）；`ReadOnlyTools(ragSvc)` — file_reader/file_viewer/web_search/web_fetch/knowledge_search（供 PlanAgent 使用）；`KnowledgeTools(ragSvc)` — knowledge_search/knowledge_store；`WebTools()` — web_search/web_fetch；`NewWithName(names)` — 按名称构造自定义工具集。
 - **`internal/ai/rag/`** — RAG 检索增强。`LazyService` 懒加载模式：`Init()` 仅创建 embedder/loader/chunker（无网络调用），首次工具调用时才通过 `ensureReady()` 连接 Qdrant（Mutex 保护，失败可重试）。子目录：`chunker/`（递归分块，SHA256 去重）、`embedder/`（Ollama 嵌入，默认 `nomic-embed-text`）、`loader/`（文件加载，支持 PDF/Word/Text/Markdown）、`vectorstore/`（Qdrant 索引器 + 检索器）。
 - **`internal/ai/confirm/`** — 工具调用确认子系统。Actor 模式：`Store` 用专用 goroutine + channel 序列化所有状态访问，30s 心跳清理超时条目。`Middleware` 实现 Eino `compose.ToolMiddleware` 接口，拦截工具调用并阻塞等待用户确认，通过 SSE `tool_confirm` 事件与前端通信。`config.go` 管理确认规则（enable/exclude 列表、command_executor 白名单、会话 allow 列表）。**callback 传参设计**：中间件端点从 context 提取 callback 后，作为显式参数传递到 `awaitConfirmation(cb, ...)` → `sendConfirmEvent(cb, ...)`，内部 helper 不碰 context，与 `sessionID` 的处理模式统一。
 - **`internal/ai/compressor/`** — 上下文自动压缩。当 prompt tokens 超过配置阈值时自动触发压缩：使用 `context-summarizer` 技能模板和配置的压缩模型（默认 `fast-model`）对早期消息生成摘要，通过 `ReplaceMessages` 原子替换记忆。也支持手动 `/compact` 命令触发。降级策略：压缩失败时移除最早一轮对话。
@@ -124,21 +122,6 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - **Qdrant** (`github.com/qdrant/go-client v1.15.2`) — RAG 向量存储
 - **Uber Zap** — 结构化日志
 - **Viper** — 配置管理
-- **Gorilla WebSocket** (`github.com/gorilla/websocket v1.5.3`) — QQ Bot WebSocket 连接
-
-### QQ Bot 子系统
-
-- **`qq/`** — QQ 消息通道客户端包，通过 NapCatQQ（OneBot v11）收发 QQ 消息。**不依赖任何 `internal/` 包**，纯 HTTP + WebSocket 消费者，通过 Mifer HTTP API 与服务端通信。
-  - `type.go` — `QQAdapter`、`Config`、`oneBotEvent` 类型定义，以及 `Sender` 接口（供 `internal/ai/tools/qq` 注入）和 `IsPrivate()`/`IsGroup()`/`IsMessage()`/`IsMentionOnly()` 语义方法
-  - `adapter.go` — 消息分发器：私聊/群聊路由、CQ 码清洗、`buildSessionID`（层级路径 `qq_private/{uid}` / `qq_group/{gid}/{uid}`）
-  - `ws_client.go` — NapCat WebSocket 客户端（readPump → eventCh → writePump），自动重连（指数退避 1s→60s）
-  - `mifer_client.go` — Mifer HTTP API 客户端（exchangeMemory / chat SSE / confirmTool），`allowedTools` 配置驱动
-  - `onebot_client.go` — OneBot WebSocket 消息发送器（sendPrivateMsg / sendGroupMsg）
-  - `onebot_http.go` — OneBot HTTP 消息发送器（`OnebotHTTPSender`），实现 `Sender` 接口
-  - `parser.go` — CQ 码清洗（@ / image / face 等）
-- **`internal/ai/tools/qq/`**（包名 `qqtools`）— QQ 消息发送工具定义。`NewSendMessage(getSender func() qq.Sender)` 延迟获取 Sender，通过闭包注入到工具函数中，避免工具构造时 Sender 尚未初始化。`qq.Sender` 接口定义在 `qq/type.go`，`qqtools` 通过导入 `mifer/qq` 使用。
-- **QQ 通道路由** — `Executor.Chat()` 根据 `req.Channel == "qq"` 选择 `QQRunner`（MiQQ 无工具 Agent），否则使用默认 `Runner`（Mifer 编排器）。QQ 通道的 confirm 中间件自动处理：`qq_send_message` 自动通过，其他工具自动拒绝（由 `miferClient.confirmTool` 调用 `/api/tool/confirm` 完成）。
-- **记忆切换原子化** — `TalkReq.SessionID` 非空时，`Chat()` 在 `chatMu` 保护下先 `SwitchSession` 再 `AppendUser`，保证 switch + chat 原子执行。QQ adapter 将 `sessionID` 直接放入 Chat 请求体，不再单独调用 `/api/memory/exchange`。
 
 ## 代码约定
 
@@ -309,14 +292,10 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 | 名称 | 含义 | 位置 |
 |------|------|------|
 | **Prompty** | 系统提示词管理器 | `internal/ai/prompt/` |
-| **Humen** | 用户 Agent 聚合结构体（含 Agent、Prompt、Registry、MCPManager、SkillManager、ConfirmStore） | `internal/ai/agent/init.go` |
+| **Humen** | 用户 Agent 聚合结构体（含 Agent、PlanAgent、Prompt、Registry、MCPManager、SkillManager、ConfirmStore） | `internal/ai/agent/init.go` |
 | **Clier** | CLI 实例 | `cmd/bootstrap/app_type.go` |
 | **Mifer** | Orchestrator 编排 Agent | `internal/ai/agent/init.go` |
 | **excmem** | 交换记忆（Exchange Memory） | `cli/client/excmemhandler/`、`internal/ai/executor/excmem.go` |
-| **MiQQ** | QQ 通道专用 Agent（无工具，纯文本对话） | `internal/ai/agent/init.go` |
-| **QQRunner** | QQ 通道专用 adk.Runner | `internal/ai/executor/init.go` |
-| **qqtools** | `internal/ai/tools/qq/` 的包名 | `internal/ai/tools/qq/send_message.go` |
-| **OnebotHTTPSender** | OneBot HTTP API 消息发送器，实现 `qq.Sender` | `qq/onebot_http.go` |
 
 ## 新增功能指南
 
@@ -334,7 +313,7 @@ GitHub Actions（`.github/workflows/build.yml`）：推送 `v*` 标签时自动�
 - Eino 框架自动检测 `EnhancedInvokableTool` 接口并路由，与 `InvokableTool` 可在同一切片共存
 
 ### 新增 Agent
-1. 在 `internal/ai/agent/` 创建子 Agent 定义（参考 `agent_plan.go`、`agent_qq.go` 等），接收 `model.BaseChatModel` 参数
+1. 在 `internal/ai/agent/` 创建子 Agent 定义（参考 `agent_plan.go` 等），接收 `model.BaseChatModel` 参数
 2. 在 `agent/init.go` 中注册新 Agent，使用 `getBackendModel(reg, "<agent_name>")` 按配置分配后端模型
 3. 在默认配置的 `ai.agent_backends` 中添加 `<agent_name>: <backend_name>` 映射
 4. 如需新工具，在 `internal/ai/tools/` 下新建子目录定义，并在 `tools.go` 中添加对应的工具工厂函数

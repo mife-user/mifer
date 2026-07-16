@@ -81,47 +81,20 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body: |
-            ## 🔧 LLM 后端自由命名
-            - **取消硬编码后端名** — 移除 `default`/`haiku`/`sonnet`/`opus`/`multi_modal`/`embedder` 固定命名，后端名称完全由用户定义
-            - **新增 `agent_backends` 映射** — `AiConfig.AgentBackends` 决定各 Agent 使用哪个后端（如 `mifer: main`、`plan_agent: main`、`qq_agent: main`、`context_compressor: fast-model`、`habit_summarizer: fast-model`）
-            - **新增 `BackendConfig.Type`** — `chat`（对话模型）和 `embedding`（嵌入模型）类型区分
-            - **`ContextConfig.Model` → `ContextConfig.Backend`** — 语义更准确
-            - **环境变量通用化** — `MIFER_AI_BACKENDS_<NAME>_APIKEY` 覆盖任意后端的 API Key（仅敏感字段）
-            - **Registry 泛化** — `Get(name)` 查不到返回 nil（不再 fallback 到 default），新增 `First()`/`FirstKey()`/`IsReady()`
-            - **`getBackendModel(reg, agentName)`** — 统一按 `agent_backends` 配置获取模型，未配置时 fallback 到第一个注册后端
-            - **Embedder 自动查找** — 遍历 `Backends` 找到第一个 `Type == "embedding"` 的后端
+            ## 🗑 移除 NapCat QQ Bot 集成
+            - **删除 QQ Bot 子系统** — 移除 `qq/` 目录下所有代码（NapCatQQ WebSocket 客户端、OneBot 消息发送器、CQ 码解析器）
+            - **移除 QQ 工具** — 删除 `internal/ai/tools/qq/` 及 `qq_send_message` 工具定义
+            - **清理 QQ 通道** — 移除 `QQRunner`、`MiQQ` Agent、`QQAgent` 及相关配置引用
+            - **移除 QQ 配置** — `docker-compose.yml` 中删除 NapCatQQ 服务，清理 `config.dev.yaml` 默认配置中的 QQ 相关项
+            - **简化 Agent 初始化** — `Humen` 结构体移除 `QQAgent` 字段，`pickRunner` 不再按 QQ 通道分发
 
-            ## 🖼 多模态 EnhancedInvokableTool
-            - **`file_viewer` 升级为 `EnhancedInvokableTool`** — 使用 `utils.InferEnhancedTool` + `*schema.ToolResult`，图片以 base64 + MIME 直接注入 LLM 多模态上下文（`UserInputMultiContent → ChatMessagePartTypeImageURL`），LLM 原生识别图片
-            - **移除 `image_generator`** — 删除整个工具目录及所有引用
-            - **工具工厂函数简化** — `FileTools()`/`AuditTools()`/`ReadOnlyTools()`/`NewWithName()` 不再接收 `mmModel` 参数
-            - **Eino 框架自动路由** — `EnhancedInvokableTool` 与 `InvokableTool` 可在同一切片共存，框架自动类型断言识别
+            ## 📊 日志系统优化
+            - **新增 TraceID 支持** — 日志添加 traceID 字段，便于请求链路追踪和问题排查
+            - **移除 sessionID** — 从 traceMiddleware 和 logger 中移除 sessionID 相关代码，简化日志上下文
+            - **精简通道字段** — 优化日志记录，移除不必要的通道（channel）字段，减少冗余信息
 
-            ## 📝 会话重命名
-            - 新增 `POST /api/memory/rename` API 和 `/rename` TUI 命令
-            - 新增 `RenameMemoryReq`/`RenameMemoryResp` DTO
-
-            ## 🧠 Agent 初始化优化
-            - 新增用户习惯总结图（HabitGraph）、计划制定 Agent（PlanAgent）和 QQ 通道专用 Agent（MiQQ）
-            - Agent 初始化流程重构，支持配置驱动的后端分配
-            - `AgentInfo.Name` 为空时不再追加到列表
-
-            ## 💾 工具调用持久化
-            - **工具持久化中间件** — 拦截 ReAct 循环中的工具调用，将 ToolCall + ToolResult 写入 Memory JSONL
-            - **中间件链** — `eventSender → errorMw → confirmMiddleware → persistenceMw`，仅持久化通过确认的调用
-            - **`Memory.AppendToolExchange`** — 新增工具交互消息对追加方法，Save/Load 自动兼容
-            - **接口解耦** — `ToolExchangeWriter` 接口定义在消费侧（tools 包），memory 隐式实现
-
-            ## 📦 Offload 存储
-            - **`Offloader` 接口** — 支持 Save/Load/Delete，默认 `LocalOffloader` 存本地文件
-            - **配置项 `offload_dir`** — 自定义存储路径，为空时自动推导
-            - **三层记忆压缩** — Layer1（N 轮完整保留）+ Layer2（M 轮保留 ToolCall + 截断/offload 大结果）+ Layer3（摘要）
-            - **配置项 `slim_rounds`** — 控制 Layer2 精简轮数
-
-            ## 🐛 修复
-            - **QQ 会话自动重命名** — 结构化 ID（含 `/`）跳过自动重命名，防止 QQ 会话文件路径错乱
-            - **后端状态检查跳过 embedding 类型**，警告信息优化
-            - **错误常量更新**（`ErrNoBackendAvailable`/`ErrNoEmbeddingBackend`）
+            ## 🏗 基础设施调整
+            - **Loki/Promtail 配置更新** — 数据存储路径调整为 `/loki`（Loki 数据）和 `/data`（Promtail 位置记录），优化存储结构
           files: artifacts/**/*
           draft: false
           prerelease: false

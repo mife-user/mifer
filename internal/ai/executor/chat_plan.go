@@ -56,8 +56,7 @@ func (e *Executor) runPlanFlow(
 	}
 
 	// 4. 执行阶段：复用 runConversation（内存已含 plan 的 assistant 消息）
-	runner := e.pickRunner(req.Channel)
-	result, err := e.runConversation(ctx, req, runner, toolCB, callback)
+	result, err := e.runConversation(ctx, req, toolCB, callback)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil

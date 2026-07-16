@@ -29,7 +29,6 @@ type runResult struct {
 func (e *Executor) runConversation(
 	ctx context.Context,
 	req *domain.TalkReq,
-	runner *adk.Runner,
 	toolCB callbacks.Handler,
 	callback func(event, content string) error,
 ) (*runResult, error) {
@@ -53,7 +52,7 @@ func (e *Executor) runConversation(
 			return nil, err
 		}
 
-		result, retry, err := e.runAgentOnce(ctx, runner, msgs, toolCB, callback)
+		result, retry, err := e.runAgentOnce(ctx, msgs, toolCB, callback)
 		if retry {
 			continue
 		}
@@ -69,14 +68,13 @@ func (e *Executor) runConversation(
 // 返回值：result（成功时）、retry（可重试的错误）、err（致命错误）。
 func (e *Executor) runAgentOnce(
 	ctx context.Context,
-	runner *adk.Runner,
 	msgs []*schema.Message,
 	toolCB callbacks.Handler,
 	callback func(event, content string) error,
 ) (*runResult, bool, error) {
 	e.Token.reset()
 
-	iter := runner.Run(ctx, msgs, adk.WithCallbacks(toolCB))
+	iter := e.Runner.Run(ctx, msgs, adk.WithCallbacks(toolCB))
 	lastMsg := &strings.Builder{}
 	var currentAgent string
 	eventCount := 0

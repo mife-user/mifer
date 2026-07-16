@@ -45,8 +45,8 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 
 	// 普通对话模式
 	logger.Debug("Chat 路由到普通对话模式")
-	runner := e.pickRunner(req.Channel)
-	result, err := e.runConversation(ctx, req, runner, toolCB, callback)
+
+	result, err := e.runConversation(ctx, req, toolCB, callback)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil

@@ -23,7 +23,7 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		return
 	}
 
-	logger.Debug("收到 Chat 请求", logger.S("mode", req.Mode), logger.S("content_preview", req.Content[:min(len(req.Content), 50)]), logger.S("channel", req.Channel))
+	logger.Debug("收到 Chat 请求", logger.S("mode", req.Mode), logger.S("content_preview", req.Content[:min(len(req.Content), 50)]))
 
 	// 限制输入长度，防止内存压力
 	const maxContentLen = 200 * 1024 // 200KB
@@ -52,7 +52,6 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 
 	err := h.getService().Chat(ctx, &domain.TalkReq{
 		Content:   req.Content,
-		Channel:   req.Channel,
 		SessionID: req.SessionID,
 		Mode:      req.Mode,
 	}, func(event, content string) error {

@@ -12,14 +12,12 @@ import (
 	"mifer/internal/ai/tools/knowledgesearch"
 	"mifer/internal/ai/tools/knowledgestore"
 	"mifer/internal/ai/tools/paralleldispatch"
-	qqtools "mifer/internal/ai/tools/qq"
 	"mifer/internal/ai/tools/webfetch"
 	"mifer/internal/ai/tools/websearch"
 	"mifer/pkg/conf"
 	"mifer/pkg/errorer"
 	"mifer/pkg/logger"
 	"mifer/pkg/skill"
-	"mifer/qq"
 
 	"github.com/cloudwego/eino/components/tool"
 )
@@ -156,21 +154,6 @@ func WebTools() []tool.BaseTool {
 		logger.Error("创建 web_fetch 工具失败", logger.C(err))
 	} else {
 		tools = append(tools, wf)
-	}
-
-	return tools
-}
-
-// QQTools 返回 QQ 消息相关工具（发送消息等）。
-// getSender 延迟获取 qq.Sender 实现，避免工具构造时 Sender 尚未初始化。
-func QQTools(getSender func() qq.Sender) []tool.BaseTool {
-	var tools []tool.BaseTool
-
-	qs, err := qqtools.NewSendMessage(getSender)
-	if err != nil {
-		logger.Error("创建 qq_send_message 工具失败", logger.C(err))
-	} else {
-		tools = append(tools, qs)
 	}
 
 	return tools

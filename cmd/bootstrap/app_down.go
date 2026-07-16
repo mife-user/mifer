@@ -16,11 +16,6 @@ func (a *Application) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	// 停止 QQ Bot
-	if a.qqAdapter != nil {
-		a.qqAdapter.Stop()
-	}
-
 	// 释放路由资源
 	if a.router != nil {
 		a.router.Close()

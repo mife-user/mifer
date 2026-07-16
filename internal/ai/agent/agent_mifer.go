@@ -8,7 +8,6 @@ import (
 	"mifer/pkg/conf"
 	"mifer/pkg/logger"
 	"mifer/pkg/skill"
-	"mifer/qq"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/adk/prebuilt/deep"
@@ -67,9 +66,6 @@ func (h *Humen) createMiferAgent(ctx context.Context, reg *llm.Registry, subagen
 		orchTools = append(orchTools, t)
 	}
 	for _, t := range tools.WebTools() {
-		orchTools = append(orchTools, t)
-	}
-	for _, t := range tools.QQTools(func() qq.Sender { return nil }) {
 		orchTools = append(orchTools, t)
 	}
 	for _, t := range tools.FileTools() {

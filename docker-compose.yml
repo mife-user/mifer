@@ -11,8 +11,6 @@
 #   Qdrant   gRPC      → localhost:6334
 #   SearXNG  Web UI    → localhost:18080
 #   SearXNG  JSON API  → localhost:18080/search?q=...&format=json
-#   NapCat   WebSocket → localhost:3001   （OneBot v11，Mifer QQ adapter 连接）
-#   NapCat   WebUI     → localhost:6099   （扫码登录 + 网络配置）
 # ============================================================
 
 services:
@@ -94,35 +92,6 @@ services:
     networks:
       - mifer-net
 
-  # ==========================================
-  # NapCatQQ — QQ Bot 协议桥（OneBot v11）
-  # ==========================================
-  # 正向 WebSocket 服务端模式：NapCat 监听 3001，Mifer QQ adapter 主动连接。
-  # 首次启动后访问 http://localhost:6099 扫码登录，并在网络配置中：
-  #   - 新建 WebSocket 服务端 → 主机 0.0.0.0 端口 3001 → 启用
-  napcat:
-    image: mlikiowa/napcat-docker:latest
-    container_name: mifer-napcat
-    environment:
-      - ACCOUNT=${NAPCAT_QQ:-0}        # Bot QQ 号，或通过 .env 文件设置 NAPCAT_QQ=你的QQ号
-      - TZ=Asia/Shanghai
-      - WS_ENABLE=true                 # 启用正向 WebSocket 服务端
-      - WS_PORT=3001                   # WebSocket 监听端口
-      - WEBUI_TOKEN=${NAPCAT_TOKEN:-}  # WebUI 登录密码（可选，不设则启动日志中随机生成）
-      - MESSAGE_POST_FORMAT=array
-      - NAPCAT_UID=0
-      - NAPCAT_GID=0
-    ports:
-      - "3001:3001"                    # OneBot WebSocket（Mifer 连接此端口）
-      - "6099:6099"                    # WebUI 管理面板（扫码登录）
-    volumes:
-      - napcat_qq:/app/.config/QQ      # QQ 登录态持久化
-      - napcat_config:/app/napcat/config  # NapCat 配置持久化
-      - napcat_logs:/app/napcat/logs   # 日志
-    restart: unless-stopped
-    networks:
-      - mifer-net
-
 volumes:
   qdrant_data:
     name: mifer_qdrant_data
@@ -132,12 +101,7 @@ volumes:
     name: mifer_searxng_data
   searxng_cache:
     name: mifer_searxng_cache
-  napcat_qq:
-    name: mifer_napcat_qq
-  napcat_config:
-    name: mifer_napcat_config
-  napcat_logs:
-    name: mifer_napcat_logs
+
 networks:
   mifer-net:
     name: mifer-net

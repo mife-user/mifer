@@ -15,7 +15,6 @@ func TraceMiddleware() gin.HandlerFunc {
 		ctx = logger.WithTraceID(ctx, traceID)
 		c.Request = c.Request.WithContext(ctx)
 		c.Set("trace_id", traceID)
-
 		// 将 traceID 写入响应头，方便客户端关联
 		c.Header("X-Trace-ID", traceID)
 

@@ -84,6 +84,7 @@ func (e *Executor) prepareChat(
 	if req.SessionID != "" {
 		if err := e.Humen.Prompt.Memory.SwitchSession(req.SessionID); err != nil {
 			logger.Error(c, "memory", logger.S("session", req.SessionID), logger.C(err))
+			return nil, "", nil, err
 		}
 	}
 
@@ -91,9 +92,6 @@ func (e *Executor) prepareChat(
 
 	// 获取会话 ID 用于工具确认和清理
 	sessionID := req.SessionID
-	if sessionID == "" {
-		sessionID, _ = c.Value("id").(string)
-	}
 
 	// 构建 per-invocation Tool 回调处理器
 	toolCB := aicallback.NewHandler(callback)

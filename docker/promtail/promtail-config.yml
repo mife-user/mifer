@@ -21,17 +21,24 @@ scrape_configs:
       # JSON 解析（Mifer 使用 NewJSONEncoder，每行一条 JSON）
       - json:
           expressions:
-            time: time
-            level: level
-            caller: caller
-            msg: msg
+            time:     time
+            level:    level
+            caller:   caller
+            msg:      msg
+            error:    error
+            trace_id: trace_id
+      # label：仅放低基数字段（level 只有 DEBUG/INFO/WARN/ERROR 四种值）
       - labels:
           level:
+      # structured_metadata：高频查询字段，无需 | json 解析即可过滤/聚合
+      - structured_metadata:
+          caller:
+          error:
+          trace_id:
       - timestamp:
           source: time
           format: "01-02 15:04:05.000"
-      - output:
-          source: msg
+      # 不设 output，Loki 存储完整 JSON 行，自定义字段通过 | json 按需查询
 
   - job_name: mifer-gin-logs
     static_configs:

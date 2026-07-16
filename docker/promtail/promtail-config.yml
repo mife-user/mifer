@@ -9,6 +9,10 @@ positions:
 clients:
   - url: http://loki:3100/loki/api/v1/push
 
+limits_config:
+  max_line_size: 64KB
+  max_streams_per_user: 10000
+  
 scrape_configs:
   - job_name: mifer-logs
     static_configs:

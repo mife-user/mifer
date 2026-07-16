@@ -22,7 +22,7 @@ import (
 // Chat 执行一次对话，通过 callback 将事件实时传递到上层。
 // 根据 req.Mode 路由："" 为普通对话，"plan" 为先制定计划等确认再执行。
 func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(event, content string) error) error {
-	logger.Debug("Chat 入口", logger.S("mode", req.Mode), logger.S("content_preview", req.Content[:min(len(req.Content), 50)]))
+	logger.Debug("Chat", logger.S("mode", req.Mode), logger.S("content_preview", req.Content[:min(len(req.Content), 50)]))
 
 	// 检查模型是否可用（api_key 未配置时 Runner 为 nil）
 	if e.Runner == nil {
@@ -36,27 +36,26 @@ func (e *Executor) Chat(c context.Context, req *domain.TalkReq, callback func(ev
 	}
 	defer e.Humen.ConfirmStore.Cleanup(sessionID)
 
-	logger.Debug("Chat 路由检查", logger.S("mode", req.Mode))
 	// plan 模式路由
 	if req.Mode == "plan" {
-		logger.Debug("Chat 路由到 plan 模式", logger.S("session", sessionID))
 		return e.runPlanFlow(ctx, req, toolCB, callback, sessionID)
 	}
 
 	// 普通对话模式
-	logger.Debug("Chat 路由到普通对话模式")
 
 	result, err := e.runConversation(ctx, req, toolCB, callback)
 	if err != nil {
+		logger.Info("chat", logger.C(err))
 		if errors.Is(err, context.Canceled) {
 			return nil
 		}
 		return err
 	}
 
-	logger.Debug("AI事件迭代完成", logger.I("eventCount", result.eventCount), logger.I("msgLen", len(result.lastMsg)))
+	logger.Debug("chat", logger.I("eventCount", result.eventCount))
 
 	if result.lastMsg == "" {
+		logger.Error("chat", logger.S("lastmsg", result.lastMsg))
 		return errorer.New(errorer.ErrCallBackNull)
 	}
 
@@ -76,7 +75,7 @@ func (e *Executor) prepareChat(
 			c, e.Humen.Prompt.Memory, e.Humen.Prompt.SystemPrompt,
 			e.compress.lastPromptTokens, callback,
 		); err != nil {
-			logger.Error("上下文压缩失败", logger.C(err))
+			logger.Error("compress", logger.C(err))
 		}
 		e.compress.needsCompression = false
 	}
@@ -84,7 +83,7 @@ func (e *Executor) prepareChat(
 	// 指定了 sessionID 时先切换记忆，保证 switch + chat 原子执行
 	if req.SessionID != "" {
 		if err := e.Humen.Prompt.Memory.SwitchSession(req.SessionID); err != nil {
-			logger.Error("切换记忆会话失败", logger.S("session", req.SessionID), logger.C(err))
+			logger.Error("memory", logger.S("session", req.SessionID), logger.C(err))
 		}
 	}
 
@@ -110,24 +109,24 @@ func (e *Executor) prepareChat(
 func (e *Executor) finalizeChat(lastMsg, userMsg string) {
 	e.Humen.Prompt.Memory.AppendAssistant(lastMsg)
 	if err := e.Humen.Prompt.Memory.Save(); err != nil {
-		logger.Error("保存记忆失败", logger.C(err))
+		logger.Error("memory", logger.C(err))
 	}
 
 	// 首次对话结束后自动用首条用户消息前缀重命名会话
 	if e.Humen.Prompt.Memory.FileCreated() {
 		if err := e.Humen.Prompt.Memory.AutoRenameFromFirstMessage(); err != nil {
-			logger.Warn("自动重命名失败", logger.C(err))
+			logger.Warn("memory", logger.C(err))
 		}
 	}
 
 	// 轮次结束后保存文件快照（需在配置中启用 snapshot_enabled）
 	if e.Snapshot != nil {
 		round := e.Humen.Prompt.Memory.CountUserMessages()
-		logger.Debug("开始保存文件快照", logger.I("round", round))
+		logger.Debug("snapshot", logger.I("round", round))
 		if err := e.Snapshot.SaveRound(round); err != nil {
-			logger.Warn("保存文件快照失败（不中断对话流程）", logger.C(err), logger.I("round", round))
+			logger.Warn("snapshot", logger.C(err), logger.I("round", round))
 		} else {
-			logger.Debug("文件快照保存完成", logger.I("round", round))
+			logger.Debug("snapshot", logger.I("round", round))
 		}
 	}
 

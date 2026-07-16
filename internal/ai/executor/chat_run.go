@@ -119,6 +119,7 @@ func (e *Executor) runAgentOnce(
 	}
 
 	// 发送最后一个 agent 的结束事件
+	logger.Debug("callback", logger.S("agent_end", currentAgent))
 	if currentAgent != "" {
 		_ = callback("agent_end", currentAgent)
 	}

@@ -87,7 +87,7 @@ env: prod
 log:
   max_size: 100                      # 单个日志文件最大大小（MB），超过后自动轮换
   max_backups: 7                     # 最多保留的旧日志文件数量，超出后删除最旧的
-  level: ""                          # 日志级别：debug / info / warn / error，为空时 dev=debug, prod=info
+  level: "debug"                          # 日志级别：debug / info / warn / error，为空时 dev=debug, prod=info
 
 # ── JWT 认证 ──
 # secret 用于签发和验证 API 访问令牌，生产环境请修改为复杂随机字符串

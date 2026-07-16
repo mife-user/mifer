@@ -104,7 +104,7 @@ services:
       - "3100:3100"
     volumes:
       - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
-      - loki_data:/tmp/loki
+      - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
     restart: unless-stopped
     networks:
@@ -119,7 +119,8 @@ services:
     container_name: mifer-promtail
     volumes:
       - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - ./logs:/var/log/mifer:ro
+      - ~/.mifer/logs:/var/log/mifer:ro
+      - promtail_data:/data
     command: -config.file=/etc/promtail/config.yml
     restart: unless-stopped
     depends_on:
@@ -161,6 +162,8 @@ volumes:
     name: mifer_searxng_cache
   loki_data:
     name: mifer_loki_data
+  promtail_data:
+    name: mifer_promtail_data
   grafana_data:
     name: mifer_grafana_data
 

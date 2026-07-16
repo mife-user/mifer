@@ -64,13 +64,13 @@ func Init() error {
 		CallerKey:     "caller",
 		MessageKey:    "msg",
 		StacktraceKey: "stacktrace",
-		LineEnding:    "||\n",
+		LineEnding:    "\n",
 		EncodeTime:    nowTime,
 		EncodeLevel:   zapcore.CapitalLevelEncoder,
 		EncodeCaller:  zapcore.ShortCallerEncoder,
 	}
 
-	fileEncoder := zapcore.NewConsoleEncoder(fileEncoderCfg)
+	fileEncoder := zapcore.NewJSONEncoder(fileEncoderCfg)
 
 	// 打开各级别的切割文件
 	debugFile, err := NewRotatingFile(filepath.Join(logDir, "debug.log"), maxSizeMB, maxBackups)

@@ -4,7 +4,7 @@ server:
   grpc_listen_port: 0
 
 positions:
-  filename: /tmp/positions.yaml
+  filename: /data/positions.yaml
 
 clients:
   - url: http://loki:3100/loki/api/v1/push
@@ -18,20 +18,20 @@ scrape_configs:
           job: mifer
           __path__: /var/log/mifer/*.log
     pipeline_stages:
-      # 解析每一行，提取 level / time / caller / msg
-      - regex:
-          expression: '^(?P<time>[^\s]+)\s+(?P<level>\w+)\s+(?P<caller>[^\s]+)\s+(?P<msg>.*)$'
+      # JSON 解析（Mifer 使用 NewJSONEncoder，每行一条 JSON）
+      - json:
+          expressions:
+            time: time
+            level: level
+            caller: caller
+            msg: msg
       - labels:
           level:
       - timestamp:
           source: time
           format: "01-02 15:04:05.000"
-      # 解析 msg 中的附加字段（以 || 结尾的行）
-      - regex:
-          source: msg
-          expression: '^(?P<message>.*?)\|\|$'
       - output:
-          source: message
+          source: msg
 
   - job_name: mifer-gin-logs
     static_configs:

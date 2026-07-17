@@ -107,11 +107,6 @@ func Init(c context.Context) (*Humen, error) {
 			h.AgentInfos = append(h.AgentInfos, miferInfo)
 		}
 
-		if qa, qi := h.createQQAgent(c, reg); qi.Name != "" {
-			h.Agents.QQ = qa
-			h.AgentInfos = append(h.AgentInfos, qi)
-		}
-
 		if pa, pi := h.createPlanAgent(c, reg); pi.Name != "" {
 			h.Agents.Plan = pa
 			h.AgentInfos = append(h.AgentInfos, pi)

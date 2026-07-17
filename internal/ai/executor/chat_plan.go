@@ -79,7 +79,7 @@ func (e *Executor) runPlanFlow(
 func (e *Executor) buildPlanMessages(task string) []*schema.Message {
 	planSystemPrompt := fmt.Sprintf(agent.PlanInstruction+"\n\n## 当前任务\n%s", task)
 
-	msgs := make([]*schema.Message, len(e.Humen.Prompt.Memory.Messages())+1)
+	msgs := make([]*schema.Message, 0, len(e.Humen.Prompt.Memory.Messages())+1)
 	msgs = append(msgs, schema.SystemMessage(planSystemPrompt))
 	for _, m := range e.Humen.Prompt.Memory.Messages() {
 		msgs = append(msgs, m)

@@ -88,23 +88,25 @@ func (e *Executor) runAgentOnce(
 
 		if event.Err != nil {
 			if errors.Is(event.Err, context.Canceled) {
-				logger.Debug(ctx, "AI事件被取消（客户端断开）", logger.C(event.Err))
+				logger.Debug(ctx, "chat_connect_stop", logger.C(event.Err))
 				return nil, false, context.Canceled
 			}
 			if isRetryable(event.Err) {
-				logger.Warn(ctx, "AI调用临时错误，将重试", logger.C(event.Err))
+				logger.Warn(ctx, "chat_connect_retry", logger.C(event.Err))
 				return nil, true, nil
 			}
-			logger.Error(ctx, "AI事件错误", logger.C(event.Err))
+			logger.Error(ctx, "chat_err", logger.C(event.Err))
 			return nil, false, event.Err
 		}
 
 		// 检测 Agent 切换
 		if event.AgentName != "" && event.AgentName != currentAgent {
 			if currentAgent != "" {
+				logger.Info(ctx, "agent_end", logger.S("current_agent", currentAgent))
 				_ = callback("agent_end", currentAgent)
 			}
 			currentAgent = event.AgentName
+			logger.Info(ctx, "agent_start", logger.S("current_agent", currentAgent))
 			_ = callback("agent_start", currentAgent)
 		}
 
@@ -119,7 +121,7 @@ func (e *Executor) runAgentOnce(
 	}
 
 	// 发送最后一个 agent 的结束事件
-	logger.Debug(ctx, "callback", logger.S("agent_end", currentAgent))
+	logger.Info(ctx, "callback", logger.S("agent_end", currentAgent))
 	if currentAgent != "" {
 		_ = callback("agent_end", currentAgent)
 	}

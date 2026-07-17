@@ -32,7 +32,7 @@ scrape_configs:
             trace_id: trace_id
       # label：仅放低基数字段（level 只有 DEBUG/INFO/WARN/ERROR 四种值）
       - labels:
-          level:
+          level: level
       # structured_metadata：高频查询字段，无需 | json 解析即可过滤/聚合
       - structured_metadata:
           caller:
@@ -41,8 +41,9 @@ scrape_configs:
       - timestamp:
           source: time
           format: "01-02 15:04:05.000"
-      # 不设 output，Loki 存储完整 JSON 行，自定义字段通过 | json 按需查询
+          location: "Asia/Shanghai"
 
+  # ── Gin HTTP 访问日志（文本格式，无 pipeline，使用采集时间） ──
   - job_name: mifer-gin-logs
     static_configs:
       - targets:

@@ -11,9 +11,10 @@ import (
 
 // SidebarState 右侧状态侧边栏状态，跟踪 agent/工具执行情况与 token 消耗
 type SidebarState struct {
-	Current string          // 当前活跃项（agent名 或 "  tool名"），空=无
-	Log     []string        // 状态事件日志（带时间戳，最新追加）
-	Token   *TokenUsageData // 最新 token 统计（nil=无数据）
+	Current      string          // 当前活跃显示项（agent名 或 "  tool名"），空=无，仅供活跃行渲染
+	CurrentAgent string          // 当前运行中的 agent 名（不被工具事件覆盖），空=无，是 agent 结束判定的唯一依据
+	Log          []string        // 状态事件日志（带时间戳，最新追加）
+	Token        *TokenUsageData // 最新 token 统计（nil=无数据）
 }
 
 // update 根据流式状态消息更新侧边栏状态
@@ -33,22 +34,24 @@ func (s *SidebarState) update(msg streamStatusMsg) {
 	switch msg.event {
 	case "agent_start":
 		logger.Info(context.Background(), "agent_start:", logger.S("agentName", msg.name))
-		if s.Current != "" {
-			append("%s 完成", s.Current)
+		// 兜底：上一个 agent 未收到 agent_end（以 CurrentAgent 判定，不受工具事件覆盖影响）
+		if s.CurrentAgent != "" && s.CurrentAgent != msg.name {
+			append("%s 完成", s.CurrentAgent)
 		}
+		s.CurrentAgent = msg.name
 		s.Current = msg.name
 		append("%s 开始", msg.name)
 	case "agent_end":
 		logger.Info(context.Background(), "agent_end:", logger.S("agentName", msg.name))
-		if s.Current == msg.name {
-			append("%s 完成", s.Current)
+		// 仅匹配当前运行中的 agent 才生效，重复/乱序的 agent_end 静默忽略（幂等）
+		if s.CurrentAgent == msg.name {
+			append("%s 完成", msg.name)
+			s.CurrentAgent = ""
 			s.Current = ""
 		}
 	case "tool_start":
 		logger.Info(context.Background(), "tool_start:", logger.S("toolName", msg.name))
-		if s.Current != "" && s.Current != "  "+msg.name {
-			// 工具切换：先结束上一个工具
-		}
+		// 仅覆盖显示层，不动 CurrentAgent
 		s.Current = "  " + msg.name
 		append("%s 开始", msg.name)
 	case "tool_end":
@@ -59,7 +62,7 @@ func (s *SidebarState) update(msg streamStatusMsg) {
 		}
 		append("  %s 完成%s", msg.name, suffix)
 		if s.Current == "  "+msg.name {
-			s.Current = ""
+			s.Current = s.CurrentAgent // 工具结束后回落显示仍在运行的 agent
 		}
 	case "tool_error":
 		logger.Info(context.Background(), "tool_error:", logger.S("toolErr", msg.arg))

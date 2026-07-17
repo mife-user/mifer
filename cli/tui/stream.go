@@ -68,10 +68,19 @@ type streamDoneMsg struct {
 // 同时更新侧边栏和对话框：agent/tool 开始结束时在对话框中显示相应信息，
 // agent 结束时立即提取并渲染该 agent 的增量内容
 func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
+	// update 前捕获当前 agent，用于判定本次 agent_end 是否有效（update 内会将其清空）
+	prevAgent := m.sidebar.CurrentAgent
 	m.sidebar.update(msg)
 
 	switch msg.event {
 	case "agent_start":
+		// 兜底：上一个 agent 未收到 agent_end 时补齐对称的结束标记（正常流服务端保证先 end 后 start）
+		if prevAgent != "" && prevAgent != msg.name {
+			m.messages = append(m.messages, message{
+				role:    "system",
+				content: prevAgent + " end",
+			})
+		}
 		m.messages = append(m.messages, message{
 			role:    "system",
 			content: msg.name + " begin",
@@ -96,6 +105,14 @@ func (m *Model) handleStreamStatus(msg streamStatusMsg) (tea.Model, tea.Cmd) {
 					rendered: rendered,
 				})
 			}
+			m.needsAutoScroll = true
+		}
+		// 有效的 agent_end 追加结束标记（与 agent_start 的 begin 对称），重复的 agent_end 自动跳过
+		if prevAgent == msg.name {
+			m.messages = append(m.messages, message{
+				role:    "system",
+				content: msg.name + " end",
+			})
 			m.needsAutoScroll = true
 		}
 
@@ -187,6 +204,15 @@ func (m *Model) handleStreamDone(msg streamDoneMsg) (tea.Model, tea.Cmd) {
 				})
 			}
 		}
+	}
+
+	// 兜底：服务端异常路径（如 plan 制定失败后仍发 [DONE]）未发送 agent_end 时补齐结束显示
+	if name := m.sidebar.CurrentAgent; name != "" {
+		m.sidebar.update(streamStatusMsg{event: "agent_end", name: name}) // 复用状态机：记 "完成" 并清空
+		m.messages = append(m.messages, message{
+			role:    "system",
+			content: name + " end",
+		})
 	}
 
 	m.accBuf = nil

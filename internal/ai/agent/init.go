@@ -116,6 +116,7 @@ func Init(c context.Context) (*Humen, error) {
 		habitModel := getBackendModel(reg, "habit_summarizer")
 		if habitModel != nil {
 			h.Graphs.Habit = createHabitGraph(c, habitModel)
+
 		}
 	} else {
 		logger.Warn(c, "没有可用的模型后端，跳过Agent初始化，请配置 ai.backends 后通过 /config 重载启用")
